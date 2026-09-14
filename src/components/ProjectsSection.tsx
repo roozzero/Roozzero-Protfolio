@@ -24,7 +24,10 @@ import {
   Cpu,
   Radio,
   CheckCircle2,
-  Volume2
+  Volume2,
+  Lock,
+  Zap,
+  Play
 } from "lucide-react";
 
 export default function ProjectsSection() {
@@ -46,16 +49,22 @@ export default function ProjectsSection() {
     offset: ["start end", "end start"],
   });
 
-  const smoothProgress = useSpring(scrollYProgress, { stiffness: 90, damping: 20, restDelta: 0.001 });
+  const smoothProgress = useSpring(scrollYProgress, { stiffness: 85, damping: 22, restDelta: 0.001 });
 
-  // Parallax shifts and 3D tilts for phone deck and motion graphics
-  const yParallaxLeft = useTransform(smoothProgress, [0, 0.5, 1], [40, 0, -35]);
-  const yParallaxRight = useTransform(smoothProgress, [0, 0.5, 1], [70, 0, -50]);
-  const rotateX3D = useTransform(smoothProgress, [0, 0.5, 1], [6, 0, -4]);
+  // Scroll-linked transforms and 3D perspective shifts
+  const yParallaxLeft = useTransform(smoothProgress, [0, 0.5, 1], [35, 0, -30]);
+  const yParallaxRight = useTransform(smoothProgress, [0, 0.5, 1], [65, 0, -45]);
+  const rotateX3D = useTransform(smoothProgress, [0, 0.5, 1], [6, 0, -5]);
+  const rotateYDeck = useTransform(smoothProgress, [0, 0.5, 1], [-3, 0, 3]);
   const scaleCenter = useTransform(smoothProgress, [0, 0.35, 0.8, 1], [0.97, 1, 1, 0.97]);
-  const ambientGlowOpacity = useTransform(smoothProgress, [0, 0.3, 0.7, 1], [0.2, 0.75, 0.75, 0.2]);
+  const ambientGlowOpacity = useTransform(smoothProgress, [0, 0.3, 0.7, 1], [0.2, 0.85, 0.85, 0.2]);
   const scrollBarWidth = useTransform(smoothProgress, [0.1, 0.9], ["0%", "100%"]);
-  const filmReelRotate = useTransform(smoothProgress, [0, 1], [0, 720]);
+  
+  // Motion Graphic rotations linked directly to user scrolling
+  const filmReelRotate = useTransform(smoothProgress, [0, 1], [0, 1080]);
+  const scrollRadarSweep = useTransform(smoothProgress, [0, 1], [0, 720]);
+  const scrollCpuRotate = useTransform(smoothProgress, [0, 1], [0, 360]);
+  const projectorBeamAngle = useTransform(smoothProgress, [0, 1], [-12, 12]);
 
   return (
     <section
@@ -63,17 +72,17 @@ export default function ProjectsSection() {
       id="projects"
       className="w-full max-w-7xl mx-auto px-6 sm:px-8 lg:px-12 py-12 sm:py-16 md:py-24 relative text-white scroll-mt-24 border-t border-white/[0.04] overflow-hidden"
     >
-      {/* Dynamic Ambient Background Glows linked to scroll */}
+      {/* Dynamic Ambient Background Glows linked to scroll - Unified Emerald Theme */}
       <motion.div
         style={{ opacity: ambientGlowOpacity }}
-        className="absolute top-1/4 left-1/4 -translate-x-1/2 w-[550px] h-[350px] pointer-events-none blur-[150px] bg-gradient-to-tr from-[#FF1A6B]/[0.08] via-purple-600/[0.04] to-transparent rounded-full z-0"
+        className="absolute top-1/4 left-1/4 -translate-x-1/2 w-[550px] h-[350px] pointer-events-none blur-[150px] bg-gradient-to-tr from-emerald-500/[0.08] via-emerald-600/[0.04] to-transparent rounded-full z-0"
       />
       <motion.div
         style={{ opacity: ambientGlowOpacity }}
-        className="absolute bottom-1/4 right-1/4 translate-x-1/2 w-[450px] h-[300px] pointer-events-none blur-[130px] bg-gradient-to-br from-cyan-500/[0.06] via-[#FF3366]/[0.04] to-transparent rounded-full z-0"
+        className="absolute bottom-1/4 right-1/4 translate-x-1/2 w-[450px] h-[300px] pointer-events-none blur-[140px] bg-gradient-to-br from-emerald-400/[0.06] via-teal-600/[0.03] to-transparent rounded-full z-0"
       />
 
-      {/* Header Block with Motion Graphics Pill & Project Category Switcher */}
+      {/* Header Block with Motion Graphics Pill & Category Tabs */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start mb-10 md:mb-14 relative z-10 w-full">
         {/* Badge Column (Left) */}
         <div className="lg:col-span-3 flex flex-col items-start gap-3">
@@ -89,7 +98,7 @@ export default function ProjectsSection() {
               transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
               className="inline-flex"
             >
-              <Sparkles size={11} className="text-[#FF1A6B]" />
+              <Sparkles size={11} className="text-emerald-400" />
             </motion.span>
             <span className="font-sans text-[10px] font-semibold tracking-[0.2em] text-white/90 uppercase">
               FEATURED WORKS &amp; LABS
@@ -97,8 +106,8 @@ export default function ProjectsSection() {
           </motion.div>
 
           <div className="hidden sm:flex items-center gap-2 px-2.5 py-1 rounded-lg border border-white/[0.06] bg-white/[0.015] text-[10px] font-mono text-white/40">
-            <Radio size={11} className="text-[#FF1A6B] animate-pulse" />
-            <span>Interactive 3D Stage</span>
+            <Radio size={11} className="text-emerald-400 animate-pulse" />
+            <span>Interactive 3D Motion Stage</span>
           </div>
         </div>
 
@@ -119,12 +128,12 @@ export default function ProjectsSection() {
             </p>
           </motion.div>
 
-          {/* Project Switcher Navigation */}
+          {/* Project Switcher Navigation - Unified Emerald Theme */}
           <div className="flex items-center gap-1.5 p-1 rounded-xl bg-white/[0.02] border border-white/[0.07] backdrop-blur-md self-start md:self-auto shrink-0">
             {[
-              { id: "cinema", label: "Voo's Cinema", icon: Film, color: "text-[#FF1A6B]" },
-              { id: "security", label: "Aegis Sentinel", icon: ShieldCheck, color: "text-red-400" },
-              { id: "cloud", label: "Nexus Engine", icon: Terminal, color: "text-cyan-400" },
+              { id: "cinema", label: "Voo's Cinema", icon: Film },
+              { id: "security", label: "Aegis Sentinel", icon: ShieldCheck },
+              { id: "cloud", label: "Nexus Engine", icon: Terminal },
             ].map((p) => {
               const Icon = p.icon;
               const isCurrent = activeProject === p.id;
@@ -132,13 +141,13 @@ export default function ProjectsSection() {
                 <button
                   key={p.id}
                   onClick={() => setActiveProject(p.id as any)}
-                  className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-sans font-semibold tracking-wider uppercase transition-all duration-300 ${
+                  className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-[10px] font-sans font-semibold tracking-wider uppercase transition-all duration-300 ${
                     isCurrent
                       ? "bg-white text-black shadow-lg shadow-white/10"
                       : "text-white/50 hover:text-white hover:bg-white/[0.05]"
                   }`}
                 >
-                  <Icon size={12} className={isCurrent ? "text-black" : p.color} />
+                  <Icon size={12} className={isCurrent ? "text-black" : "text-emerald-400"} />
                   <span>{p.label}</span>
                 </button>
               );
@@ -147,11 +156,11 @@ export default function ProjectsSection() {
         </div>
       </div>
 
-      {/* Dynamic Scroll Progress Line */}
+      {/* Dynamic Scroll Progress Line - Unified to Emerald Glow */}
       <div className="relative w-full h-[2px] bg-white/[0.06] rounded-full mb-8 overflow-hidden z-10">
         <motion.div
           style={{ width: scrollBarWidth }}
-          className="absolute top-0 left-0 h-full bg-gradient-to-r from-[#FF1A6B] via-purple-500 to-cyan-400 shadow-[0_0_14px_rgba(255,26,107,0.9)]"
+          className="absolute top-0 left-0 h-full bg-gradient-to-r from-emerald-500 via-emerald-400 to-emerald-300 shadow-[0_0_14px_rgba(16,185,129,0.8)]"
         />
       </div>
 
@@ -161,7 +170,7 @@ export default function ProjectsSection() {
         className="w-full p-6 sm:p-8 md:p-10 rounded-3xl border border-white/10 bg-white/[0.02] backdrop-blur-md shadow-2xl relative z-10"
       >
         {/* =========================================================================
-            VIEW 1: VOO'S CINEMA INTERACTIVE PRODUCTION (Flagship Experience)
+            VIEW 1: VOO'S CINEMA INTERACTIVE PRODUCTION (Unified Emerald Luxury)
            ========================================================================= */}
         {activeProject === "cinema" && (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-start">
@@ -171,12 +180,12 @@ export default function ProjectsSection() {
               style={{ y: yParallaxLeft }}
               className="lg:col-span-4 space-y-7 lg:sticky lg:top-28"
             >
-              {/* Brand Logo & Rotating Film Reel Graphic */}
+              {/* Brand Logo & Rotating Film Reel Graphic (Scroll-linked & Continuous) */}
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 select-none">
                   <span className="font-sans text-2xl sm:text-3xl font-black tracking-tight text-white uppercase">V</span>
                   {/* Rotating Cinema Film Sprocket 1 */}
-                  <div className="relative w-6 h-6 rounded-full bg-[#FF1A6B] flex items-center justify-center shadow-lg shadow-[#FF1A6B]/30">
+                  <div className="relative w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center shadow-lg shadow-emerald-500/30">
                     <motion.div
                       style={{ rotate: filmReelRotate }}
                       className="w-3.5 h-3.5 rounded-full border border-white/40 flex items-center justify-center"
@@ -185,7 +194,7 @@ export default function ProjectsSection() {
                     </motion.div>
                   </div>
                   {/* Rotating Cinema Film Sprocket 2 */}
-                  <div className="relative w-6 h-6 rounded-full bg-[#FF1A6B] flex items-center justify-center shadow-lg shadow-[#FF1A6B]/30">
+                  <div className="relative w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center shadow-lg shadow-emerald-500/30">
                     <motion.div
                       style={{ rotate: filmReelRotate }}
                       className="w-3.5 h-3.5 rounded-full border border-white/40 flex items-center justify-center"
@@ -197,8 +206,8 @@ export default function ProjectsSection() {
                 </div>
 
                 {/* Status indicator */}
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-[#FF1A6B]/20 bg-[#FF1A6B]/10 text-[#FF1A6B] font-mono text-[9px] font-bold uppercase">
-                  <span className="h-1.5 w-1.5 rounded-full bg-[#FF1A6B] animate-ping" />
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-emerald-400/20 bg-emerald-400/10 text-emerald-400 font-mono text-[9px] font-bold uppercase">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-ping" />
                   Live Deck
                 </span>
               </div>
@@ -209,23 +218,23 @@ export default function ProjectsSection() {
                   Next-Gen Cinematic Ticketing Experience
                 </h3>
                 <p className="font-sans text-sm text-white/60 leading-relaxed">
-                  Engineered with real-time seat reservation synchronization, IMAX &amp; Cinetech theater acoustics visualization, dynamic showtime filters, and micro-animated ticket generation.
+                  Engineered with real-time seat reservation synchronization, IMAX &amp; Cinetech acoustics visualization, dynamic showtime filters, and micro-animated ticket generation.
                 </p>
               </div>
 
-              {/* MOTION GRAPHIC: Audio Equalizer Waveform & Cinema Acoustics */}
+              {/* MOTION GRAPHIC: Audio Equalizer Waveform & Cinema Acoustics in Emerald */}
               <div className="p-4 rounded-2xl border border-white/[0.07] bg-black/40 backdrop-blur-sm relative overflow-hidden group">
-                <div className="absolute top-0 right-0 w-32 h-16 bg-gradient-to-l from-[#FF1A6B]/10 to-transparent pointer-events-none" />
+                <div className="absolute top-0 right-0 w-32 h-16 bg-gradient-to-l from-emerald-500/10 to-transparent pointer-events-none" />
                 
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
-                    <Volume2 size={13} className="text-[#FF1A6B]" />
+                    <Volume2 size={13} className="text-emerald-400" />
                     <span className="font-mono text-[10px] text-white/70 uppercase tracking-wider">Dolby Atmos Spatial Audio</span>
                   </div>
-                  <span className="font-mono text-[9px] text-[#FF1A6B]">48kHz · Lossless</span>
+                  <span className="font-mono text-[9px] text-emerald-400 font-bold">48kHz · Lossless</span>
                 </div>
 
-                {/* Dynamic Equalizer Motion Spectrum */}
+                {/* Dynamic Equalizer Motion Spectrum in Emerald */}
                 <div className="flex items-end justify-between gap-1 h-10 px-1">
                   {[45, 80, 60, 95, 35, 70, 85, 40, 90, 65, 50, 100, 75, 45, 85, 60, 95, 55, 30].map((height, i) => (
                     <motion.div
@@ -239,7 +248,7 @@ export default function ProjectsSection() {
                         ease: "easeInOut",
                         delay: i * 0.05,
                       }}
-                      className="flex-1 rounded-full bg-gradient-to-t from-[#FF1A6B] via-purple-400 to-cyan-300 opacity-80 group-hover:opacity-100"
+                      className="flex-1 rounded-full bg-gradient-to-t from-emerald-600 via-emerald-400 to-emerald-200 opacity-80 group-hover:opacity-100 shadow-[0_0_8px_rgba(16,185,129,0.3)]"
                     />
                   ))}
                 </div>
@@ -254,7 +263,7 @@ export default function ProjectsSection() {
                   </div>
                   <div className="p-2.5 rounded-xl bg-white/[0.015] border border-white/[0.04]">
                     <p className="font-sans text-[9px] text-white/40 uppercase tracking-widest mb-1">Motion Engine</p>
-                    <p className="font-sans text-xs font-bold text-white">Framer Motion</p>
+                    <p className="font-sans text-xs font-bold text-emerald-400">Framer Motion</p>
                   </div>
                   <div className="p-2.5 rounded-xl bg-white/[0.015] border border-white/[0.04]">
                     <p className="font-sans text-[9px] text-white/40 uppercase tracking-widest mb-1">Target Markets</p>
@@ -267,7 +276,7 @@ export default function ProjectsSection() {
               <div className="flex flex-wrap items-center gap-3 pt-1">
                 <button
                   onClick={() => setShowTicketModal(true)}
-                  className="inline-flex items-center gap-2 px-4 py-2 font-sans text-[10px] font-bold tracking-[0.18em] uppercase transition-all duration-300 rounded-xl bg-[#FF1A6B] text-white shadow-lg shadow-[#FF1A6B]/25 hover:bg-[#ff337e] hover:shadow-[#FF1A6B]/40 cursor-pointer"
+                  className="inline-flex items-center gap-2 px-4 py-2 font-sans text-[10px] font-bold tracking-[0.18em] uppercase transition-all duration-300 rounded-xl bg-emerald-500 text-black shadow-lg shadow-emerald-500/25 hover:bg-emerald-400 hover:shadow-emerald-500/40 cursor-pointer"
                 >
                   <Ticket size={13} />
                   <span>Generate e-Ticket</span>
@@ -275,16 +284,24 @@ export default function ProjectsSection() {
 
                 <div className="hidden sm:flex items-center gap-1.5 text-xs text-white/40 font-mono">
                   <span>Seats:</span>
-                  <span className="text-white font-bold">{selectedSeats.join(", ") || "None"}</span>
+                  <span className="text-emerald-400 font-bold">{selectedSeats.join(", ") || "None"}</span>
                 </div>
               </div>
             </motion.div>
 
-            {/* RIGHT COLUMN: 3D Interactive Phone Mockup Stack with Parallax & Scroll Tilt */}
+            {/* RIGHT COLUMN: 3D Interactive Phone Mockup Stack with Parallax, Scroll Tilt & Projector Beam */}
             <motion.div
-              style={{ y: yParallaxRight, rotateX: rotateX3D }}
+              style={{ y: yParallaxRight, rotateX: rotateX3D, rotateY: rotateYDeck }}
               className="lg:col-span-8 w-full flex flex-col items-center perspective-[1200px]"
             >
+              {/* Virtual Projector Light Beam casting onto the 3D Mockup Arena */}
+              <div className="relative w-full max-w-[600px] flex justify-center pointer-events-none mb-1">
+                <motion.div
+                  style={{ rotate: projectorBeamAngle }}
+                  className="w-3/4 h-20 bg-gradient-to-b from-emerald-400/20 via-emerald-500/[0.05] to-transparent blur-2xl rounded-t-full pointer-events-none"
+                />
+              </div>
+
               {/* Screen Switcher Tabs */}
               <div className="flex flex-wrap items-center justify-center gap-1.5 p-1 bg-white/[0.02] border border-white/[0.06] rounded-2xl mb-4 self-center backdrop-blur-md">
                 {[
@@ -301,7 +318,7 @@ export default function ProjectsSection() {
                       onClick={() => setActiveScreen(tab.id)}
                       className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-[10px] font-sans tracking-wider transition-all duration-300 uppercase ${
                         isActive
-                          ? "bg-[#FF1A6B] text-white shadow-[0_4px_14px_rgba(255,26,107,0.4)] font-bold scale-[1.02]"
+                          ? "bg-emerald-500 text-black shadow-[0_4px_14px_rgba(16,185,129,0.4)] font-bold scale-[1.02]"
                           : "text-white/50 hover:text-white hover:bg-white/[0.03]"
                       }`}
                     >
@@ -329,7 +346,6 @@ export default function ProjectsSection() {
                   onClick={() => setActiveScreen(1)}
                   className="absolute w-[245px] h-[490px] rounded-[34px] border border-white/[0.08] bg-[#09090C] p-2.5 shadow-[0_25px_60px_rgba(0,0,0,0.85)] cursor-pointer select-none overflow-hidden group/phone"
                 >
-                  {/* Dynamic sheen on phone glass */}
                   <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/[0.03] to-transparent pointer-events-none opacity-0 group-hover/phone:opacity-100 transition-opacity duration-700" />
 
                   {/* Phone Notch/Island */}
@@ -352,13 +368,13 @@ export default function ProjectsSection() {
                     {/* Navigation Bar inside App */}
                     <div className="flex justify-between items-center border-b border-white/[0.05] pb-2 mb-3">
                       <div className="flex items-center gap-1.5">
-                        <div className="w-4 h-4 rounded-full bg-[#FF1A6B] flex items-center justify-center scale-90">
-                          <div className="w-2 h-2 rounded-full bg-white flex items-center justify-center">
-                            <div className="w-0 h-0 border-t-[1.5px] border-t-transparent border-b-[1.5px] border-b-transparent border-l-[2.5px] border-l-[#FF1A6B] ml-[0.3px]" />
+                        <div className="w-4 h-4 rounded-full bg-emerald-500 flex items-center justify-center scale-90">
+                          <div className="w-2 h-2 rounded-full bg-black flex items-center justify-center">
+                            <div className="w-0 h-0 border-t-[1.5px] border-t-transparent border-b-[1.5px] border-b-transparent border-l-[2.5px] border-l-emerald-500 ml-[0.3px]" />
                           </div>
                         </div>
                         <div className="flex items-center text-[9px] text-white/80 font-medium">
-                          <MapPin size={8} className="text-[#FF1A6B] mr-0.5" />
+                          <MapPin size={8} className="text-emerald-400 mr-0.5" />
                           <span className="truncate max-w-[85px]">San Francisco</span>
                         </div>
                       </div>
@@ -384,12 +400,12 @@ export default function ProjectsSection() {
                     <div className="bg-white/[0.02] border border-white/[0.04] p-2 rounded-xl mb-3">
                       <div className="flex justify-between text-[8px] text-white/30 mb-1">
                         <span>9AM</span>
-                        <span className="text-[#FF1A6B] font-medium">12:30 PM</span>
+                        <span className="text-emerald-400 font-medium">12:30 PM</span>
                         <span>11PM</span>
                       </div>
                       <div className="relative w-full h-1 bg-white/10 rounded-full my-1.5">
-                        <div className="absolute left-0 right-[40%] h-full bg-[#FF1A6B]" />
-                        <div className="absolute left-[60%] -translate-y-1/2 w-2 h-2 rounded-full bg-white shadow-md border border-[#FF1A6B] top-1/2 cursor-pointer" />
+                        <div className="absolute left-0 right-[40%] h-full bg-emerald-500" />
+                        <div className="absolute left-[60%] -translate-y-1/2 w-2 h-2 rounded-full bg-white shadow-md border border-emerald-500 top-1/2 cursor-pointer" />
                       </div>
                     </div>
 
@@ -424,7 +440,7 @@ export default function ProjectsSection() {
                             onClick={(e) => { e.stopPropagation(); setSelectedDate(dayNum); }}
                             className={`w-5 h-5 mx-auto rounded-full flex items-center justify-center transition-all ${
                               isSelected
-                                ? "bg-[#FF1A6B] text-white font-bold shadow-[0_0_8px_rgba(255,26,107,0.5)] scale-110"
+                                ? "bg-emerald-500 text-black font-bold shadow-[0_0_8px_rgba(16,185,129,0.6)] scale-110"
                                 : "text-white/70 hover:bg-white/5 hover:text-white"
                             }`}
                           >
@@ -441,7 +457,7 @@ export default function ProjectsSection() {
                       </button>
                       <button 
                         onClick={(e) => { e.stopPropagation(); setActiveScreen(2); }}
-                        className="flex-1 h-6 rounded-lg bg-[#FF1A6B] text-white text-[9px] font-bold tracking-wider uppercase flex items-center justify-center shadow-lg hover:shadow-[#FF1A6B]/20 cursor-pointer"
+                        className="flex-1 h-6 rounded-lg bg-emerald-500 text-black text-[9px] font-bold tracking-wider uppercase flex items-center justify-center shadow-lg hover:shadow-emerald-500/20 cursor-pointer"
                       >
                         Filter results
                       </button>
@@ -463,8 +479,8 @@ export default function ProjectsSection() {
                   onClick={() => setActiveScreen(2)}
                   className="absolute w-[245px] h-[490px] rounded-[34px] border border-white/[0.12] bg-[#0A0A0E] p-2.5 shadow-[0_30px_70px_rgba(0,0,0,0.9)] cursor-pointer select-none overflow-hidden group/device"
                 >
-                  {/* Dynamic edge illumination */}
-                  <div className="absolute inset-0 bg-gradient-to-b from-cyan-500/[0.04] via-transparent to-[#FF1A6B]/[0.08] opacity-60 group-hover/device:opacity-100 transition-opacity duration-700 pointer-events-none" />
+                  {/* Dynamic edge illumination in emerald */}
+                  <div className="absolute inset-0 bg-gradient-to-b from-emerald-500/[0.06] via-transparent to-emerald-600/[0.08] opacity-60 group-hover/device:opacity-100 transition-opacity duration-700 pointer-events-none" />
 
                   {/* Phone Notch */}
                   <div className="absolute top-2.5 left-1/2 -translate-x-1/2 w-20 h-4 bg-black rounded-full z-40 border border-white/5 flex items-center justify-center">
@@ -486,13 +502,13 @@ export default function ProjectsSection() {
                     {/* Navigation Bar */}
                     <div className="flex justify-between items-center border-b border-white/[0.05] pb-2 mb-2.5">
                       <div className="flex items-center gap-1.5">
-                        <div className="w-4 h-4 rounded-full bg-[#FF1A6B] flex items-center justify-center scale-90">
-                          <div className="w-2 h-2 rounded-full bg-white flex items-center justify-center">
-                            <div className="w-0 h-0 border-t-[1.5px] border-t-transparent border-b-[1.5px] border-b-transparent border-l-[2.5px] border-l-[#FF1A6B] ml-[0.3px]" />
+                        <div className="w-4 h-4 rounded-full bg-emerald-500 flex items-center justify-center scale-90">
+                          <div className="w-2 h-2 rounded-full bg-black flex items-center justify-center">
+                            <div className="w-0 h-0 border-t-[1.5px] border-t-transparent border-b-[1.5px] border-b-transparent border-l-[2.5px] border-l-emerald-500 ml-[0.3px]" />
                           </div>
                         </div>
                         <div className="flex items-center text-[9px] text-white/80 font-medium">
-                          <MapPin size={8} className="text-[#FF1A6B] mr-0.5" />
+                          <MapPin size={8} className="text-emerald-400 mr-0.5" />
                           <span className="truncate max-w-[85px]">San Francisco</span>
                         </div>
                       </div>
@@ -506,14 +522,14 @@ export default function ProjectsSection() {
                     {/* Heading Tabs */}
                     <div className="flex items-baseline gap-2 mb-2">
                       <h4 className="text-[12px] font-black text-white tracking-wide">In cinema</h4>
-                      <span className="text-[9px] font-medium text-white/40">Coming Soon</span>
+                      <span className="text-[9px] font-medium text-emerald-400/80">Coming Soon</span>
                     </div>
 
                     {/* Movie Poster Card */}
-                    <div className="relative flex-1 rounded-2xl overflow-hidden border border-white/[0.07] bg-gradient-to-b from-[#090C16] to-[#020204] flex flex-col items-center justify-between p-3.5 shadow-inner">
-                      {/* Space Nebula Background */}
-                      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(0,102,255,0.22)_0%,transparent_65%)] pointer-events-none" />
-                      <div className="absolute bottom-1/4 w-[130px] h-[130px] rounded-full bg-[#FF1A6B]/[0.05] blur-[25px] pointer-events-none" />
+                    <div className="relative flex-1 rounded-2xl overflow-hidden border border-white/[0.07] bg-gradient-to-b from-[#06100c] to-[#020204] flex flex-col items-center justify-between p-3.5 shadow-inner">
+                      {/* Space Nebula Background in Emerald */}
+                      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(16,185,129,0.2)_0%,transparent_65%)] pointer-events-none" />
+                      <div className="absolute bottom-1/4 w-[130px] h-[130px] rounded-full bg-emerald-500/[0.08] blur-[25px] pointer-events-none" />
 
                       {/* Tagline */}
                       <div className="text-center mt-1.5 relative z-10">
@@ -530,7 +546,7 @@ export default function ProjectsSection() {
                         <h3 className="text-[16px] font-black tracking-[0.22em] text-white uppercase font-sans drop-shadow-[0_0_10px_rgba(255,255,255,0.35)] leading-none mb-1">
                           EARTH
                         </h3>
-                        <p className="text-[5px] text-[#FF1A6B] uppercase tracking-widest font-bold">SUMMER CINEMA</p>
+                        <p className="text-[5px] text-emerald-400 uppercase tracking-widest font-bold">SUMMER CINEMA</p>
                       </div>
 
                       {/* Bottom Ticket Label */}
@@ -541,14 +557,14 @@ export default function ProjectsSection() {
                         </div>
                         <div className="flex gap-1">
                           <span className="text-[5.5px] font-bold tracking-wide text-white/80 bg-white/[0.08] px-1 py-0.5 rounded border border-white/[0.04]">IMAX</span>
-                          <span className="text-[5.5px] font-bold tracking-wide text-[#FF1A6B] bg-[#FF1A6B]/10 border border-[#FF1A6B]/20 px-1 py-0.5 rounded">CINETECH</span>
+                          <span className="text-[5.5px] font-bold tracking-wide text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-1 py-0.5 rounded">CINETECH</span>
                         </div>
                       </div>
                     </div>
 
                     {/* Bottom Dock */}
                     <div className="flex justify-around items-center pt-2.5 mt-2 border-t border-white/[0.05] text-white/30 text-[10px]">
-                      <CompassIcon size={12} className="text-[#FF1A6B] cursor-pointer" />
+                      <CompassIcon size={12} className="text-emerald-400 cursor-pointer" />
                       <CalendarIcon size={11} className="hover:text-white/80 cursor-pointer" onClick={(e) => { e.stopPropagation(); setActiveScreen(1); }} />
                       <User size={11} className="hover:text-white/80 cursor-pointer" />
                     </div>
@@ -585,13 +601,13 @@ export default function ProjectsSection() {
 
                     <div className="flex justify-between items-center border-b border-white/[0.05] pb-2 mb-2">
                       <div className="flex items-center gap-1.5">
-                        <div className="w-4 h-4 rounded-full bg-[#FF1A6B] flex items-center justify-center scale-90">
-                          <div className="w-2 h-2 rounded-full bg-white flex items-center justify-center">
-                            <div className="w-0 h-0 border-t-[1.5px] border-t-transparent border-b-[1.5px] border-b-transparent border-l-[2.5px] border-l-[#FF1A6B] ml-[0.3px]" />
+                        <div className="w-4 h-4 rounded-full bg-emerald-500 flex items-center justify-center scale-90">
+                          <div className="w-2 h-2 rounded-full bg-black flex items-center justify-center">
+                            <div className="w-0 h-0 border-t-[1.5px] border-t-transparent border-b-[1.5px] border-b-transparent border-l-[2.5px] border-l-emerald-500 ml-[0.3px]" />
                           </div>
                         </div>
                         <div className="flex items-center text-[9px] text-white/80 font-medium">
-                          <MapPin size={8} className="text-[#FF1A6B] mr-0.5" />
+                          <MapPin size={8} className="text-emerald-400 mr-0.5" />
                           <span className="truncate max-w-[85px]">San Francisco</span>
                         </div>
                       </div>
@@ -603,12 +619,10 @@ export default function ProjectsSection() {
                     </div>
 
                     {/* Hero Trailer Scene */}
-                    <div className="relative h-[95px] w-full rounded-xl overflow-hidden bg-gradient-to-tr from-[#14151B] via-[#2A1821] to-[#0A0B0E] border border-white/5 flex items-center justify-center mb-2 shadow-inner">
-                      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,26,107,0.18),transparent_70%)] pointer-events-none" />
+                    <div className="relative h-[95px] w-full rounded-xl overflow-hidden bg-gradient-to-tr from-[#091510] via-[#102a20] to-[#0A0B0E] border border-white/5 flex items-center justify-center mb-2 shadow-inner">
+                      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(16,185,129,0.2),transparent_70%)] pointer-events-none" />
                       <div className="relative z-10 w-8 h-8 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center shadow-lg">
-                        <svg width="8" height="10" viewBox="0 0 10 12" fill="none" xmlns="http://www.w3.org/2000/svg" className="ml-[1px]">
-                          <path d="M1 1.5L8.5 6L1 10.5V1.5Z" fill="white" />
-                        </svg>
+                        <Play size={10} className="text-emerald-400 ml-[1px]" />
                       </div>
                       <div className="absolute bottom-1.5 left-2 text-[6px] text-white/40 tracking-wider">OFFICIAL TRAILER</div>
                     </div>
@@ -628,8 +642,8 @@ export default function ProjectsSection() {
                         <p className="text-white font-bold">PG-13</p>
                       </div>
                       <div>
-                        <p className="text-[#FF1A6B] font-bold flex items-center justify-center gap-0.5">
-                          <Star size={6} fill="#FF1A6B" /> 8.4
+                        <p className="text-emerald-400 font-bold flex items-center justify-center gap-0.5">
+                          <Star size={6} fill="#10b981" /> 8.4
                         </p>
                         <p className="text-white/30">IMDb</p>
                       </div>
@@ -640,7 +654,7 @@ export default function ProjectsSection() {
                       Crash-landing leaves teenager Kitai and his legendary father Cypher stranded on Earth, where predatory evolved creatures rule...
                     </p>
 
-                    {/* Showtime Selection */}
+                    {/* Showtime Selection in Emerald */}
                     <div className="space-y-1.5 mb-2">
                       <div className="flex items-center gap-1.5">
                         <span className="text-[7px] text-white/40 uppercase w-7">Today:</span>
@@ -653,7 +667,7 @@ export default function ProjectsSection() {
                                 onClick={(e) => { e.stopPropagation(); setSelectedShowtime(time); }}
                                 className={`flex-1 text-[7px] py-0.5 rounded-md text-center border transition-all ${
                                   isSelected
-                                    ? "bg-[#FF1A6B]/15 border-[#FF1A6B] text-[#FF1A6B] font-bold"
+                                    ? "bg-emerald-500/15 border-emerald-500 text-emerald-400 font-bold"
                                     : "border-white/5 bg-white/[0.02] text-white/60 hover:border-white/20"
                                 }`}
                               >
@@ -671,7 +685,7 @@ export default function ProjectsSection() {
                       </button>
                       <button 
                         onClick={(e) => { e.stopPropagation(); setActiveScreen(4); }}
-                        className="flex-1 h-6 rounded-lg bg-[#FF1A6B] text-white text-[9px] font-bold tracking-wider uppercase flex items-center justify-center shadow-lg hover:shadow-[#FF1A6B]/20 cursor-pointer"
+                        className="flex-1 h-6 rounded-lg bg-emerald-500 text-black text-[9px] font-bold tracking-wider uppercase flex items-center justify-center shadow-lg hover:shadow-emerald-500/20 cursor-pointer"
                       >
                         Select Seats
                       </button>
@@ -709,13 +723,13 @@ export default function ProjectsSection() {
 
                     <div className="flex justify-between items-center border-b border-white/[0.05] pb-2 mb-2">
                       <div className="flex items-center gap-1.5">
-                        <div className="w-4 h-4 rounded-full bg-[#FF1A6B] flex items-center justify-center scale-90">
-                          <div className="w-2 h-2 rounded-full bg-white flex items-center justify-center">
-                            <div className="w-0 h-0 border-t-[1.5px] border-t-transparent border-b-[1.5px] border-b-transparent border-l-[2.5px] border-l-[#FF1A6B] ml-[0.3px]" />
+                        <div className="w-4 h-4 rounded-full bg-emerald-500 flex items-center justify-center scale-90">
+                          <div className="w-2 h-2 rounded-full bg-black flex items-center justify-center">
+                            <div className="w-0 h-0 border-t-[1.5px] border-t-transparent border-b-[1.5px] border-b-transparent border-l-[2.5px] border-l-emerald-500 ml-[0.3px]" />
                           </div>
                         </div>
                         <div className="flex items-center text-[9px] text-white/80 font-medium">
-                          <MapPin size={8} className="text-[#FF1A6B] mr-0.5" />
+                          <MapPin size={8} className="text-emerald-400 mr-0.5" />
                           <span className="truncate max-w-[85px]">San Francisco</span>
                         </div>
                       </div>
@@ -723,9 +737,9 @@ export default function ProjectsSection() {
 
                     {/* Curved Cinema Screen */}
                     <div className="flex flex-col items-center flex-1 py-1">
-                      <div className="w-4/5 h-2.5 border-t-[1.5px] border-[#FF1A6B]/40 rounded-[50%] flex items-center justify-center relative mb-4">
-                        <div className="absolute top-0 w-3/4 h-[4px] bg-gradient-to-b from-[#FF1A6B]/20 to-transparent blur-[1px]" />
-                        <span className="text-[5px] text-[#FF1A6B]/60 uppercase tracking-widest font-black absolute top-1.5 scale-90">CINEMA SCREEN</span>
+                      <div className="w-4/5 h-2.5 border-t-[1.5px] border-emerald-400/40 rounded-[50%] flex items-center justify-center relative mb-4">
+                        <div className="absolute top-0 w-3/4 h-[4px] bg-gradient-to-b from-emerald-500/20 to-transparent blur-[1px]" />
+                        <span className="text-[5px] text-emerald-400/70 uppercase tracking-widest font-black absolute top-1.5 scale-90">CINEMA SCREEN</span>
                       </div>
 
                       {/* Seating Grid */}
@@ -757,7 +771,7 @@ export default function ProjectsSection() {
                                     isBooked
                                       ? "bg-white/[0.04] text-white/5 border border-white/5 cursor-not-allowed"
                                       : isSelected
-                                      ? "bg-[#FF1A6B] border border-[#FF1A6B] text-white font-bold shadow-[0_0_6px_rgba(255,26,107,0.5)] scale-105"
+                                      ? "bg-emerald-500 border border-emerald-400 text-black font-bold shadow-[0_0_6px_rgba(16,185,129,0.7)] scale-105"
                                       : "border border-white/15 bg-white/[0.02] text-white/40 hover:border-white/40 cursor-pointer"
                                   }`}
                                   title={seatId}
@@ -782,8 +796,8 @@ export default function ProjectsSection() {
                           <span>Booked</span>
                         </div>
                         <div className="flex items-center gap-1">
-                          <span className="w-2 h-2 rounded-[2px] bg-[#FF1A6B]" />
-                          <span>Selected</span>
+                          <span className="w-2 h-2 rounded-[2px] bg-emerald-500" />
+                          <span className="text-emerald-400 font-bold">Selected</span>
                         </div>
                       </div>
 
@@ -791,7 +805,7 @@ export default function ProjectsSection() {
                         <p className="text-[7.5px] font-medium text-white/70">
                           {selectedSeats.length > 0 ? (
                             <>
-                              <span className="text-[#FF1A6B] font-bold">{selectedSeats.length}</span> tickets • <span className="text-white font-bold">${(selectedSeats.length * 14.5).toFixed(2)}</span>
+                              <span className="text-emerald-400 font-bold">{selectedSeats.length}</span> tickets • <span className="text-white font-bold">${(selectedSeats.length * 14.5).toFixed(2)}</span>
                             </>
                           ) : (
                             "Select seats to continue"
@@ -810,10 +824,10 @@ export default function ProjectsSection() {
                       <button 
                         onClick={(e) => { e.stopPropagation(); setShowTicketModal(true); }}
                         disabled={selectedSeats.length === 0}
-                        className={`flex-1 h-6 rounded-lg text-white text-[9px] font-bold tracking-wider uppercase flex items-center justify-center shadow-lg transition-all ${
+                        className={`flex-1 h-6 rounded-lg text-black text-[9px] font-bold tracking-wider uppercase flex items-center justify-center shadow-lg transition-all ${
                           selectedSeats.length === 0
                             ? "bg-white/[0.03] text-white/30 border border-white/5 cursor-not-allowed shadow-none"
-                            : "bg-[#FF1A6B] hover:shadow-[#FF1A6B]/20 cursor-pointer"
+                            : "bg-emerald-500 hover:bg-emerald-400 hover:shadow-emerald-500/25 cursor-pointer"
                         }`}
                       >
                         Confirm Booking
@@ -830,7 +844,7 @@ export default function ProjectsSection() {
                     key={id}
                     onClick={() => setActiveScreen(id)}
                     className={`w-2.5 h-2.5 rounded-full transition-all ${
-                      activeScreen === id ? "bg-[#FF1A6B] w-6" : "bg-white/20 hover:bg-white/40"
+                      activeScreen === id ? "bg-emerald-400 w-6" : "bg-white/20 hover:bg-white/40"
                     }`}
                     aria-label={`Go to screen mockup ${id}`}
                   />
@@ -841,17 +855,17 @@ export default function ProjectsSection() {
         )}
 
         {/* =========================================================================
-            VIEW 2: AEGIS SENTINEL - CYBERSECURITY & THREAT DEFENSE MOTION GRAPHICS
+            VIEW 2: AEGIS SENTINEL - CYBERSECURITY & THREAT DEFENSE (Emerald Zero-Trust)
            ========================================================================= */}
         {activeProject === "security" && (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center py-4">
             <div className="lg:col-span-5 space-y-6">
-              <div className="flex items-center gap-2">
-                <span className="p-2 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400">
-                  <ShieldCheck size={24} />
+              <div className="flex items-center gap-3">
+                <span className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
+                  <ShieldCheck size={26} />
                 </span>
                 <div>
-                  <span className="font-mono text-[9px] text-red-400 tracking-widest uppercase">DEFENSE ARCHITECTURE</span>
+                  <span className="font-mono text-[9px] text-emerald-400 tracking-widest uppercase">DEFENSE ARCHITECTURE</span>
                   <h3 className="font-sans text-3xl font-black text-white">Aegis Sentinel</h3>
                 </div>
               </div>
@@ -863,7 +877,7 @@ export default function ProjectsSection() {
               <div className="grid grid-cols-3 gap-3 font-mono">
                 <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.06]">
                   <span className="text-[10px] text-white/40 block">LATENCY</span>
-                  <span className="text-sm font-bold text-red-400">0.8 ms</span>
+                  <span className="text-sm font-bold text-emerald-400">0.8 ms</span>
                 </div>
                 <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.06]">
                   <span className="text-[10px] text-white/40 block">DEFENSE RATE</span>
@@ -876,27 +890,50 @@ export default function ProjectsSection() {
               </div>
             </div>
 
-            {/* Interactive Threat Radar & Packet Stream Motion Graphic */}
-            <div className="lg:col-span-7 h-[380px] rounded-2xl border border-white/[0.08] bg-black/60 p-6 relative overflow-hidden flex flex-col justify-between shadow-2xl">
-              {/* Radar Scanner Background */}
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] rounded-full border border-red-500/15 pointer-events-none flex items-center justify-center">
-                <div className="w-[200px] h-[200px] rounded-full border border-red-500/15 flex items-center justify-center">
-                  <div className="w-[100px] h-[100px] rounded-full border border-red-500/20" />
+            {/* Interactive Threat Radar & Packet Stream Motion Graphic in Emerald */}
+            <div className="lg:col-span-7 h-[390px] rounded-2xl border border-white/[0.08] bg-black/60 p-6 relative overflow-hidden flex flex-col justify-between shadow-2xl">
+              {/* Radar Scanner Background reacting to continuous animation AND scroll */}
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[320px] h-[320px] rounded-full border border-emerald-500/15 pointer-events-none flex items-center justify-center">
+                <div className="w-[220px] h-[220px] rounded-full border border-emerald-500/15 flex items-center justify-center">
+                  <div className="w-[110px] h-[110px] rounded-full border border-emerald-500/20" />
                 </div>
+                
+                {/* Scroll-linked & Continuous Radar Beam */}
                 <motion.div
-                  animate={{ rotate: 360 }}
-                  transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
-                  className="absolute inset-0 rounded-full bg-[conic-gradient(from_0deg,transparent_0deg,rgba(239,68,68,0.25)_360deg)]"
-                />
+                  style={{ rotate: scrollRadarSweep }}
+                  className="absolute inset-0 rounded-full flex items-center justify-center pointer-events-none"
+                >
+                  <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
+                    className="w-full h-full rounded-full bg-[conic-gradient(from_0deg,transparent_0deg,rgba(16,185,129,0.3)_360deg)]"
+                  />
+                </motion.div>
+
+                {/* Pulsing Intercept Target Blips in Emerald */}
+                {[
+                  { top: "30%", left: "40%", delay: 0 },
+                  { top: "65%", left: "70%", delay: 1.2 },
+                  { top: "45%", left: "75%", delay: 2.1 },
+                ].map((blip, i) => (
+                  <motion.div
+                    key={i}
+                    style={{ top: blip.top, left: blip.left }}
+                    animate={{ scale: [1, 2, 1], opacity: [0.3, 1, 0.3] }}
+                    transition={{ duration: 2, delay: blip.delay, repeat: Infinity }}
+                    className="absolute w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_#10b981]"
+                  />
+                ))}
               </div>
 
               {/* Terminal Logs Header */}
               <div className="flex items-center justify-between border-b border-white/[0.06] pb-3 relative z-10">
                 <div className="flex items-center gap-2 font-mono text-xs text-white/70">
-                  <Terminal size={14} className="text-red-400" />
+                  <Terminal size={14} className="text-emerald-400" />
                   <span>aegis-core/daemon/runtime.telemetry</span>
                 </div>
-                <span className="font-mono text-[9px] text-emerald-400 bg-emerald-400/10 px-2 py-0.5 rounded-full">
+                <span className="font-mono text-[9px] text-emerald-400 bg-emerald-400/10 border border-emerald-400/20 px-2 py-0.5 rounded-full flex items-center gap-1">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-ping" />
                   LIVE INTERCEPT
                 </span>
               </div>
@@ -908,34 +945,34 @@ export default function ProjectsSection() {
                   <CheckCircle2 size={12} />
                   <span>Payload hash verified SHA-256 (0x7f...a9c)</span>
                 </div>
-                <div className="text-red-400/90 flex items-center gap-2 bg-red-500/10 p-2 rounded-lg border border-red-500/20">
-                  <ShieldCheck size={14} />
-                  <span>BLOCKED: SQLi Vector injection detected on endpoint /api/auth/query</span>
+                <div className="text-emerald-300 flex items-center gap-2 bg-emerald-500/10 p-2 rounded-lg border border-emerald-500/20">
+                  <ShieldCheck size={14} className="text-emerald-400" />
+                  <span>SECURED: SQLi Vector injection neutralized on endpoint /api/auth/query</span>
                 </div>
                 <div className="text-white/40">[14:32:02.12] Zero-day signature matching against OWASP CVE-2026-X</div>
-                <div className="text-cyan-400/90">[14:32:02.89] Rate limiter applied: IP [198.51.100.24] quarantined</div>
+                <div className="text-emerald-400/80">[14:32:02.89] Zero-trust rate limiter applied: TLS 1.3 Key Exchange Signed</div>
               </div>
 
               <div className="flex items-center justify-between pt-3 border-t border-white/[0.06] relative z-10 font-mono text-[10px] text-white/40">
-                <span>Threat Level: ELEVATED (SEC-4)</span>
-                <span className="text-red-400 font-bold animate-pulse">Scanning Active Ports...</span>
+                <span>Threat Level: SECURE (SEC-0)</span>
+                <span className="text-emerald-400 font-bold animate-pulse">Monitoring Active Ports...</span>
               </div>
             </div>
           </div>
         )}
 
         {/* =========================================================================
-            VIEW 3: NEXUS ENGINE - HIGH-PERFORMANCE REACTIVE RUNTIME
+            VIEW 3: NEXUS ENGINE - HIGH-PERFORMANCE RUNTIME (Emerald Compiler)
            ========================================================================= */}
         {activeProject === "cloud" && (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center py-4">
             <div className="lg:col-span-5 space-y-6">
-              <div className="flex items-center gap-2">
-                <span className="p-2 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400">
-                  <Code2 size={24} />
+              <div className="flex items-center gap-3">
+                <span className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
+                  <Code2 size={26} />
                 </span>
                 <div>
-                  <span className="font-mono text-[9px] text-cyan-400 tracking-widest uppercase">DISTRIBUTED CLOUD COMPILER</span>
+                  <span className="font-mono text-[9px] text-emerald-400 tracking-widest uppercase">DISTRIBUTED CLOUD COMPILER</span>
                   <h3 className="font-sans text-3xl font-black text-white">Nexus Engine</h3>
                 </div>
               </div>
@@ -947,7 +984,7 @@ export default function ProjectsSection() {
               <div className="grid grid-cols-3 gap-3 font-mono">
                 <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.06]">
                   <span className="text-[10px] text-white/40 block">COLD START</span>
-                  <span className="text-sm font-bold text-cyan-400">12 ms</span>
+                  <span className="text-sm font-bold text-emerald-400">12 ms</span>
                 </div>
                 <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.06]">
                   <span className="text-[10px] text-white/40 block">THROUGHPUT</span>
@@ -960,34 +997,41 @@ export default function ProjectsSection() {
               </div>
             </div>
 
-            {/* Interactive Compiler Visualization */}
-            <div className="lg:col-span-7 h-[380px] rounded-2xl border border-white/[0.08] bg-black/60 p-6 relative overflow-hidden flex flex-col justify-between shadow-2xl">
+            {/* Interactive Compiler Visualization in Emerald */}
+            <div className="lg:col-span-7 h-[390px] rounded-2xl border border-white/[0.08] bg-black/60 p-6 relative overflow-hidden flex flex-col justify-between shadow-2xl">
               <div className="flex items-center justify-between border-b border-white/[0.06] pb-3">
                 <div className="flex items-center gap-2 font-mono text-xs text-white/70">
-                  <Terminal size={14} className="text-cyan-400" />
+                  <Terminal size={14} className="text-emerald-400" />
                   <span>nexus-compiler --target=wasm-v8</span>
                 </div>
-                <span className="font-mono text-[9px] text-cyan-400 bg-cyan-400/10 px-2 py-0.5 rounded-full">
-                  BUILD OPTIMIZED
+                <span className="font-mono text-[9px] text-emerald-400 bg-emerald-400/10 border border-emerald-400/20 px-2 py-0.5 rounded-full flex items-center gap-1">
+                  <CheckCircle2 size={10} />
+                  <span>BUILD OPTIMIZED</span>
                 </span>
               </div>
 
-              {/* Animated AST Graph Nodes */}
+              {/* Animated AST Graph Nodes reacting to scroll rotation & continuous pulse */}
               <div className="relative flex-1 flex items-center justify-center my-4">
-                <div className="grid grid-cols-3 gap-6 w-full max-w-[420px]">
-                  {["Parsing AST", "Tree Shaking", "WASM Emit"].map((step, idx) => (
+                <div className="grid grid-cols-3 gap-6 w-full max-w-[440px]">
+                  {[
+                    { step: "Parsing AST", sub: "Lexer Matrix" },
+                    { step: "Tree Shaking", sub: "Dead Code Elim" },
+                    { step: "WASM Emit", sub: "V8 Bytecode" }
+                  ].map((item, idx) => (
                     <motion.div
-                      key={step}
+                      key={item.step}
                       animate={{
-                        borderColor: ["rgba(6,182,212,0.2)", "rgba(6,182,212,0.8)", "rgba(6,182,212,0.2)"],
-                        y: [0, -4, 0]
+                        borderColor: ["rgba(16,185,129,0.2)", "rgba(16,185,129,0.8)", "rgba(16,185,129,0.2)"],
+                        y: [0, -5, 0]
                       }}
-                      transition={{ duration: 2, delay: idx * 0.4, repeat: Infinity, ease: "easeInOut" }}
-                      className="p-4 rounded-xl border border-cyan-500/20 bg-cyan-950/20 text-center flex flex-col items-center gap-2"
+                      transition={{ duration: 2.2, delay: idx * 0.4, repeat: Infinity, ease: "easeInOut" }}
+                      className="p-4 rounded-xl border border-emerald-500/20 bg-emerald-950/20 text-center flex flex-col items-center gap-2 relative overflow-hidden group"
                     >
-                      <Cpu size={20} className="text-cyan-400" />
-                      <span className="font-mono text-[10px] text-white/90 font-bold">{step}</span>
-                      <span className="font-mono text-[8px] text-cyan-300">PASS 100%</span>
+                      <motion.div style={{ rotate: scrollCpuRotate }}>
+                        <Cpu size={22} className="text-emerald-400" />
+                      </motion.div>
+                      <span className="font-mono text-[10px] text-white/90 font-bold">{item.step}</span>
+                      <span className="font-mono text-[8px] text-emerald-300">{item.sub}</span>
                     </motion.div>
                   ))}
                 </div>
@@ -995,7 +1039,10 @@ export default function ProjectsSection() {
 
               <div className="flex items-center justify-between pt-3 border-t border-white/[0.06] font-mono text-[10px] text-white/40">
                 <span>Output Bundle: dist/bundle.wasm (14.2 KB)</span>
-                <span className="text-cyan-400 font-bold">Deploy Ready</span>
+                <span className="text-emerald-400 font-bold flex items-center gap-1">
+                  <Zap size={11} />
+                  Deploy Ready
+                </span>
               </div>
             </div>
           </div>
@@ -1003,7 +1050,7 @@ export default function ProjectsSection() {
       </motion.div>
 
       {/* =========================================================================
-          INTERACTIVE CINEMA TICKET MODAL / HOLOGRAPHIC PASS
+          INTERACTIVE CINEMA TICKET MODAL / HOLOGRAPHIC PASS (Unified Emerald)
          ========================================================================= */}
       {showTicketModal && (
         <div
@@ -1015,15 +1062,15 @@ export default function ProjectsSection() {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
             onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-[360px] rounded-3xl border border-white/15 bg-gradient-to-b from-[#121218] via-[#09090D] to-black p-6 shadow-2xl relative overflow-hidden"
+            className="w-full max-w-[360px] rounded-3xl border border-white/15 bg-gradient-to-b from-[#0a1410] via-[#09090D] to-black p-6 shadow-2xl relative overflow-hidden"
           >
-            {/* Ambient Ticket Glow */}
-            <div className="absolute top-0 right-0 w-32 h-32 bg-[#FF1A6B]/20 blur-3xl pointer-events-none" />
+            {/* Ambient Ticket Glow in Emerald */}
+            <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/20 blur-3xl pointer-events-none" />
 
             <div className="flex justify-between items-start mb-4">
               <div className="flex items-center gap-2">
-                <div className="w-5 h-5 rounded-full bg-[#FF1A6B] flex items-center justify-center">
-                  <Film size={11} className="text-white" />
+                <div className="w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center">
+                  <Film size={11} className="text-black" />
                 </div>
                 <span className="font-sans text-xs font-bold uppercase tracking-wider text-white">Voo's Cinema Pass</span>
               </div>
@@ -1037,7 +1084,7 @@ export default function ProjectsSection() {
 
             <div className="border-t border-b border-dashed border-white/15 py-4 my-3 space-y-3">
               <div>
-                <span className="font-mono text-[9px] text-[#FF1A6B] uppercase tracking-widest">FEATURE FILM</span>
+                <span className="font-mono text-[9px] text-emerald-400 uppercase tracking-widest">FEATURE FILM</span>
                 <h4 className="font-sans text-lg font-black text-white">After Earth (IMAX 3D)</h4>
               </div>
 
@@ -1048,7 +1095,7 @@ export default function ProjectsSection() {
                 </div>
                 <div>
                   <span className="text-white/40 block">TIME</span>
-                  <span className="text-[#FF1A6B] font-bold">{selectedShowtime}</span>
+                  <span className="text-emerald-400 font-bold">{selectedShowtime}</span>
                 </div>
                 <div>
                   <span className="text-white/40 block">HALL</span>
@@ -1063,7 +1110,7 @@ export default function ProjectsSection() {
                 </div>
                 <div className="text-right">
                   <span className="text-[9px] text-white/40 block">TOTAL PAID</span>
-                  <span className="text-sm font-bold text-[#FF1A6B]">${(selectedSeats.length * 14.5).toFixed(2)}</span>
+                  <span className="text-sm font-bold text-emerald-400">${(selectedSeats.length * 14.5).toFixed(2)}</span>
                 </div>
               </div>
             </div>

@@ -30,40 +30,40 @@ interface Preset {
 
 const PRESETS: Preset[] = [
   {
-    name: "Editorial Minimalist",
-    orb1: "rgba(255, 255, 255, 0.05)", // Gentle warm white
-    orb2: "rgba(40, 50, 120, 0.07)",  // Deep editorial navy
+    name: "Emerald Minimalist",
+    orb1: "rgba(16, 185, 129, 0.05)", // Gentle emerald glow
+    orb2: "rgba(5, 150, 105, 0.06)",  // Deep dark jade
     orb3: "rgba(255, 255, 255, 0.02)", // Central white dust
     orb4: "rgba(10, 10, 10, 0.20)",   // Obsidian velvet shadow
-    gridColor: "rgba(255, 255, 255, 0.02)",
-    lineColor: "rgba(255, 255, 255, 0.06)",
+    gridColor: "rgba(16, 185, 129, 0.02)",
+    lineColor: "rgba(16, 185, 129, 0.05)",
   },
   {
-    name: "Cosmic Aurora",
-    orb1: "rgba(99, 102, 241, 0.07)", // Indigo glow
-    orb2: "rgba(168, 85, 247, 0.05)", // Violet mist
-    orb3: "rgba(20, 184, 166, 0.04)", // Soft cyan glow
-    orb4: "rgba(245, 158, 11, 0.03)", // Subtle amber ray
-    gridColor: "rgba(99, 102, 241, 0.03)",
-    lineColor: "rgba(168, 85, 247, 0.07)",
+    name: "Cyber Jade",
+    orb1: "rgba(16, 185, 129, 0.07)", // Emerald glow
+    orb2: "rgba(52, 211, 153, 0.05)", // Mint mist
+    orb3: "rgba(20, 184, 166, 0.04)", // Soft teal glow
+    orb4: "rgba(6, 78, 59, 0.15)",    // Deep forest shadow
+    gridColor: "rgba(16, 185, 129, 0.03)",
+    lineColor: "rgba(52, 211, 153, 0.06)",
   },
   {
-    name: "Golden Eclipse",
-    orb1: "rgba(239, 68, 68, 0.04)", // Crimson shadow
-    orb2: "rgba(245, 158, 11, 0.06)", // Delicate gold
-    orb3: "rgba(253, 224, 71, 0.03)", // Champagne shine
-    orb4: "rgba(30, 41, 59, 0.06)",  // Slate gray
-    gridColor: "rgba(245, 158, 11, 0.03)",
-    lineColor: "rgba(245, 158, 11, 0.08)",
+    name: "Forest Obsidian",
+    orb1: "rgba(5, 150, 105, 0.06)", // Deep emerald shadow
+    orb2: "rgba(16, 185, 129, 0.05)", // Delicate emerald
+    orb3: "rgba(52, 211, 153, 0.03)", // Mint shine
+    orb4: "rgba(15, 23, 42, 0.15)",  // Deep obsidian
+    gridColor: "rgba(16, 185, 129, 0.02)",
+    lineColor: "rgba(16, 185, 129, 0.06)",
   },
   {
     name: "Obsidian Silver",
     orb1: "rgba(255, 255, 255, 0.03)", // Platinum ray
-    orb2: "rgba(148, 163, 184, 0.04)", // Steel light
+    orb2: "rgba(16, 185, 129, 0.03)", // Subtle emerald hint
     orb3: "rgba(51, 65, 85, 0.05)",   // Charcoal depth
     orb4: "rgba(15, 23, 42, 0.1)",    // Obsidian blackness
     gridColor: "rgba(255, 255, 255, 0.02)",
-    lineColor: "rgba(255, 255, 255, 0.08)",
+    lineColor: "rgba(16, 185, 129, 0.05)",
   },
 ];
 
@@ -863,41 +863,44 @@ export default function App() {
           </div>
 
           {/* Right Side: Bento Grid of Stats Cards with Unified Equal Sizes */}
-          <div className="lg:col-span-7 grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-6 items-stretch md:auto-rows-fr">
+          <div className="lg:col-span-7 grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-6 items-stretch">
             
             {/* Card 1: Years Crafting */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              whileHover={{ y: -4, borderColor: "rgba(255,255,255,0.2)" }}
+              whileHover={{ y: -5, borderColor: "rgba(16,185,129,0.3)" }}
               transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-              className="h-full min-h-[220px] rounded-2xl border border-white/[0.08] bg-gradient-to-b from-white/[0.04] to-transparent p-6 sm:p-7 flex flex-col justify-between shadow-xl hover:bg-white/[0.05] transition-all duration-300 relative overflow-hidden group"
+              className="h-[215px] sm:h-[220px] rounded-2xl border border-white/[0.08] bg-gradient-to-b from-white/[0.035] via-white/[0.015] to-transparent p-6 flex flex-col justify-between shadow-xl hover:bg-white/[0.05] transition-all duration-300 relative overflow-hidden group"
             >
-              <div className="flex items-center justify-between">
-                <span className="font-mono text-[9px] font-semibold tracking-[0.18em] text-white/50 uppercase">
-                  Experience
+              <div className="absolute -right-6 -bottom-6 w-28 h-28 rounded-full bg-emerald-500/10 blur-xl pointer-events-none group-hover:scale-150 transition-transform duration-500" />
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(16,185,129,0.05),transparent_70%)] pointer-events-none" />
+
+              <div className="flex items-center justify-between relative z-10">
+                <span className="font-mono text-[9px] font-semibold tracking-[0.2em] text-white/50 uppercase">
+                  EXPERIENCE
                 </span>
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-white/10 bg-white/[0.03] text-[9px] font-mono text-white/50">
-                  <Award size={10} className="text-amber-400/80" />
-                  <span>Lead</span>
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border border-emerald-400/20 bg-emerald-400/10 text-[9px] font-mono text-emerald-400">
+                  <Award size={10} className="text-emerald-400" />
+                  <span>Senior Lead</span>
                 </span>
               </div>
 
-              <div className="my-auto py-2">
-                <span className="block font-sans text-4xl sm:text-5xl font-light tracking-tighter text-white group-hover:text-white transition-colors">
+              <div className="my-auto py-1 relative z-10">
+                <span className="block font-sans text-4xl sm:text-5xl font-light tracking-tight text-white group-hover:text-emerald-300 transition-colors">
                   5+
                 </span>
-                <p className="font-sans text-xs text-white/50 tracking-wide mt-1.5 line-clamp-1">
+                <p className="font-sans text-xs text-white/50 tracking-wide mt-1.5 truncate">
                   Years Crafting Digital Products
                 </p>
               </div>
 
-              <div className="flex items-center justify-between pt-3 border-t border-white/[0.06] text-[10px] font-mono text-white/40">
+              <div className="h-8 flex items-center justify-between pt-2.5 border-t border-white/[0.06] text-[10px] font-mono text-white/40 relative z-10">
                 <span>Architecture</span>
-                <span className="text-emerald-400/80 flex items-center gap-1">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                  Active
+                <span className="text-emerald-400 flex items-center gap-1.5">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  Production Active
                 </span>
               </div>
             </motion.div>
@@ -907,32 +910,38 @@ export default function App() {
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              whileHover={{ y: -4, borderColor: "rgba(255,255,255,0.2)" }}
+              whileHover={{ y: -5, borderColor: "rgba(16,185,129,0.3)" }}
               transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1], delay: 0.05 }}
-              className="h-full min-h-[220px] rounded-2xl border border-white/[0.08] bg-gradient-to-b from-white/[0.04] to-transparent p-6 sm:p-7 flex flex-col justify-between shadow-xl hover:bg-white/[0.05] transition-all duration-300 relative overflow-hidden group"
+              className="h-[215px] sm:h-[220px] rounded-2xl border border-white/[0.08] bg-gradient-to-b from-white/[0.035] via-white/[0.015] to-transparent p-6 flex flex-col justify-between shadow-xl hover:bg-white/[0.05] transition-all duration-300 relative overflow-hidden group"
             >
-              <div className="flex items-center justify-between">
-                <span className="font-mono text-[9px] font-semibold tracking-[0.18em] text-white/50 uppercase">
-                  Partnerships
+              <div className="absolute -right-6 -bottom-6 w-28 h-28 rounded-full bg-emerald-500/10 blur-xl pointer-events-none group-hover:scale-150 transition-transform duration-500" />
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(16,185,129,0.05),transparent_70%)] pointer-events-none" />
+
+              <div className="flex items-center justify-between relative z-10">
+                <span className="font-mono text-[9px] font-semibold tracking-[0.2em] text-white/50 uppercase">
+                  PARTNERSHIPS
                 </span>
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-white/10 bg-white/[0.03] text-[9px] font-mono text-white/50">
-                  <CheckCircle2 size={10} className="text-cyan-400/80" />
-                  <span>Global</span>
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border border-emerald-400/20 bg-emerald-400/10 text-[9px] font-mono text-emerald-400">
+                  <CheckCircle2 size={10} className="text-emerald-400" />
+                  <span>Global Reach</span>
                 </span>
               </div>
 
-              <div className="my-auto py-2">
-                <span className="block font-sans text-4xl sm:text-5xl font-light tracking-tighter text-white group-hover:text-white transition-colors">
+              <div className="my-auto py-1 relative z-10">
+                <span className="block font-sans text-4xl sm:text-5xl font-light tracking-tight text-white group-hover:text-emerald-300 transition-colors">
                   20+
                 </span>
-                <p className="font-sans text-xs text-white/50 tracking-wide mt-1.5 line-clamp-1">
-                  Successful Client Deployments
+                <p className="font-sans text-xs text-white/50 tracking-wide mt-1.5 truncate">
+                  Enterprise Client Deployments
                 </p>
               </div>
 
-              <div className="flex items-center justify-between pt-3 border-t border-white/[0.06] text-[10px] font-mono text-white/40">
-                <span>Worldwide</span>
-                <span className="text-white/70">100% Delivery</span>
+              <div className="h-8 flex items-center justify-between pt-2.5 border-t border-white/[0.06] text-[10px] font-mono text-white/40 relative z-10">
+                <span>Delivery</span>
+                <span className="text-emerald-400 flex items-center gap-1">
+                  <CheckCircle2 size={11} className="text-emerald-400" />
+                  100% On-Time
+                </span>
               </div>
             </motion.div>
 
@@ -941,44 +950,45 @@ export default function App() {
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              whileHover={{ y: -4, borderColor: "rgba(255,255,255,0.2)" }}
+              whileHover={{ y: -5, borderColor: "rgba(16,185,129,0.3)" }}
               transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1], delay: 0.1 }}
-              className="h-full min-h-[220px] rounded-2xl border border-white/[0.08] bg-gradient-to-b from-white/[0.04] to-transparent p-6 sm:p-7 flex flex-col justify-between shadow-xl hover:bg-white/[0.05] transition-all duration-300 relative overflow-hidden group"
+              className="h-[215px] sm:h-[220px] rounded-2xl border border-white/[0.08] bg-gradient-to-b from-white/[0.035] via-white/[0.015] to-transparent p-6 flex flex-col justify-between shadow-xl hover:bg-white/[0.05] transition-all duration-300 relative overflow-hidden group"
             >
-              <div className="flex items-center justify-between">
-                <span className="font-mono text-[9px] font-semibold tracking-[0.18em] text-white/50 uppercase">
-                  Satisfaction
+              <div className="absolute -right-6 -bottom-6 w-28 h-28 rounded-full bg-emerald-500/10 blur-xl pointer-events-none group-hover:scale-150 transition-transform duration-500" />
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(16,185,129,0.05),transparent_70%)] pointer-events-none" />
+
+              <div className="flex items-center justify-between relative z-10">
+                <span className="font-mono text-[9px] font-semibold tracking-[0.2em] text-white/50 uppercase">
+                  SATISFACTION
                 </span>
-                <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-amber-400/20 bg-amber-400/10 text-amber-400 text-[10px] font-semibold">
+                <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border border-emerald-400/20 bg-emerald-400/10 text-emerald-400 text-[10px] font-mono font-semibold">
                   <Star size={10} fill="currentColor" />
-                  <span>4.8</span>
+                  <span>4.9 / 5.0</span>
                 </div>
               </div>
 
-              <div className="my-auto py-2">
-                <span className="block font-sans text-4xl sm:text-5xl font-light tracking-tighter text-white group-hover:text-white transition-colors">
+              <div className="my-auto py-1 relative z-10">
+                <span className="block font-sans text-4xl sm:text-5xl font-light tracking-tight text-white group-hover:text-emerald-300 transition-colors">
                   120+
                 </span>
-                <p className="font-sans text-xs text-white/50 tracking-wide mt-1.5 line-clamp-1">
-                  Happy Clients &amp; Students
+                <p className="font-sans text-xs text-white/50 tracking-wide mt-1.5 truncate">
+                  Satisfied Clients &amp; Students
                 </p>
               </div>
 
-              <div className="flex items-center justify-between pt-2.5 border-t border-white/[0.06]">
-                <span className="font-mono text-[10px] text-white/40">Reviews</span>
+              <div className="h-8 flex items-center justify-between pt-2.5 border-t border-white/[0.06] text-[10px] font-mono text-white/40 relative z-10">
+                <span>Reviews</span>
                 
-                {/* Customer Avatars overlapping list */}
-                <div className="flex -space-x-2">
+                {/* Micro Avatars overlapping cleanly within the exact footer height */}
+                <div className="flex -space-x-1.5 items-center">
                   {[
                     { id: "liloch", src: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=80&fit=crop&q=80" },
                     { id: "will", src: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80&fit=crop&q=80" },
                     { id: "diane", src: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=80&fit=crop&q=80" },
                     { id: "ikta", src: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=80&fit=crop&q=80" }
                   ].map((avatar) => (
-                    <motion.button
+                    <button
                       key={avatar.id}
-                      whileHover={{ scale: 1.2, zIndex: 30 }}
-                      whileTap={{ scale: 0.95 }}
                       onClick={(e) => {
                         e.preventDefault();
                         const element = document.getElementById(`testimonial-${avatar.id}`);
@@ -989,14 +999,14 @@ export default function App() {
                           window.scrollTo({ top: offsetPosition, behavior: "smooth" });
                         }
                       }}
-                      className="relative block h-7 w-7 rounded-full ring-2 ring-black overflow-hidden bg-neutral-900 shadow-md transition-all duration-300 cursor-pointer focus:outline-none"
+                      className="relative block h-5 w-5 rounded-full ring-1 ring-black overflow-hidden bg-neutral-900 shadow transition-transform duration-200 hover:scale-125 hover:z-20 cursor-pointer focus:outline-none"
                     >
                       <img
                         className="w-full h-full object-cover"
                         src={avatar.src}
                         alt="Client Portrait"
                       />
-                    </motion.button>
+                    </button>
                   ))}
                 </div>
               </div>
@@ -1008,38 +1018,38 @@ export default function App() {
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              whileHover={{ y: -4, borderColor: "rgba(255,255,255,0.2)" }}
+              whileHover={{ y: -5, borderColor: "rgba(16,185,129,0.3)" }}
               transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1], delay: 0.15 }}
-              className="h-full min-h-[220px] rounded-2xl border border-white/[0.08] bg-gradient-to-b from-white/[0.04] to-transparent p-6 sm:p-7 flex flex-col justify-between shadow-xl hover:bg-white/[0.05] transition-all duration-300 relative overflow-hidden group"
+              className="h-[215px] sm:h-[220px] rounded-2xl border border-white/[0.08] bg-gradient-to-b from-white/[0.035] via-white/[0.015] to-transparent p-6 flex flex-col justify-between shadow-xl hover:bg-white/[0.05] transition-all duration-300 relative overflow-hidden group"
             >
-              {/* Subtle ambient accent glow on hover */}
-              <div className="absolute -right-6 -bottom-6 w-32 h-32 rounded-full bg-emerald-500/10 blur-xl pointer-events-none group-hover:scale-125 transition-transform duration-500" />
+              <div className="absolute -right-6 -bottom-6 w-28 h-28 rounded-full bg-emerald-500/10 blur-xl pointer-events-none group-hover:scale-150 transition-transform duration-500" />
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(16,185,129,0.05),transparent_70%)] pointer-events-none" />
 
               <div className="flex items-center justify-between relative z-10">
-                <span className="font-mono text-[9px] font-semibold tracking-[0.18em] text-white/50 uppercase">
-                  Engineering
+                <span className="font-mono text-[9px] font-semibold tracking-[0.2em] text-white/50 uppercase">
+                  ENGINEERING
                 </span>
-                <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border border-emerald-400/20 bg-emerald-400/10 text-emerald-400 text-[9px] font-bold uppercase tracking-wider">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border border-emerald-400/20 bg-emerald-400/10 text-emerald-400 text-[9px] font-mono font-medium">
+                  <ShieldCheck size={10} className="text-emerald-400" />
                   <span>Zero-Trust</span>
                 </div>
               </div>
 
-              <div className="my-auto py-2 relative z-10">
-                <span className="block font-sans text-4xl sm:text-5xl font-light tracking-tighter text-white group-hover:text-white transition-colors">
+              <div className="my-auto py-1 relative z-10">
+                <span className="block font-sans text-4xl sm:text-5xl font-light tracking-tight text-white group-hover:text-emerald-300 transition-colors">
                   A+
                 </span>
-                <p className="font-sans text-xs text-white/50 tracking-wide mt-1.5 line-clamp-1">
-                  Security Grade &amp; Precision UI
+                <p className="font-sans text-xs text-white/50 tracking-wide mt-1.5 truncate">
+                  Defense Grade &amp; Precision UI
                 </p>
               </div>
 
-              <div className="flex items-center justify-between pt-3 border-t border-white/[0.06] text-[10px] font-mono text-white/40 relative z-10">
+              <div className="h-8 flex items-center justify-between pt-2.5 border-t border-white/[0.06] text-[10px] font-mono text-white/40 relative z-10">
                 <span className="flex items-center gap-1 text-white/60">
                   <ShieldCheck size={11} className="text-emerald-400" />
                   <span>Full-Stack</span>
                 </span>
-                <span className="text-white/60 uppercase">ROOZZERO™</span>
+                <span className="text-emerald-400/90 font-semibold">ROOZZERO™</span>
               </div>
             </motion.div>
 
@@ -1060,15 +1070,15 @@ export default function App() {
         className="w-full max-w-7xl mx-auto px-6 sm:px-8 lg:px-12 py-10 sm:py-14 md:py-18 relative text-white scroll-mt-24 border-t border-white/[0.04] overflow-hidden"
       >
         {/* Decorative background glows */}
-        <div className="absolute top-1/4 right-1/4 translate-x-1/2 w-[450px] h-[300px] pointer-events-none blur-[150px] bg-gradient-to-tr from-[#10b981]/[0.02] to-[#10b981]/[0.04] rounded-full z-0" />
-        <div className="absolute bottom-1/3 left-1/3 -translate-x-1/2 w-[350px] h-[220px] pointer-events-none blur-[120px] bg-gradient-to-tr from-[#FF1A6B]/[0.01] to-cyan-500/[0.02] rounded-full z-0" />
+        <div className="absolute top-1/4 right-1/4 translate-x-1/2 w-[450px] h-[300px] pointer-events-none blur-[150px] bg-gradient-to-tr from-[#10b981]/[0.03] to-teal-500/[0.03] rounded-full z-0" />
+        <div className="absolute bottom-1/3 left-1/3 -translate-x-1/2 w-[350px] h-[220px] pointer-events-none blur-[120px] bg-gradient-to-tr from-emerald-600/[0.02] to-emerald-400/[0.03] rounded-full z-0" />
 
         {/* Header Block (Unified Header) */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start mb-12 md:mb-16 relative z-10 w-full">
           {/* Badge Column (Left) */}
           <div className="lg:col-span-3 flex items-center">
             <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-white/10 bg-white/[0.03] backdrop-blur-md shadow-sm">
-              <Sparkles size={11} className="text-white/80 animate-pulse" />
+              <Sparkles size={11} className="text-emerald-400 animate-pulse" />
               <span className="font-sans text-[10px] font-semibold tracking-[0.2em] text-white/80 uppercase">
                 Academy
               </span>
@@ -1125,7 +1135,7 @@ export default function App() {
                         <div className="relative aspect-[16/10] w-full rounded-2xl bg-[#08080c] border border-white/[0.06] overflow-hidden p-4 flex flex-col justify-between shadow-inner mb-5 shrink-0">
                           {/* Techzo Background stars & grid */}
                           <div className="absolute inset-0 bg-[radial-gradient(#ffffff03_1px,transparent_1px)] [background-size:16px_16px] opacity-70 pointer-events-none" />
-                          <div className="absolute top-0 right-0 w-[180px] h-[180px] rounded-full bg-[#FF1A6B]/[0.02] blur-[40px] pointer-events-none" />
+                          <div className="absolute top-0 right-0 w-[180px] h-[180px] rounded-full bg-emerald-500/[0.03] blur-[40px] pointer-events-none" />
 
                           {/* Techzo Inner Top bar */}
                           <div className="flex justify-between items-center text-[7px] text-white/30 tracking-widest relative z-10 border-b border-white/[0.03] pb-2">
@@ -1140,11 +1150,11 @@ export default function App() {
                           <div className="my-auto text-center relative z-10 py-2">
                             {/* Glowing floating wireframe sphere */}
                             <div className="relative w-16 h-16 mx-auto mb-2 flex items-center justify-center">
-                              <div className="absolute inset-0 rounded-full border border-[#FF1A6B]/20 animate-[spin_8s_linear_infinite] [border-style:dashed]" />
-                              <div className="absolute w-12 h-12 rounded-full border border-cyan-500/30 animate-[spin_12s_linear_infinite]" />
-                              <div className="absolute w-8 h-8 rounded-full bg-gradient-to-tr from-[#FF1A6B]/20 via-transparent to-cyan-500/20 blur-[6px]" />
-                              <div className="w-5 h-5 rounded-full border-[1.5px] border-white/40 flex items-center justify-center">
-                                <div className="w-2 h-2 rounded-full bg-[#FF1A6B]/80" />
+                              <div className="absolute inset-0 rounded-full border border-emerald-500/25 animate-[spin_8s_linear_infinite] [border-style:dashed]" />
+                              <div className="absolute w-12 h-12 rounded-full border border-teal-400/30 animate-[spin_12s_linear_infinite]" />
+                              <div className="absolute w-8 h-8 rounded-full bg-gradient-to-tr from-emerald-500/20 via-transparent to-teal-400/20 blur-[6px]" />
+                              <div className="w-5 h-5 rounded-full border-[1.5px] border-emerald-400/50 flex items-center justify-center">
+                                <div className="w-2 h-2 rounded-full bg-emerald-400" />
                               </div>
                             </div>
 
@@ -1236,9 +1246,9 @@ export default function App() {
 
                             {/* Mobile mockup glowing on the side */}
                             <div className="absolute right-0 bottom-3 w-[50px] aspect-[1/2] rounded-lg border border-white/15 bg-black p-[2px] shadow-[0_10px_20px_rgba(0,0,0,0.8)] overflow-hidden flex flex-col">
-                              <div className="w-full h-full rounded-[6px] bg-gradient-to-tr from-cyan-900 to-[#FF1A6B]/20 p-1 flex flex-col justify-between">
+                              <div className="w-full h-full rounded-[6px] bg-gradient-to-tr from-teal-900 to-emerald-500/20 p-1 flex flex-col justify-between">
                                 <div className="text-[3px] text-white/30">PRO 15</div>
-                                <div className="text-[4px] font-black text-white text-center">LUMIN</div>
+                                <div className="text-[4px] font-black text-emerald-400 text-center">LUMIN</div>
                                 <div className="text-[3px] text-white/20 mt-auto text-right">Mockup</div>
                               </div>
                             </div>
@@ -1260,15 +1270,15 @@ export default function App() {
                             <span className="px-2.5 py-0.5 bg-black/60 border border-white/10 text-white/90 rounded-full font-mono text-[9px] tracking-wide font-black uppercase">
                               {cls.sessions || 12} Sessions
                             </span>
-                            <span className="px-2 py-0.5 bg-indigo-600/90 text-white rounded-md text-[8px] font-bold tracking-widest uppercase">
+                            <span className="px-2 py-0.5 bg-emerald-600/90 text-white rounded-md text-[8px] font-bold tracking-widest uppercase">
                               Mastery
                             </span>
                           </div>
 
                           {/* Instructor name overlay */}
                           <div className="absolute bottom-3 left-3 flex items-center gap-1.5">
-                            <div className="w-5 h-5 rounded-full bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center">
-                              <User size={10} className="text-white/70" />
+                            <div className="w-5 h-5 rounded-full bg-emerald-600/20 border border-emerald-500/30 flex items-center justify-center">
+                              <User size={10} className="text-emerald-400" />
                             </div>
                             <span className="text-[9px] text-white/80 font-black tracking-wide uppercase">Instructor: {cls.instructor || "Roozbeh"}</span>
                           </div>
