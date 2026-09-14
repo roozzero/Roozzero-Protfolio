@@ -1,0 +1,599 @@
+{
+  "admin_profile": {
+    "name": "Jaden Smith",
+    "email": "admin@roozzero.dev",
+    "phone": "+98 9123456789",
+    "photo": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=300&auto=format&fit=crop",
+    "bio": "Super Administrator and Learning Management Architect. Orchestrating system-wide course allocations, credential signing, and academy security operations.",
+    "department": "LMS Administration",
+    "theme": "dark",
+    "titlePrefix": "Mr.",
+    "specialization": "Super Admin"
+  },
+  "teacher_profile": {
+    "name": "Sarah Vance",
+    "email": "teacher@academy.local",
+    "phone": "+98 9123456789",
+    "department": "Computer Science & Interactive Design",
+    "bio": "Dr. Sarah Vance holds a Ph.D. in Software Engineering from MIT. She specializes in reactive programming models, human-computer interaction, and typography layouts.",
+    "photo": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=200&auto=format&fit=crop",
+    "status": "online",
+    "theme": "dark",
+    "titlePrefix": "Dr.",
+    "specialization": "Full Stack Developer",
+    "socialLinks": {
+      "github": "https://github.com/sarah-vance-phd",
+      "twitter": "https://twitter.com/sarah_vance",
+      "instagram": "https://instagram.com/sarah_v",
+      "linkedin": "https://linkedin.com/in/sarah-vance-phd",
+      "telegram": "https://t.me/sarah_vance"
+    }
+  },
+  "lms_student_profile": {
+    "id": "stu-1",
+    "name": "Courtney Henry",
+    "email": "courtney.henry@academy.local",
+    "phone": "+1 (555) 234-5678",
+    "bio": "Junior developer specializing in reactive systems and interactive graphic design layouts.",
+    "avatar": "https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=200&auto=format&fit=crop",
+    "address": "West Loop, Chicago, IL",
+    "timezone": "GMT-5 (EST)",
+    "titlePrefix": "Ms.",
+    "specialization": "Software Engineering Student"
+  },
+  "teacher_courses": [
+    {
+      "id": "react-adv",
+      "title": "Advanced React & Architecture",
+      "code": "CS-402",
+      "studentsCount": 28,
+      "sessionsCount": 16,
+      "progress": 75,
+      "status": "Active",
+      "image": "https://images.unsplash.com/photo-1633356122544-f134324a6cee?q=80&w=300&auto=format&fit=crop"
+    },
+    {
+      "id": "swiss-typo",
+      "title": "Swiss Typography & Editorial Layout",
+      "code": "DES-301",
+      "studentsCount": 18,
+      "sessionsCount": 12,
+      "progress": 90,
+      "status": "Active",
+      "image": "https://images.unsplash.com/photo-1513542789411-b6a5d4f31634?q=80&w=300&auto=format&fit=crop"
+    },
+    {
+      "id": "ml-found",
+      "title": "AI & Machine Learning Foundations",
+      "code": "CS-501",
+      "studentsCount": 35,
+      "sessionsCount": 20,
+      "progress": 40,
+      "status": "Active",
+      "image": "https://images.unsplash.com/photo-1527474305487-b87b222841cc?q=80&w=300&auto=format&fit=crop"
+    }
+  ],
+  "teacher_students": [
+    {
+      "id": "stu-1",
+      "name": "Courtney Henry",
+      "email": "courtney.henry@academy.local",
+      "phone": "+1 (555) 234-5678",
+      "courseId": "react-adv",
+      "courseTitle": "Advanced React & Architecture",
+      "progress": 88,
+      "attendance": 95,
+      "avgGrade": 92,
+      "status": "Active",
+      "joinedDate": "2026-04-10"
+    },
+    {
+      "id": "stu-2",
+      "name": "Cody Fisher",
+      "email": "cody.fisher@academy.local",
+      "phone": "+1 (555) 345-6789",
+      "courseId": "react-adv",
+      "courseTitle": "Advanced React & Architecture",
+      "progress": 94,
+      "attendance": 100,
+      "avgGrade": 96,
+      "status": "Active",
+      "joinedDate": "2026-04-12"
+    },
+    {
+      "id": "stu-3",
+      "name": "Esther Howard",
+      "email": "esther.howard@academy.local",
+      "phone": "+1 (555) 456-7890",
+      "courseId": "swiss-typo",
+      "courseTitle": "Swiss Typography & Editorial Layout",
+      "progress": 72,
+      "attendance": 84,
+      "avgGrade": 78,
+      "status": "Active",
+      "joinedDate": "2026-05-01"
+    },
+    {
+      "id": "stu-4",
+      "name": "Eleanor Pena",
+      "email": "eleanor.pena@academy.local",
+      "phone": "+1 (555) 567-8901",
+      "courseId": "swiss-typo",
+      "courseTitle": "Swiss Typography & Editorial Layout",
+      "progress": 100,
+      "attendance": 100,
+      "avgGrade": 98,
+      "status": "Active",
+      "joinedDate": "2026-05-03"
+    },
+    {
+      "id": "stu-5",
+      "name": "Jane Cooper",
+      "email": "jane.cooper@academy.local",
+      "phone": "+1 (555) 678-9012",
+      "courseId": "ml-found",
+      "courseTitle": "AI & Machine Learning Foundations",
+      "progress": 45,
+      "attendance": 90,
+      "avgGrade": 84,
+      "status": "Active",
+      "joinedDate": "2026-05-15"
+    },
+    {
+      "id": "stu-6",
+      "name": "Wade Warren",
+      "email": "wade.warren@academy.local",
+      "phone": "+1 (555) 789-0123",
+      "courseId": "ml-found",
+      "courseTitle": "AI & Machine Learning Foundations",
+      "progress": 32,
+      "attendance": 75,
+      "avgGrade": 68,
+      "status": "Active",
+      "joinedDate": "2026-05-18"
+    },
+    {
+      "id": "stu-7",
+      "name": "Robert Fox",
+      "email": "robert.fox@academy.local",
+      "phone": "+1 (555) 890-1234",
+      "courseId": "react-adv",
+      "courseTitle": "Advanced React & Architecture",
+      "progress": 0,
+      "attendance": 0,
+      "avgGrade": 0,
+      "status": "Inactive",
+      "joinedDate": "2026-06-01"
+    }
+  ],
+  "teacher_sessions": [
+    {
+      "id": "sess-1",
+      "courseId": "react-adv",
+      "courseTitle": "Advanced React & Architecture",
+      "title": "Architectural Patterns & Custom State Management",
+      "date": "2026-07-02",
+      "time": "10:00 AM",
+      "duration": "2 hours",
+      "link": "https://meet.google.com/abc-defg-hij",
+      "status": "Scheduled",
+      "studentCount": 28
+    },
+    {
+      "id": "sess-2",
+      "courseId": "swiss-typo",
+      "courseTitle": "Swiss Typography & Editorial Layout",
+      "title": "The Grid System & Spatial Layout Rules",
+      "date": "2026-07-02",
+      "time": "02:00 PM",
+      "duration": "1.5 hours",
+      "link": "https://meet.google.com/klm-nopq-rst",
+      "status": "Scheduled",
+      "studentCount": 18
+    },
+    {
+      "id": "sess-3",
+      "courseId": "ml-found",
+      "courseTitle": "AI & Machine Learning Foundations",
+      "title": "Linear Regression & Feature Engineering",
+      "date": "2026-07-03",
+      "time": "11:00 AM",
+      "duration": "2.5 hours",
+      "link": "https://meet.google.com/uvw-xyz1-abc",
+      "status": "Scheduled",
+      "studentCount": 35
+    },
+    {
+      "id": "sess-4",
+      "courseId": "react-adv",
+      "courseTitle": "Advanced React & Architecture",
+      "title": "Performance Optimization & Fiber Tree Reconciliation",
+      "date": "2026-06-30",
+      "time": "10:00 AM",
+      "duration": "2 hours",
+      "link": "https://meet.google.com/abc-defg-hij",
+      "status": "Completed",
+      "studentCount": 26
+    }
+  ],
+  "teacher_assignments": [
+    {
+      "id": "asg-1",
+      "courseId": "react-adv",
+      "courseTitle": "Advanced React & Architecture",
+      "title": "Custom Reactive State Orchestrator",
+      "description": "Build a highly optimized reactive state management library from scratch.",
+      "publishDate": "2026-06-25",
+      "dueDate": "2026-07-10",
+      "maxPoints": 100,
+      "status": "Published",
+      "submissions": [
+        {
+          "id": "sub-1-1",
+          "studentId": "stu-1",
+          "studentName": "Courtney Henry",
+          "submittedAt": "2026-06-29 14:32",
+          "githubUrl": "https://github.com/courtney-h/reactive-orchestrator",
+          "notes": "Optimized atomic re-renders.",
+          "status": "Submitted",
+          "grade": null,
+          "feedback": null
+        },
+        {
+          "id": "sub-1-2",
+          "studentId": "stu-2",
+          "studentName": "Cody Fisher",
+          "submittedAt": "2026-06-30 09:15",
+          "githubUrl": "https://github.com/codyfisher/react-state-atomic",
+          "notes": "Supports concurrent rendering.",
+          "status": "Graded",
+          "grade": 98,
+          "feedback": "Outstanding structural organization."
+        }
+      ]
+    },
+    {
+      "id": "asg-2",
+      "courseId": "swiss-typo",
+      "courseTitle": "Swiss Typography & Editorial Layout",
+      "title": "Modernist Tri-Fold Poster Design",
+      "description": "Design a grid-aligned tri-fold brochure celebrating Swiss designers.",
+      "publishDate": "2026-06-20",
+      "dueDate": "2026-07-05",
+      "maxPoints": 100,
+      "status": "Published",
+      "submissions": [
+        {
+          "id": "sub-2-1",
+          "studentId": "stu-4",
+          "studentName": "Eleanor Pena",
+          "submittedAt": "2026-06-28 17:05",
+          "githubUrl": "https://github.com/eleanor-p/swiss-grid-layout",
+          "notes": "Baseline grids are perfect.",
+          "status": "Submitted",
+          "grade": null,
+          "feedback": null
+        }
+      ]
+    },
+    {
+      "id": "asg-3",
+      "courseId": "ml-found",
+      "courseTitle": "AI & Machine Learning Foundations",
+      "title": "Gradient Descent Optimizer",
+      "description": "Implement Stochastic Gradient Descent from scratch.",
+      "publishDate": "2026-07-01",
+      "dueDate": "2026-07-18",
+      "maxPoints": 50,
+      "status": "Published",
+      "submissions": []
+    }
+  ],
+  "teacher_discussions": [
+    {
+      "id": "disc-1",
+      "courseId": "react-adv",
+      "courseTitle": "Advanced React & Architecture",
+      "studentName": "Courtney Henry",
+      "title": "Concurrent Mode & useTransition re-rendering",
+      "text": "Is there a fiber lane allocation table I can reference?",
+      "time": "10:05 AM",
+      "status": "New",
+      "replies": [
+        {
+          "id": "rep-1-1",
+          "sender": "Dr. Sarah Vance",
+          "role": "Instructor",
+          "time": "11:20 AM",
+          "text": "Yes! React uses 31 lanes. Transition lanes are 6 to 21."
+        }
+      ]
+    },
+    {
+      "id": "disc-2",
+      "courseId": "swiss-typo",
+      "courseTitle": "Swiss Typography & Editorial Layout",
+      "studentName": "Eleanor Pena",
+      "title": "Strict baseline grids in CSS tailwind layouts",
+      "text": "When managing spacing, should we rely strictly on leading-relaxed?",
+      "time": "Yesterday",
+      "status": "Replied",
+      "replies": [
+        {
+          "id": "rep-2-1",
+          "sender": "Dr. Sarah Vance",
+          "role": "Instructor",
+          "time": "Yesterday",
+          "text": "Line-height in multiples of 4px is best."
+        }
+      ]
+    }
+  ],
+  "teacher_resources": [
+    {
+      "id": "res-1",
+      "title": "Lecture 1: Fiber Tree Reconciliation Specs",
+      "courseId": "react-adv",
+      "courseTitle": "Advanced React & Architecture",
+      "fileType": "pdf",
+      "fileSize": "4.2 MB",
+      "uploadedAt": "2026-06-15"
+    },
+    {
+      "id": "res-2",
+      "title": "Full Course Syllabus & Reading Requirements (2026)",
+      "courseId": "react-adv",
+      "courseTitle": "Advanced React & Architecture",
+      "fileType": "doc",
+      "fileSize": "1.1 MB",
+      "uploadedAt": "2026-06-10"
+    },
+    {
+      "id": "res-3",
+      "title": "Baseline Layout Grids Templates",
+      "courseId": "swiss-typo",
+      "courseTitle": "Swiss Typography & Editorial Layout",
+      "fileType": "zip",
+      "fileSize": "18.5 MB",
+      "uploadedAt": "2026-06-21"
+    }
+  ],
+  "teacher_announcements": [
+    {
+      "id": "ann-1",
+      "title": "Midterm Assignment Instructions Published",
+      "description": " Boileplate instructions are now active on the assignments page.",
+      "courseId": "react-adv",
+      "courseTitle": "Advanced React & Architecture",
+      "audience": "All Students",
+      "publishedAt": "2026-06-25",
+      "status": "Published"
+    },
+    {
+      "id": "ann-2",
+      "title": "Guest Speaker: Typography Legend Erik Spiekermann",
+      "description": "Virtual guest lecture with iconic typographer Erik Spiekermann.",
+      "courseId": "swiss-typo",
+      "courseTitle": "Swiss Typography & Editorial Layout",
+      "audience": "Design Department",
+      "publishedAt": "2026-06-28",
+      "status": "Published"
+    }
+  ],
+  "teacher_grades": [
+    {
+      "id": "grd-1",
+      "studentId": "stu-1",
+      "studentName": "Courtney Henry",
+      "courseId": "react-adv",
+      "courseTitle": "Advanced React & Architecture",
+      "assignmentId": "asg-1",
+      "assignmentTitle": "Custom Reactive State Orchestrator",
+      "score": 95,
+      "maxPoints": 100,
+      "letterGrade": "A",
+      "publishedDate": "2026-07-01"
+    },
+    {
+      "id": "grd-2",
+      "studentId": "stu-2",
+      "studentName": "Cody Fisher",
+      "courseId": "react-adv",
+      "courseTitle": "Advanced React & Architecture",
+      "assignmentId": "asg-1",
+      "assignmentTitle": "Custom Reactive State Orchestrator",
+      "score": 98,
+      "maxPoints": 100,
+      "letterGrade": "A",
+      "publishedDate": "2026-06-30"
+    }
+  ],
+  "teacher_certificates": [
+    {
+      "id": "cert-1",
+      "studentId": "stu-2",
+      "studentName": "Cody Fisher",
+      "courseId": "react-adv",
+      "courseTitle": "Advanced React & Architecture",
+      "gpa": 4,
+      "status": "Approved",
+      "issueDate": "2026-06-30"
+    },
+    {
+      "id": "cert-2",
+      "studentId": "stu-4",
+      "studentName": "Eleanor Pena",
+      "courseId": "swiss-typo",
+      "courseTitle": "Swiss Typography & Editorial Layout",
+      "gpa": 3.95,
+      "status": "Approved",
+      "issueDate": "2026-06-29"
+    }
+  ],
+  "teacher_calendar_events": [
+    {
+      "id": "e1",
+      "title": "Advanced React Lecture",
+      "date": "2026-07-02",
+      "type": "Class",
+      "courseId": "react-adv",
+      "time": "10:00 AM"
+    },
+    {
+      "id": "e2",
+      "title": "Swiss Typography Seminar",
+      "date": "2026-07-02",
+      "type": "Class",
+      "courseId": "swiss-typo",
+      "time": "02:00 PM"
+    }
+  ],
+  "teacher_course_seasons": [
+    {
+      "id": "season-1",
+      "name": "Summer 2026 Core Intake",
+      "courseId": "react-adv",
+      "courseTitle": "Advanced React & Architecture",
+      "startDate": "2026-06-01",
+      "endDate": "2026-08-31",
+      "maxCapacity": 25,
+      "registrationStatus": "Open",
+      "notes": "Core intake cohort.",
+      "status": "Active"
+    }
+  ],
+  "cms_current_config": {
+    "general": {
+      "websiteTitle": "Roozzero Academy",
+      "websiteDescription": "Creative engineering workspace",
+      "academyLogo": "",
+      "favicon": "",
+      "primaryColor": "#000000",
+      "secondaryColor": "#111111",
+      "accentColor": "#FF3B30",
+      "defaultFont": "Inter",
+      "enableDarkTheme": true,
+      "maintenanceMode": false
+    },
+    "hero": {
+      "backgroundImage": "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?q=80&w=1920&auto=format&fit=crop",
+      "overlayOpacity": 0.65,
+      "overlayColor": "#050505",
+      "heroTitle": "ELEVATING DIGITAL CRAFTSMANSHIP",
+      "heroSubtitle": "Creative systems, layout structures, typography.",
+      "animatedTexts": [
+        "Advanced React Systems",
+        "Swiss Typography",
+        "AI Engineering"
+      ],
+      "ctaButtonText": "Explore Classes",
+      "ctaButtonLink": "#classes",
+      "typingSpeed": 80,
+      "loopTyping": true,
+      "cursorStyle": "pipe",
+      "fadeAnimation": true
+    },
+    "about": {
+      "sectionTitle": "WHO'S ME",
+      "subtitle": "Creative Engineering & Modernist Layouts",
+      "description": "Bridges absolute grid designs with fast reactive architectures.",
+      "personalImage": "",
+      "statistics": [
+        {
+          "label": "SATISFIED LEARNERS",
+          "value": "100%"
+        }
+      ],
+      "socialLinks": {}
+    },
+    "skills": [
+      {
+        "id": "skill-1",
+        "name": "React & Virtual DOM",
+        "percentage": 98,
+        "icon": "Code2",
+        "enabled": true,
+        "displayOrder": 1
+      }
+    ],
+    "projects": [
+      {
+        "id": "proj-1",
+        "title": "Reconciliation Inspector",
+        "description": "Debugging visualizer.",
+        "coverImage": "",
+        "galleryImages": [],
+        "technologies": [
+          "React"
+        ],
+        "githubLink": "",
+        "liveDemoLink": "",
+        "category": "Core Software",
+        "displayOrder": 1,
+        "featured": true
+      }
+    ],
+    "classes": [
+      {
+        "id": "react-adv",
+        "courseImage": "https://images.unsplash.com/photo-1633356122544-f134324a6cee?q=80&w=300&auto=format&fit=crop",
+        "courseName": "Advanced React & Architecture",
+        "instructor": "Dr. Sarah Vance",
+        "price": "Free",
+        "description": "Master fiber reconciliation.",
+        "sessions": 16,
+        "status": "Published",
+        "displayOrder": 1,
+        "tags": [
+          "React",
+          "Performance"
+        ],
+        "syllabus": []
+      }
+    ],
+    "students": [
+      {
+        "id": "t-1",
+        "studentPhoto": "",
+        "studentName": "Courtney Henry",
+        "course": "Advanced React",
+        "rating": 5,
+        "review": "Excellent!",
+        "displayOrder": 1
+      }
+    ],
+    "contact": {
+      "title": "GET IN TOUCH",
+      "description": "Send queries below.",
+      "email": "academy@roozzero.dev",
+      "phone": "",
+      "address": "",
+      "telegram": "",
+      "instagram": "",
+      "linkedin": "",
+      "github": "",
+      "submissionRecipientEmail": "schoepplake@gmail.com"
+    },
+    "footer": {
+      "logo": "ROOZZERO",
+      "animatedText": "Modernist design and code.",
+      "copyright": "© 2026 Roozzero. All Rights Reserved.",
+      "footerButtonText": "Go to Top",
+      "footerButtonLink": "#",
+      "footerDescription": "Architectural honesty.",
+      "navigationLinks": [],
+      "socialLinks": []
+    },
+    "seo": {
+      "homepageTitle": "Roozzero Academy",
+      "metaDescription": "Modern education.",
+      "keywords": "react",
+      "ogTitle": "Roozzero",
+      "ogDescription": "Systems",
+      "ogImage": "",
+      "canonicalUrl": "",
+      "robotsSettings": "index, follow"
+    },
+    "media": []
+  }
+}
