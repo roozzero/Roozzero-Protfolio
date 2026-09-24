@@ -1,415 +1,303 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
-  Plus, Trash, Edit, Save, BookOpen, User, DollarSign, Calendar, ChevronDown, ChevronUp,
-  AlertTriangle, Move, Sparkles, Check, CheckCircle2, RotateCcw, Image as ImageIcon,
-  Clock, BookOpenCheck, Sliders, Play, Trash2, ArrowUp, ArrowDown, ExternalLink
+  Plus, Trash2, Edit3, Save, BookOpen, User, DollarSign, Calendar, ChevronDown, ChevronUp,
+  AlertTriangle, Sparkles, Check, CheckCircle2, RotateCcw, Image as ImageIcon, Clock,
+  Sliders, Play, ArrowUp, ArrowDown, ExternalLink, Layers, Terminal, ShieldCheck,
+  Zap, Cpu, Code2, MessageSquare, Send, Star, GraduationCap, Eye, Link2, FolderOpen,
+  Globe, Layout, Award, Radar, Lock, Unlock, CheckSquare, RefreshCw, Smartphone
 } from "lucide-react";
-import { CMSFullConfig, CMSClass } from "../../types/cms";
+import {
+  CMSFullConfig, CMSClass, CMSAboutCard, CMSSkillItem, CMSProjectItem,
+  CMSTestimonialItem, CMSStatItem
+} from "../../types/cms";
+import {
+  DEFAULT_CMS_CONFIG, DEFAULT_HOMEPAGE_CLASSES, loadCmsConfig, saveCmsConfig
+} from "../../constants/defaultCms";
 
-// Initial default classes matching the public Home Page courses
-export const DEFAULT_HOMEPAGE_CLASSES: CMSClass[] = [
-  {
-    id: "lumin",
-    courseImage: "https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop",
-    courseName: "Modern Next.js Development",
-    instructor: "Roozbeh",
-    price: "$199",
-    shortDescription: "Explore modern Next.js application development, routing, rendering strategies, project structure, and scalable web architectures.",
-    description: "Explore modern Next.js application development, routing, rendering strategies, project structure, and scalable web architectures.",
-    sessions: 16,
-    status: "Published",
-    displayOrder: 1,
-    tags: ["Next.js", "React", "Web"] as any,
-    syllabus: [
-      { id: "next-1", title: "Next.js Fundamentals & Project Setup", description: "Next.js core concepts, directory configuration, TypeScript setup, and configuration files.", duration: "Session 1" },
-      { id: "next-2", title: "App Router Architecture", description: "Deep dive into App Router, file-system based conventions, and route segments.", duration: "Session 2" },
-      { id: "next-3", title: "Server Components & Client Components", description: "RSC mental model, client component boundary rules, and seamless data passing.", duration: "Session 3" },
-      { id: "next-4", title: "Layouts, Templates & Nested Routes", description: "Root and nested layouts, templates vs layouts, parallel routes, and intercepted routes.", duration: "Session 4" },
-      { id: "next-5", title: "Dynamic & Catch-All Routes", description: "Dynamic segment matching, optional catch-all parameters, and generateStaticParams.", duration: "Session 5" },
-      { id: "next-6", title: "Data Fetching & Caching", description: "Fetch API cache configurations, on-demand revalidation, and request deduplication.", duration: "Session 6" },
-      { id: "next-7", title: "Server Actions", description: "Mutations with Server Actions, form progressive enhancement, and optimistic UI updates.", duration: "Session 7" },
-      { id: "next-8", title: "Loading & Error UI", description: "Instant loading states with loading.js, Suspense streams, error.js, and global-error.js.", duration: "Session 8" },
-      { id: "next-9", title: "Middleware & Route Protection", description: "Edge runtime middleware, cookie inspection, bot protection, and route rewrites.", duration: "Session 9" },
-      { id: "next-10", title: "Authentication & Authorization", description: "Session management, JWT verification, role-based protection, and secure Auth flows.", duration: "Session 10" },
-      { id: "next-11", title: "API Routes & Backend Integration", description: "Route Handlers (GET, POST, etc.), streaming responses, and backend proxy integrations.", duration: "Session 11" },
-      { id: "next-12", title: "Image & Font Optimization", description: "Next.js Image component, responsive image sizes, and zero-layout-shift web fonts.", duration: "Session 12" },
-      { id: "next-13", title: "SEO & Metadata Management", description: "Dynamic metadata generation, OpenGraph tags, sitemap.xml, and robots.txt generation.", duration: "Session 13" },
-      { id: "next-14", title: "Performance Optimization", description: "Core Web Vitals tuning, bundle analyzer inspection, and server-side streaming.", duration: "Session 14" },
-      { id: "next-15", title: "Deployment & Production Configuration", description: "Vercel and self-hosted Node/Docker builds, environment secrets, and edge caching.", duration: "Session 15" },
-      { id: "next-16", title: "Building Production-Ready Next.js Applications", description: "End-to-end full-stack capstone project featuring real-time state, DB integration, and CI/CD.", duration: "Session 16" }
-    ]
-  } as any,
-  {
-    id: "apex",
-    courseImage: "https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop",
-    courseName: "Frontend Development with TypeScript",
-    instructor: "Roozbeh",
-    price: "$179",
-    shortDescription: "Learn how TypeScript improves code quality, maintainability, and scalability in modern frontend applications.",
-    description: "Learn how TypeScript improves code quality, maintainability, and scalability in modern frontend applications.",
-    sessions: 16,
-    status: "Published",
-    displayOrder: 3,
-    tags: ["TypeScript", "React", "JavaScript"] as any,
-    syllabus: [
-      { id: "ts-1", title: "TypeScript Fundamentals", description: "JavaScript superset syntax, compiler configuration (tsconfig), and runtime behavior.", duration: "Session 1" },
-      { id: "ts-2", title: "Type Annotations & Type Inference", description: "Primitive types, inferred types, contextual typing, and strict mode flags.", duration: "Session 2" },
-      { id: "ts-3", title: "Interfaces & Type Aliases", description: "Declaring object shapes, extending interfaces, intersections, and architectural differences.", duration: "Session 3" },
-      { id: "ts-4", title: "Union & Intersection Types", description: "Discriminated unions, exhaustiveness checks, and composing complex composite types.", duration: "Session 4" },
-      { id: "ts-5", title: "Functions & Generics", description: "Generic functions, constraints, defaults, function overloading, and higher-order typing.", duration: "Session 5" },
-      { id: "ts-6", title: "Enums & Literal Types", description: "Numeric and string enums, const assertions, string literal types, and template literals.", duration: "Session 6" },
-      { id: "ts-7", title: "Advanced Type Manipulation", description: "Keyof, typeof, indexed access types, conditional types, and distributive conditionals.", duration: "Session 7" },
-      { id: "ts-8", title: "Utility Types", description: "Partial, Required, Readonly, Pick, Omit, Record, Exclude, Extract, and ReturnType.", duration: "Session 8" },
-      { id: "ts-9", title: "Type-Safe React Components", description: "Typing functional components, children, polymorphic components, and forwardRef.", duration: "Session 9" },
-      { id: "ts-10", title: "Props, State & Event Typing", description: "Strict typing for mouse, keyboard, and form events, component props, and complex state.", duration: "Session 10" },
-      { id: "ts-11", title: "Custom Hooks with TypeScript", description: "Strict return tuple and object typing, generic hooks, and hook dependency typing.", duration: "Session 11" },
-      { id: "ts-12", title: "API Response & Data Modeling", description: "DTO contracts, schema validation with Zod/io-ts, and type-safe HTTP client wrappers.", duration: "Session 12" },
-      { id: "ts-13", title: "Type-Safe Forms & Validation", description: "Integrating react-hook-form with Zod schemas for end-to-end form type safety.", duration: "Session 13" },
-      { id: "ts-14", title: "Error Handling & Type Guards", description: "User-defined type guards (is), assertion signatures (asserts), and safe error narrowing.", duration: "Session 14" },
-      { id: "ts-15", title: "TypeScript with React & Next.js", description: "Typing Server Components, Route Handlers, Server Actions, and Next.js dynamic params.", duration: "Session 15" },
-      { id: "ts-16", title: "Building Scalable Type-Safe Applications", description: "Large-scale monorepo configurations, strict linting, shared types, and architectural testing.", duration: "Session 16" }
-    ]
-  } as any,
-  {
-    id: "bgbunty",
-    courseImage: "https://images.unsplash.com/photo-1563986768609-322da13575f3?q=80&w=800&auto=format&fit=crop",
-    courseName: "Web Security & Bug Bounty",
-    instructor: "Roozbeh",
-    price: "$189",
-    shortDescription: "An introduction to web application security, vulnerability discovery, OWASP methodologies, and practical bug bounty research.",
-    description: "An introduction to web application security, vulnerability discovery, OWASP methodologies, and practical bug bounty research.",
-    sessions: 18,
-    status: "Published",
-    displayOrder: 4,
-    tags: ["Cybersecurity", "OWASP", "Bug Bounty"] as any,
-    syllabus: [
-      { id: "sec-1", title: "Web Security Fundamentals", description: "Core cybersecurity principles, threat modeling, confidentiality, integrity, and availability.", duration: "Session 1" },
-      { id: "sec-2", title: "HTTP/HTTPS & Web Architecture", description: "HTTP request/response lifecycle, headers, cookies, TLS/SSL encryption, and proxying.", duration: "Session 2" },
-      { id: "sec-3", title: "Authentication & Session Security", description: "Session fixation, JWT vulnerabilities, brute-force defenses, and credential stuffing.", duration: "Session 3" },
-      { id: "sec-4", title: "Access Control & Authorization", description: "Privilege levels, vertical and horizontal authorization flaws, and permission matrices.", duration: "Session 4" },
-      { id: "sec-5", title: "OWASP Top 10", description: "Detailed taxonomy of the OWASP Top 10 web vulnerabilities and real-world attack vectors.", duration: "Session 5" },
-      { id: "sec-6", title: "Information Disclosure", description: "Finding sensitive file leaks, debug endpoints, exposed credentials, and stack trace risks.", duration: "Session 6" },
-      { id: "sec-7", title: "Security Misconfigurations", description: "Default credentials, directory indexing, overly permissive CORS, and cloud misconfigs.", duration: "Session 7" },
-      { id: "sec-8", title: "Cross-Site Scripting (XSS)", description: "Reflected, Stored, and DOM-based XSS, bypass techniques, and CSP defense mechanics.", duration: "Session 8" },
-      { id: "sec-9", title: "SQL Injection", description: "Classic, blind (boolean & time-based), union-based SQLi, and parameterized defense.", duration: "Session 9" },
-      { id: "sec-10", title: "Cross-Site Request Forgery (CSRF)", description: "SameSite cookie policies, anti-CSRF token verification, and defense-in-depth mitigations.", duration: "Session 10" },
-      { id: "sec-11", title: "Server-Side Request Forgery (SSRF)", description: "Blind and out-of-band SSRF, cloud metadata exfiltration (AWS/GCP), and allowlist parsing.", duration: "Session 11" },
-      { id: "sec-12", title: "File Upload Vulnerabilities", description: "Web shells, MIME bypass, extension blacklisting flaws, and secure cloud storage.", duration: "Session 12" },
-      { id: "sec-13", title: "IDOR & Broken Access Control", description: "Insecure Direct Object References, parameter tampering, and API endpoint enumeration.", duration: "Session 13" },
-      { id: "sec-14", title: "API Security Testing", description: "Testing REST and GraphQL APIs, mass assignment, rate-limit bypassing, and schema leaks.", duration: "Session 14" },
-      { id: "sec-15", title: "Reconnaissance & Attack Surface Discovery", description: "Target scoping, passive/active intelligence gathering, technology fingerprinting, and ASN mapping.", duration: "Session 15" },
-      { id: "sec-16", title: "Vulnerability Validation & Impact Assessment", description: "Creating reliable proof-of-concepts (PoC), calculating CVSS scores, and impact demonstration.", duration: "Session 16" },
-      { id: "sec-17", title: "Bug Bounty Methodology", description: "Platforms (HackerOne, Bugcrowd), reading program scopes, triage etiquette, and triage workflows.", duration: "Session 17" },
-      { id: "sec-18", title: "Writing Professional Bug Reports", description: "Drafting high-payout vulnerability disclosures, clear reproduction steps, and remediation advice.", duration: "Session 18" }
-    ]
-  } as any,
-  {
-    id: "hunt",
-    courseImage: "https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?q=80&w=800&auto=format&fit=crop",
-    courseName: "Ethical Hacking & Hunting",
-    instructor: "Roozbeh",
-    price: "$199",
-    shortDescription: "Practical learning focused on security testing, reconnaissance, vulnerability research, and threat hunting fundamentals.",
-    description: "Practical learning focused on security testing, reconnaissance, vulnerability research, and threat hunting fundamentals.",
-    sessions: 18,
-    status: "Published",
-    displayOrder: 5,
-    tags: ["Ethical Hacking", "Hunting", "Security"] as any,
-    syllabus: [
-      { id: "hunt-1", title: "Ethical Hacking Fundamentals", description: "Legal frameworks, ethics, rules of engagement, and red team vs blue team dynamics.", duration: "Session 1" },
-      { id: "hunt-2", title: "Cybersecurity & Attack Lifecycle", description: "Cyber Kill Chain, MITRE ATT&CK framework, and understanding threat actor tactics.", duration: "Session 2" },
-      { id: "hunt-3", title: "Linux for Security Professionals", description: "Command line mastery, file permissions, bash scripting, network utilities, and system logs.", duration: "Session 3" },
-      { id: "hunt-4", title: "Networking & Network Reconnaissance", description: "TCP/IP, subnetting, DNS, packet analysis with Wireshark, and network protocol fundamentals.", duration: "Session 4" },
-      { id: "hunt-5", title: "Information Gathering & OSINT", description: "Open-source intelligence, corporate domain profiling, public registries, and social recon.", duration: "Session 5" },
-      { id: "hunt-6", title: "Passive & Active Reconnaissance", description: "Stealthy discovery techniques, DNS querying, CDN identification, and surface footprinting.", duration: "Session 6" },
-      { id: "hunt-7", title: "Subdomain Enumeration", description: "Certificate transparency logs, brute forcing, wordlists, and permutation engines.", duration: "Session 7" },
-      { id: "hunt-8", title: "Port & Service Enumeration", description: "Nmap scanning strategies, service banner grabbing, NSE scripts, and firewall evasion.", duration: "Session 8" },
-      { id: "hunt-9", title: "Vulnerability Assessment", description: "Vulnerability scanners (Nessus, OpenVAS, Nuclei), false positive filtering, and CVE analysis.", duration: "Session 9" },
-      { id: "hunt-10", title: "Web Application Security Testing", description: "Burp Suite professional workflows, proxy interception, repeater, intruder, and match & replace.", duration: "Session 10" },
-      { id: "hunt-11", title: "API & Authentication Testing", description: "JWT manipulation, OAuth flaw auditing, GraphQL introspection, and session replay.", duration: "Session 11" },
-      { id: "hunt-12", title: "Exploitation Fundamentals", description: "Metasploit framework, payload generation with msfvenom, and understanding memory safeguards.", duration: "Session 12" },
-      { id: "hunt-13", title: "Privilege Escalation Concepts", description: "Linux and Windows local enumeration, SUID binaries, misconfigured sudo, and unquoted service paths.", duration: "Session 13" },
-      { id: "hunt-14", title: "Post-Exploitation Fundamentals", description: "Maintaining access, pivoting through internal subnets, credential dumping, and artifact cleanup.", duration: "Session 14" },
-      { id: "hunt-15", title: "Security Tools & Automation", description: "Automating workflows with Python, Go tools (ffuf, httpx, subfinder), and bash pipelines.", duration: "Session 15" },
-      { id: "hunt-16", title: "Vulnerability Hunting Methodology", description: "Systematic hunting strategies, asset tracking, continuous monitoring, and diffing new features.", duration: "Session 16" },
-      { id: "hunt-17", title: "Responsible Disclosure", description: "Coordinated disclosure timelines, communicating with enterprise security teams, and hall of fame.", duration: "Session 17" },
-      { id: "hunt-18", title: "Hands-on Security Labs & Real-World Scenarios", description: "Practicing on simulated targets, CTF challenges, lab walk-throughs, and real-world attack simulations.", duration: "Session 18" }
-    ]
-  } as any
+// Curated developer & design high-resolution images for quick 1-click selection
+const CURATED_IMAGE_SUGGESTIONS = [
+  { url: "https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop", name: "Modern IDE Code Editor" },
+  { url: "https://images.unsplash.com/photo-1516116211223-5c359a36298a?q=80&w=800&auto=format&fit=crop", name: "Clean TypeScript Code" },
+  { url: "https://images.unsplash.com/photo-1563986768609-322da13575f3?q=80&w=800&auto=format&fit=crop", name: "Cybersecurity & Shield" },
+  { url: "https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?q=80&w=800&auto=format&fit=crop", name: "Terminal & Hacking Matrix" },
+  { url: "https://images.unsplash.com/photo-1580582932707-520aed937b7b?q=80&w=800&auto=format&fit=crop", name: "Smart Campus & Education" },
+  { url: "https://images.unsplash.com/photo-1558494949-ef010cbdcc31?q=80&w=800&auto=format&fit=crop", name: "Distributed Cloud Server" },
+  { url: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=400&auto=format&fit=crop", name: "Developer Avatar 1" },
+  { url: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=400&auto=format&fit=crop", name: "Developer Avatar 2" },
+  { url: "/src/assets/images/ChatGPT Image Jun 28, 2026, 10_07_30 PM.png", name: "ROOZZERO Hero Background" },
+  { url: "/src/assets/images/photo_2024-10-20_19-21-55.jpg", name: "ROOZZERO Bio Portrait" }
 ];
 
-// Beautiful Unsplash developer images for easy banner selection
-const SUGGESTED_BANNER_IMAGES = [
-  { url: "https://images.unsplash.com/photo-1550751827-4bd374c3f58b?q=80&w=800&auto=format&fit=crop", name: "Cyber Matrix Security" },
-  { url: "https://images.unsplash.com/photo-1518770660439-4636190af475?q=80&w=800&auto=format&fit=crop", name: "Microchip Board Grid" },
-  { url: "https://images.unsplash.com/photo-1633356122544-f134324a6cee?q=80&w=800&auto=format&fit=crop", name: "Modern React Development" },
-  { url: "https://images.unsplash.com/photo-1516116211223-5c359a36298a?q=80&w=800&auto=format&fit=crop", name: "Lines of Code Workspace" },
-  { url: "https://images.unsplash.com/photo-1531403009284-440f080d1e12?q=80&w=800&auto=format&fit=crop", name: "UX Design Canvas Wireframe" },
-  { url: "https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop", name: "Sublime Code IDE Editor" }
-];
+export { DEFAULT_HOMEPAGE_CLASSES };
 
 interface HomepageManagementTabProps {
   showCustomToast: (msg: string, type?: "info" | "success" | "warning") => void;
 }
 
+type SectionTabId =
+  | "hero"
+  | "about"
+  | "skills"
+  | "projects"
+  | "classes"
+  | "students"
+  | "contact"
+  | "footer";
+
 export default function HomepageManagementTab({ showCustomToast }: HomepageManagementTabProps) {
-  // Load configuration or fall back
-  const [currentConfig, setCurrentConfig] = useState<CMSFullConfig>(() => {
-    const saved = localStorage.getItem("cms_current_config");
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (parsed && Array.isArray(parsed.classes)) {
-          const nonTechzo = parsed.classes.filter((c: any) => c.id !== "techzo");
-          const updatedClasses = nonTechzo.map((c: any) => {
-            const def = DEFAULT_HOMEPAGE_CLASSES.find((d) => d.id === c.id);
-            if (def && (!c.syllabus || c.syllabus.length < 10 || !c.courseImage || c.courseImage.includes("photo-1550751827-4bd374c3f58b"))) {
-              return { ...c, syllabus: def.syllabus, sessions: def.sessions, courseName: def.courseName, courseImage: def.courseImage };
-            }
-            return c;
-          });
-          const existingIds = new Set(updatedClasses.map((c: any) => c.id));
-          const missingDefaults = DEFAULT_HOMEPAGE_CLASSES.filter((c) => !existingIds.has(c.id));
-          const merged = [...updatedClasses, ...missingDefaults];
-          const newConfig = { ...parsed, classes: merged };
-          localStorage.setItem("cms_current_config", JSON.stringify(newConfig));
-          return newConfig;
-        }
-      } catch (e) {
-        console.error("Failed to parse config from storage", e);
-      }
-    }
-    // Setup initial config containing default classes
-    const initialConfig: any = {
-      classes: DEFAULT_HOMEPAGE_CLASSES,
-      general: { websiteTitle: "RoozZero Academy" }
-    };
-    localStorage.setItem("cms_current_config", JSON.stringify(initialConfig));
-    return initialConfig;
-  });
+  // Active section tab
+  const [activeSection, setActiveSection] = useState<SectionTabId>("hero");
 
-  const [draftClasses, setDraftClasses] = useState<CMSClass[]>(() => {
-    return currentConfig.classes || [];
-  });
+  // Loaded published config
+  const [publishedConfig, setPublishedConfig] = useState<CMSFullConfig>(() => loadCmsConfig());
 
+  // Working draft state
+  const [draftConfig, setDraftConfig] = useState<CMSFullConfig>(() => loadCmsConfig());
+
+  // Image Picker Modal State
+  const [imagePickerTarget, setImagePickerTarget] = useState<{
+    fieldPath: string;
+    currentValue: string;
+  } | null>(null);
+
+  // Expanded items state for accordions
   const [expandedCourseId, setExpandedCourseId] = useState<string | null>(null);
-  
-  // Delete confirmation modal states
-  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const [expandedSkillId, setExpandedSkillId] = useState<string | null>(null);
+  const [expandedProjectId, setExpandedProjectId] = useState<string | null>(null);
+  const [expandedTestimonialId, setExpandedTestimonialId] = useState<string | null>(null);
 
-  // Gallery picker states
-  const [activePickerIdx, setActivePickerIdx] = useState<number | null>(null);
+  // Delete target state
+  const [deleteDialog, setDeleteDialog] = useState<{
+    type: "course" | "skill" | "project" | "card" | "testimonial" | "stat" | "word";
+    id: string;
+    title: string;
+  } | null>(null);
 
-  // Check if draft has changed compared to current config
-  const hasChanges = JSON.stringify(draftClasses) !== JSON.stringify(currentConfig.classes);
+  // Check if draft has unsaved changes compared to published state
+  const hasUnpublishedChanges = JSON.stringify(draftConfig) !== JSON.stringify(publishedConfig);
 
+  // Save draft without publishing
   const handleSaveDraft = () => {
-    const updatedConfig = { ...currentConfig, classes: draftClasses };
-    setCurrentConfig(updatedConfig);
-    localStorage.setItem("cms_current_config", JSON.stringify(updatedConfig));
-    showCustomToast("Classes layout saved as Draft!", "info");
+    saveCmsConfig(draftConfig);
+    setPublishedConfig(draftConfig);
+    showCustomToast("Draft saved to browser storage!", "info");
   };
 
-  const handlePublish = () => {
-    const updatedConfig = { ...currentConfig, classes: draftClasses };
-    setCurrentConfig(updatedConfig);
-    localStorage.setItem("cms_current_config", JSON.stringify(updatedConfig));
-    showCustomToast("Changes published successfully! Home Page is updated.", "success");
+  // Publish changes to live site
+  const handlePublishAll = () => {
+    saveCmsConfig(draftConfig);
+    setPublishedConfig(draftConfig);
+    showCustomToast("All Homepage sections updated & published live!", "success");
   };
 
-  const handleResetDraft = () => {
-    setDraftClasses(currentConfig.classes || []);
-    showCustomToast("Draft restored to last published state.", "info");
+  // Reset current section to factory default
+  const handleResetCurrentSection = () => {
+    if (activeSection === "hero") {
+      setDraftConfig((prev) => ({ ...prev, hero: { ...DEFAULT_CMS_CONFIG.hero } }));
+    } else if (activeSection === "about") {
+      setDraftConfig((prev) => ({ ...prev, aboutMe: { ...DEFAULT_CMS_CONFIG.aboutMe } }));
+    } else if (activeSection === "skills") {
+      setDraftConfig((prev) => ({ ...prev, skills: { ...DEFAULT_CMS_CONFIG.skills } }));
+    } else if (activeSection === "projects") {
+      setDraftConfig((prev) => ({ ...prev, projects: { ...DEFAULT_CMS_CONFIG.projects } }));
+    } else if (activeSection === "classes") {
+      setDraftConfig((prev) => ({
+        ...prev,
+        classes: [...DEFAULT_CMS_CONFIG.classes],
+        classesHeader: { ...DEFAULT_CMS_CONFIG.classesHeader }
+      }));
+    } else if (activeSection === "students") {
+      setDraftConfig((prev) => ({ ...prev, testimonials: { ...DEFAULT_CMS_CONFIG.testimonials } }));
+    } else if (activeSection === "contact") {
+      setDraftConfig((prev) => ({ ...prev, contact: { ...DEFAULT_CMS_CONFIG.contact } }));
+    } else if (activeSection === "footer") {
+      setDraftConfig((prev) => ({ ...prev, footer: { ...DEFAULT_CMS_CONFIG.footer } }));
+    }
+    showCustomToast(`Reset "${activeSection}" to initial defaults.`, "info");
   };
 
-  // Drag and Drop ordering handlers
-  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
-
-  const handleDragStart = (e: React.DragEvent, index: number) => {
-    setDraggedIndex(index);
-    e.dataTransfer.effectAllowed = "move";
+  // Reset everything to factory defaults
+  const handleResetAllToDefaults = () => {
+    if (window.confirm("Are you sure you want to reset ALL homepage sections to factory default configuration?")) {
+      setDraftConfig(DEFAULT_CMS_CONFIG);
+      saveCmsConfig(DEFAULT_CMS_CONFIG);
+      setPublishedConfig(DEFAULT_CMS_CONFIG);
+      showCustomToast("Reset entire website configuration to factory defaults.", "warning");
+    }
   };
 
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
+  // Discard draft changes
+  const handleDiscardDraft = () => {
+    setDraftConfig(publishedConfig);
+    showCustomToast("Discarded draft changes. Restored to published version.", "info");
   };
 
-  const handleDrop = (e: React.DragEvent, index: number) => {
-    e.preventDefault();
-    if (draggedIndex === null || draggedIndex === index) return;
-
-    const list = [...draftClasses];
-    const draggedItem = list[draggedIndex];
-    list.splice(draggedIndex, 1);
-    list.splice(index, 0, draggedItem);
-
-    // Update display orders based on index
-    const updatedList = list.map((item, idx) => ({
-      ...item,
-      displayOrder: idx + 1
-    }));
-
-    setDraftClasses(updatedList);
-    setDraggedIndex(null);
-    showCustomToast("Rearranged course layout order.", "success");
+  // Universal nested state updater helper
+  const updateDraft = (updater: (prev: CMSFullConfig) => CMSFullConfig) => {
+    setDraftConfig((prev) => updater(prev));
   };
 
-  const moveOrder = (idx: number, direction: "up" | "down") => {
-    if (direction === "up" && idx === 0) return;
-    if (direction === "down" && idx === draftClasses.length - 1) return;
+  // Set image via picker
+  const handleSelectSuggestedImage = (url: string) => {
+    if (!imagePickerTarget) return;
+    const { fieldPath } = imagePickerTarget;
 
-    const targetIdx = direction === "up" ? idx - 1 : idx + 1;
-    const list = [...draftClasses];
-    const temp = list[idx];
-    list[idx] = list[targetIdx];
-    list[targetIdx] = temp;
+    updateDraft((prev) => {
+      const copy = JSON.parse(JSON.stringify(prev));
+      const parts = fieldPath.split(".");
+      let curr: any = copy;
+      for (let i = 0; i < parts.length - 1; i++) {
+        curr = curr[parts[i]];
+      }
+      curr[parts[parts.length - 1]] = url;
+      return copy;
+    });
 
-    const updatedList = list.map((item, index) => ({
-      ...item,
-      displayOrder: index + 1
-    }));
-
-    setDraftClasses(updatedList);
+    setImagePickerTarget(null);
+    showCustomToast("Image selected & updated!", "success");
   };
 
-  // Add new course
-  const handleAddNewCourse = () => {
-    const nextOrder = draftClasses.length + 1;
-    const newId = `cl-${Date.now()}`;
-    const newCourse: CMSClass = {
-      id: newId,
-      courseImage: "https://images.unsplash.com/photo-1633356122544-f134324a6cee?q=80&w=800&auto=format&fit=crop",
-      courseName: "New High-Fidelity Masterclass",
-      instructor: "Roozbeh",
-      price: "$199",
-      description: "A fresh course focusing on modular design architecture and deployment patterns.",
-      sessions: 8,
-      status: "Draft",
-      displayOrder: nextOrder,
-      tags: ["React", "TypeScript", "Vite"] as any,
-      syllabus: [
-        { id: `s1-${Date.now()}`, title: "Module 1: Layout Fundamentals", description: "Structuring pixel-perfect CSS grids and flex containers.", duration: "45 mins" }
-      ] as any
-    };
+  // Delete modal executor
+  const executeDelete = () => {
+    if (!deleteDialog) return;
+    const { type, id } = deleteDialog;
 
-    setDraftClasses((prev) => [...prev, newCourse]);
-    setExpandedCourseId(newId);
-    showCustomToast("New course card template added. Start customizing!", "success");
-  };
-
-  const confirmDeleteCourse = () => {
-    if (!deleteTargetId) return;
-    setDraftClasses((prev) => prev.filter((item) => item.id !== deleteTargetId));
-    setDeleteTargetId(null);
-    showCustomToast("Course deleted successfully.", "warning");
-  };
-
-  // Field change handler helper
-  const handleFieldChange = (courseId: string, field: keyof CMSClass, value: any) => {
-    setDraftClasses((prev) =>
-      prev.map((c) => (c.id === courseId ? { ...c, [field]: value } : c))
-    );
-  };
-
-  // Syllabus items management
-  const handleAddSyllabusItem = (courseId: string) => {
-    setDraftClasses((prev) =>
-      prev.map((c) => {
-        if (c.id === courseId) {
-          const currentSyllabus = (c as any).syllabus || [];
-          const nextIndex = currentSyllabus.length + 1;
-          const newItem = {
-            id: `s-${Date.now()}`,
-            title: `Module ${nextIndex}: Topic Title`,
-            description: "Provide short bullet items or learning details.",
-            duration: "45 mins"
-          };
-          return { ...c, syllabus: [...currentSyllabus, newItem] };
+    if (type === "card") {
+      updateDraft((prev) => ({
+        ...prev,
+        aboutMe: {
+          ...prev.aboutMe,
+          cards: prev.aboutMe.cards.filter((c) => c.id !== id)
         }
-        return c;
-      })
-    );
-    showCustomToast("Added new syllabus module.", "info");
+      }));
+    } else if (type === "skill") {
+      updateDraft((prev) => ({
+        ...prev,
+        skills: {
+          ...prev.skills,
+          skills: prev.skills.skills.filter((s) => s.id !== id)
+        }
+      }));
+    } else if (type === "project") {
+      updateDraft((prev) => ({
+        ...prev,
+        projects: {
+          ...prev.projects,
+          projects: prev.projects.projects.filter((p) => p.id !== id)
+        }
+      }));
+    } else if (type === "course") {
+      updateDraft((prev) => ({
+        ...prev,
+        classes: prev.classes.filter((c) => c.id !== id)
+      }));
+    } else if (type === "testimonial") {
+      updateDraft((prev) => ({
+        ...prev,
+        testimonials: {
+          ...prev.testimonials,
+          testimonials: prev.testimonials.testimonials.filter((t) => t.id !== id)
+        }
+      }));
+    } else if (type === "stat") {
+      updateDraft((prev) => ({
+        ...prev,
+        testimonials: {
+          ...prev.testimonials,
+          stats: prev.testimonials.stats.filter((s) => s.id !== id)
+        }
+      }));
+    }
+
+    setDeleteDialog(null);
+    showCustomToast("Item removed.", "warning");
   };
 
-  const handleEditSyllabusItem = (courseId: string, itemIndex: number, field: string, value: any) => {
-    setDraftClasses((prev) =>
-      prev.map((c) => {
-        if (c.id === courseId) {
-          const syllabusCopy = [...((c as any).syllabus || [])];
-          if (syllabusCopy[itemIndex]) {
-            syllabusCopy[itemIndex] = { ...syllabusCopy[itemIndex], [field]: value };
-          }
-          return { ...c, syllabus: syllabusCopy };
-        }
-        return c;
-      })
-    );
-  };
-
-  const handleDeleteSyllabusItem = (courseId: string, itemIndex: number) => {
-    setDraftClasses((prev) =>
-      prev.map((c) => {
-        if (c.id === courseId) {
-          const syllabusCopy = [...((c as any).syllabus || [])];
-          syllabusCopy.splice(itemIndex, 1);
-          return { ...c, syllabus: syllabusCopy };
-        }
-        return c;
-      })
-    );
-    showCustomToast("Syllabus module removed.", "warning");
-  };
+  // Section tabs definitions with icons
+  const SECTION_TABS = [
+    { id: "hero", label: "Hero & Intro", icon: Sparkles, color: "text-emerald-400" },
+    { id: "about", label: "Who's Me", icon: User, color: "text-blue-400" },
+    { id: "skills", label: "Skills & Stack", icon: Zap, color: "text-amber-400" },
+    { id: "projects", label: "Projects", icon: FolderOpen, color: "text-purple-400" },
+    { id: "classes", label: "Classes & Curriculum", icon: BookOpen, color: "text-emerald-400" },
+    { id: "students", label: "Students & Reviews", icon: GraduationCap, color: "text-cyan-400" },
+    { id: "contact", label: "Contact & Social", icon: Send, color: "text-rose-400" },
+    { id: "footer", label: "Footer & Branding", icon: Layout, color: "text-indigo-400" }
+  ];
 
   return (
-    <div id="homepage-classes-panel" className="flex flex-col h-full bg-[#050508] p-6 space-y-6 overflow-y-auto select-none">
+    <div id="homepage-comprehensive-dashboard" className="flex flex-col h-full bg-[#050508] p-4 sm:p-6 space-y-6 overflow-y-auto text-white">
       
-      {/* Header Controls */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/[0.04] pb-5">
+      {/* =========================================================================
+          TOP COMMAND BAR & CONTROLS
+         ========================================================================= */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-white/[0.06] pb-5">
         <div>
-          <div className="flex items-center gap-2">
-            <span className="p-2 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400">
-              <BookOpen size={18} />
+          <div className="flex items-center gap-2.5">
+            <span className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 shadow-sm">
+              <Layout size={20} />
             </span>
-            <h1 className="text-xl font-black text-white tracking-tight">Classes Management</h1>
+            <div>
+              <h1 className="text-xl font-black text-white tracking-tight flex items-center gap-2">
+                <span>Landing Page Management</span>
+                <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-white/10 text-white/70 font-mono font-medium">
+                  Full CMS
+                </span>
+              </h1>
+              <p className="text-xs text-white/50 mt-0.5">
+                Customize every single text, image, card, and section of the public homepage with real-time sync.
+              </p>
+            </div>
           </div>
-          <p className="text-xs text-white/50 mt-1">
-            Configure courses appearing in the public Home Page Classes list. Change values, toggle statuses, and rearrange positions.
-          </p>
         </div>
 
-        {/* Action button states */}
-        <div className="flex items-center gap-2.5">
-          {hasChanges && (
+        {/* Global Save / Publish / Reset Actions */}
+        <div className="flex flex-wrap items-center gap-2.5">
+          {hasUnpublishedChanges && (
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-300 text-[11px] font-mono">
+              <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />
+              Unpublished edits
+            </span>
+          )}
+
+          <button
+            onClick={handleResetCurrentSection}
+            className="px-3 py-1.5 rounded-xl border border-white/10 hover:border-white/20 text-xs font-semibold text-white/70 hover:text-white flex items-center gap-1.5 transition-all bg-white/[0.02]"
+            title="Restore this specific section to factory default"
+          >
+            <RotateCcw size={13} />
+            Reset Section
+          </button>
+
+          {hasUnpublishedChanges && (
             <button
-              onClick={handleResetDraft}
-              className="px-3.5 py-1.5 rounded-xl border border-white/10 hover:border-white/20 text-xs font-bold text-white/70 hover:text-white flex items-center gap-1.5 transition-all bg-white/[0.01]"
+              onClick={handleDiscardDraft}
+              className="px-3 py-1.5 rounded-xl border border-rose-500/20 hover:border-rose-500/40 text-xs font-semibold text-rose-300 hover:text-rose-200 flex items-center gap-1.5 transition-all bg-rose-500/5"
             >
-              <RotateCcw size={13} />
-              Reset
+              Discard
             </button>
           )}
 
           <button
             onClick={handleSaveDraft}
+            disabled={!hasUnpublishedChanges}
             className={`px-3.5 py-1.5 rounded-xl border text-xs font-bold transition-all flex items-center gap-1.5 ${
-              hasChanges
-                ? "bg-indigo-600/10 border-indigo-500/30 text-indigo-400 hover:bg-indigo-600/20"
-                : "border-white/5 text-white/40 cursor-not-allowed bg-transparent"
+              hasUnpublishedChanges
+                ? "bg-white/5 border-white/20 text-white hover:bg-white/10 cursor-pointer"
+                : "border-white/5 text-white/30 cursor-not-allowed bg-transparent"
             }`}
-            disabled={!hasChanges}
           >
             <Save size={13} />
             Save Draft
           </button>
 
           <button
-            onClick={handlePublish}
-            className={`px-4 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-[0_4px_12px_rgba(99,102,241,0.15)] ${
-              hasChanges
-                ? "bg-indigo-600 hover:bg-indigo-500 text-white"
-                : "bg-indigo-600/50 text-white/50 cursor-not-allowed"
+            onClick={handlePublishAll}
+            className={`px-4 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-[0_4px_16px_rgba(16,185,129,0.25)] ${
+              hasUnpublishedChanges
+                ? "bg-emerald-500 hover:bg-emerald-400 text-black cursor-pointer font-black"
+                : "bg-emerald-500/30 text-emerald-300/40 cursor-not-allowed"
             }`}
           >
             <Sparkles size={13} />
@@ -418,465 +306,2204 @@ export default function HomepageManagementTab({ showCustomToast }: HomepageManag
         </div>
       </div>
 
-      {/* Top statistics banners */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="p-4 rounded-2xl bg-white/[0.01] border border-white/[0.03] flex items-center gap-4">
-          <div className="p-2.5 rounded-xl bg-indigo-500/5 border border-indigo-500/10 text-indigo-400">
-            <BookOpen size={16} />
-          </div>
-          <div>
-            <p className="text-[10px] text-white/40 uppercase font-black tracking-wider">Total Courses</p>
-            <p className="text-lg font-black text-white mt-0.5">{draftClasses.length}</p>
-          </div>
-        </div>
-
-        <div className="p-4 rounded-2xl bg-white/[0.01] border border-white/[0.03] flex items-center gap-4">
-          <div className="p-2.5 rounded-xl bg-emerald-500/5 border border-emerald-500/10 text-emerald-400">
-            <CheckCircle2 size={16} />
-          </div>
-          <div>
-            <p className="text-[10px] text-white/40 uppercase font-black tracking-wider">Published</p>
-            <p className="text-lg font-black text-white mt-0.5">
-              {draftClasses.filter((c) => c.status === "Published").length}
-            </p>
-          </div>
-        </div>
-
-        <div className="p-4 rounded-2xl bg-white/[0.01] border border-white/[0.03] flex items-center gap-4">
-          <div className="p-2.5 rounded-xl bg-cyan-500/5 border border-cyan-500/10 text-cyan-400">
-            <Clock size={16} />
-          </div>
-          <div>
-            <p className="text-[10px] text-white/40 uppercase font-black tracking-wider">Draft / Hidden</p>
-            <p className="text-lg font-black text-white mt-0.5">
-              {draftClasses.filter((c) => c.status !== "Published").length}
-            </p>
-          </div>
-        </div>
+      {/* =========================================================================
+          SECTION NAVIGATION TABS
+         ========================================================================= */}
+      <div className="flex items-center gap-1.5 p-1.5 rounded-2xl bg-white/[0.02] border border-white/[0.06] overflow-x-auto scrollbar-none">
+        {SECTION_TABS.map((tab) => {
+          const Icon = tab.icon;
+          const isActive = activeSection === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveSection(tab.id as SectionTabId)}
+              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold tracking-wide transition-all shrink-0 cursor-pointer ${
+                isActive
+                  ? "bg-white text-black shadow-lg shadow-white/10 font-bold"
+                  : "text-white/60 hover:text-white hover:bg-white/[0.04]"
+              }`}
+            >
+              <Icon size={14} className={isActive ? "text-black" : tab.color} />
+              <span>{tab.label}</span>
+            </button>
+          );
+        })}
       </div>
 
-      {/* Main Drag-and-Drop Course Cards container */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <span className="text-[10px] text-white/40 uppercase font-black tracking-widest flex items-center gap-1.5">
-            <Sliders size={11} className="text-indigo-400" />
-            Drag or use arrows to change website layout order
-          </span>
-          <button
-            onClick={handleAddNewCourse}
-            className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-[0_4px_12px_rgba(99,102,241,0.2)]"
-          >
-            <Plus size={13} />
-            Add Course Card
-          </button>
-        </div>
-
-        <div className="space-y-3.5">
-          {draftClasses.length === 0 ? (
-            <div className="p-12 text-center rounded-2xl bg-white/[0.01] border border-dashed border-white/5 space-y-3">
-              <BookOpen size={24} className="text-white/20 mx-auto" />
-              <p className="text-xs text-white/40">No course cards configured. Click "Add Course Card" above to build your first layout card!</p>
+      {/* =========================================================================
+          SECTION 1: HERO & INTRO MANAGEMENT
+         ========================================================================= */}
+      {activeSection === "hero" && (
+        <div className="space-y-6">
+          <div className="flex items-center justify-between border-b border-white/[0.04] pb-3">
+            <div>
+              <h2 className="text-base font-bold text-white flex items-center gap-2">
+                <Sparkles size={16} className="text-emerald-400" />
+                Hero Banner &amp; Headline
+              </h2>
+              <p className="text-xs text-white/50">
+                Configure main landing title, typing headline phrases, and the background portrait image.
+              </p>
             </div>
-          ) : (
-            draftClasses.map((cls, idx) => {
-              const isExpanded = expandedCourseId === cls.id;
-              const isPublished = cls.status === "Published";
-              const syllabusItems = (cls as any).syllabus || [];
-              const tagsList = Array.isArray(cls.tags) ? cls.tags : [];
+          </div>
 
-              return (
-                <div
-                  key={cls.id}
-                  draggable
-                  onDragStart={(e) => handleDragStart(e, idx)}
-                  onDragOver={handleDragOver}
-                  onDrop={(e) => handleDrop(e, idx)}
-                  className={`border rounded-2xl transition-all duration-300 overflow-hidden ${
-                    isExpanded
-                      ? "bg-zinc-950/80 border-indigo-500/25 shadow-[0_10px_35px_rgba(0,0,0,0.4)]"
-                      : "bg-[#0b0b10]/95 border-white/[0.03] hover:border-white/[0.07]"
-                  }`}
-                >
-                  
-                  {/* Card Header Row */}
-                  <div className="p-4 flex items-center justify-between gap-4 select-none">
-                    <div className="flex items-center gap-3 min-w-0">
-                      {/* Drag Handle */}
-                      <div className="cursor-grab active:cursor-grabbing text-white/20 hover:text-white/45 p-1 transition-colors">
-                        <Move size={14} />
-                      </div>
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            {/* Left Inputs */}
+            <div className="lg:col-span-7 space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[11px] font-mono uppercase tracking-wider text-white/50 mb-1.5">
+                    Small Top Badge ("I'M")
+                  </label>
+                  <input
+                    type="text"
+                    value={draftConfig.hero.badge || ""}
+                    onChange={(e) =>
+                      updateDraft((prev) => ({
+                        ...prev,
+                        hero: { ...prev.hero, badge: e.target.value }
+                      }))
+                    }
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-900/90 border border-white/10 text-white text-xs focus:border-emerald-500 focus:outline-none"
+                    placeholder="I'M"
+                  />
+                </div>
 
-                      {/* Quick Thumbnail Preview */}
-                      <div className="relative h-10 w-10 rounded-xl bg-zinc-900 border border-white/5 overflow-hidden shrink-0">
-                        <img src={cls.courseImage} className="h-full w-full object-cover" alt="" />
-                      </div>
+                <div>
+                  <label className="block text-[11px] font-mono uppercase tracking-wider text-white/50 mb-1.5">
+                    Main Headline Title
+                  </label>
+                  <input
+                    type="text"
+                    value={draftConfig.hero.headline || ""}
+                    onChange={(e) =>
+                      updateDraft((prev) => ({
+                        ...prev,
+                        hero: { ...prev.hero, headline: e.target.value }
+                      }))
+                    }
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-900/90 border border-white/10 text-white text-xs font-bold uppercase tracking-wider focus:border-emerald-500 focus:outline-none"
+                    placeholder="ROOZZERO"
+                  />
+                </div>
+              </div>
 
-                      {/* Course Basics */}
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-black text-white tracking-tight truncate">{cls.courseName}</span>
-                          <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${
-                            isPublished
-                              ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/15"
-                              : "bg-amber-500/10 text-amber-400 border border-amber-500/15"
-                          }`}>
-                            {cls.status}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-3 mt-0.5 text-[10px] text-white/40 font-semibold">
-                          <span className="flex items-center gap-1"><User size={10} className="text-indigo-400/70" /> {cls.instructor || "Roozbeh"}</span>
-                          <span>•</span>
-                          <span className="flex items-center gap-1"><DollarSign size={10} className="text-emerald-400/70" /> {cls.price}</span>
-                          <span>•</span>
-                          <span>{cls.sessions} Sessions</span>
-                          <span>•</span>
-                          <span>{syllabusItems.length} syllabus modules</span>
-                        </div>
-                      </div>
-                    </div>
+              <div>
+                <label className="block text-[11px] font-mono uppercase tracking-wider text-white/50 mb-1.5">
+                  Hero Background Portrait Image
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={draftConfig.hero.heroImage || ""}
+                    onChange={(e) =>
+                      updateDraft((prev) => ({
+                        ...prev,
+                        hero: { ...prev.hero, heroImage: e.target.value }
+                      }))
+                    }
+                    className="flex-1 px-3.5 py-2.5 rounded-xl bg-zinc-900/90 border border-white/10 text-white text-xs font-mono focus:border-emerald-500 focus:outline-none"
+                    placeholder="/path or https://image-url"
+                  />
+                  <button
+                    onClick={() =>
+                      setImagePickerTarget({
+                        fieldPath: "hero.heroImage",
+                        currentValue: draftConfig.hero.heroImage
+                      })
+                    }
+                    className="px-3.5 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold text-white flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <ImageIcon size={14} className="text-emerald-400" />
+                    Browse
+                  </button>
+                </div>
+              </div>
 
-                    {/* Quick Row Actions */}
-                    <div className="flex items-center gap-1 shrink-0">
-                      
-                      {/* Move controls for accessibility */}
-                      <div className="flex items-center gap-0.5 mr-2">
-                        <button
-                          onClick={() => moveOrder(idx, "up")}
-                          disabled={idx === 0}
-                          className="p-1.5 text-white/20 hover:text-white/60 disabled:opacity-20 cursor-pointer"
-                          title="Move Up"
-                        >
-                          <ArrowUp size={12} />
-                        </button>
-                        <button
-                          onClick={() => moveOrder(idx, "down")}
-                          disabled={idx === draftClasses.length - 1}
-                          className="p-1.5 text-white/20 hover:text-white/60 disabled:opacity-20 cursor-pointer"
-                          title="Move Down"
-                        >
-                          <ArrowDown size={12} />
-                        </button>
-                      </div>
+              {/* Animated Typing Phrases Manager */}
+              <div className="p-4 rounded-2xl bg-zinc-950/70 border border-white/[0.06] space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                      <Terminal size={14} className="text-emerald-400" />
+                      Rotating Typing Subtitles
+                    </span>
+                    <p className="text-[11px] text-white/40">
+                      These dynamic phrases type out automatically next to the glowing emerald status pulse.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      updateDraft((prev) => ({
+                        ...prev,
+                        hero: {
+                          ...prev.hero,
+                          animatedTexts: [...prev.hero.animatedTexts, "New Engineering Skill"]
+                        }
+                      }));
+                      showCustomToast("Added typing phrase.", "info");
+                    }}
+                    className="px-2.5 py-1 bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-300 rounded-lg text-xs flex items-center gap-1 cursor-pointer"
+                  >
+                    <Plus size={12} />
+                    Add Phrase
+                  </button>
+                </div>
 
+                <div className="space-y-2">
+                  {draftConfig.hero.animatedTexts.map((txt, idx) => (
+                    <div key={idx} className="flex items-center gap-2">
+                      <span className="text-[10px] font-mono text-white/30 w-4 text-center">
+                        {idx + 1}
+                      </span>
+                      <input
+                        type="text"
+                        value={txt}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          updateDraft((prev) => {
+                            const arr = [...prev.hero.animatedTexts];
+                            arr[idx] = val;
+                            return { ...prev, hero: { ...prev.hero, animatedTexts: arr } };
+                          });
+                        }}
+                        className="flex-1 px-3 py-2 rounded-lg bg-zinc-900 border border-white/10 text-white text-xs font-mono focus:border-emerald-500 focus:outline-none"
+                      />
                       <button
-                        onClick={() => setExpandedCourseId(isExpanded ? null : cls.id)}
-                        className="p-2 bg-white/[0.02] border border-white/5 hover:border-white/10 hover:bg-white/[0.04] text-white/60 hover:text-white rounded-xl transition-all flex items-center gap-1 cursor-pointer"
-                      >
-                        {isExpanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
-                        <span className="text-[10px] font-bold px-1">{isExpanded ? "Collapse" : "Edit Card"}</span>
-                      </button>
-
-                      <button
-                        onClick={() => setDeleteTargetId(cls.id)}
-                        className="p-2 bg-rose-500/5 hover:bg-rose-500/15 border border-rose-500/10 hover:border-rose-500/25 text-rose-400 rounded-xl transition-all cursor-pointer"
-                        title="Delete Course Card"
+                        onClick={() => {
+                          if (draftConfig.hero.animatedTexts.length <= 1) {
+                            showCustomToast("Must have at least one phrase.", "warning");
+                            return;
+                          }
+                          updateDraft((prev) => ({
+                            ...prev,
+                            hero: {
+                              ...prev.hero,
+                              animatedTexts: prev.hero.animatedTexts.filter((_, i) => i !== idx)
+                            }
+                          }));
+                        }}
+                        className="p-2 text-white/30 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors cursor-pointer"
                       >
                         <Trash2 size={13} />
                       </button>
                     </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Right Live Mini Preview */}
+            <div className="lg:col-span-5 space-y-3">
+              <span className="text-[10px] font-mono text-white/40 uppercase tracking-widest flex items-center gap-1.5">
+                <Eye size={12} className="text-emerald-400" />
+                Live Preview
+              </span>
+              <div className="relative aspect-[16/10] w-full rounded-2xl overflow-hidden border border-white/10 bg-black shadow-2xl flex flex-col justify-end p-5">
+                <img
+                  src={draftConfig.hero.heroImage}
+                  alt="Preview"
+                  className="absolute inset-0 w-full h-full object-cover opacity-60 mix-blend-luminosity filter brightness-75"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
+                <div className="relative z-10 text-left">
+                  <span className="text-[10px] font-mono text-white/50 tracking-widest uppercase">
+                    {draftConfig.hero.badge}
+                  </span>
+                  <h3 className="text-2xl font-black text-white tracking-widest uppercase mt-0.5">
+                    {draftConfig.hero.headline}
+                  </h3>
+                  <div className="flex items-center gap-1.5 mt-2">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                    <span className="font-mono text-xs text-emerald-400 uppercase font-bold">
+                      {draftConfig.hero.animatedTexts[0] || "Full Stack Engineering"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================================
+          SECTION 2: WHO'S ME / ABOUT SECTION MANAGEMENT
+         ========================================================================= */}
+      {activeSection === "about" && (
+        <div className="space-y-6">
+          <div className="flex items-center justify-between border-b border-white/[0.04] pb-3">
+            <div>
+              <h2 className="text-base font-bold text-white flex items-center gap-2">
+                <User size={16} className="text-blue-400" />
+                Who's Me / About Section &amp; Bento Cards
+              </h2>
+              <p className="text-xs text-white/50">
+                Edit bio presentation, CV &amp; GitHub links, bio portrait, and the 4 statistics Bento cards.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            {/* Left Bio Details */}
+            <div className="lg:col-span-6 space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-mono uppercase tracking-wider text-white/50 mb-1.5">
+                    Badge Pill
+                  </label>
+                  <input
+                    type="text"
+                    value={draftConfig.aboutMe.badge}
+                    onChange={(e) =>
+                      updateDraft((prev) => ({
+                        ...prev,
+                        aboutMe: { ...prev.aboutMe, badge: e.target.value }
+                      }))
+                    }
+                    className="w-full px-3.5 py-2 rounded-xl bg-zinc-900 border border-white/10 text-white text-xs focus:border-blue-500 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-mono uppercase tracking-wider text-white/50 mb-1.5">
+                    Section Title
+                  </label>
+                  <input
+                    type="text"
+                    value={draftConfig.aboutMe.title}
+                    onChange={(e) =>
+                      updateDraft((prev) => ({
+                        ...prev,
+                        aboutMe: { ...prev.aboutMe, title: e.target.value }
+                      }))
+                    }
+                    className="w-full px-3.5 py-2 rounded-xl bg-zinc-900 border border-white/10 text-white text-xs font-bold focus:border-blue-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-mono uppercase tracking-wider text-white/50 mb-1.5">
+                  Bio / Introduction Text
+                </label>
+                <textarea
+                  rows={3}
+                  value={draftConfig.aboutMe.bio}
+                  onChange={(e) =>
+                    updateDraft((prev) => ({
+                      ...prev,
+                      aboutMe: { ...prev.aboutMe, bio: e.target.value }
+                    }))
+                  }
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-900 border border-white/10 text-white text-xs leading-relaxed focus:border-blue-500 focus:outline-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-mono uppercase tracking-wider text-white/50 mb-1.5">
+                    CV Download Link
+                  </label>
+                  <input
+                    type="text"
+                    value={draftConfig.aboutMe.cvUrl}
+                    onChange={(e) =>
+                      updateDraft((prev) => ({
+                        ...prev,
+                        aboutMe: { ...prev.aboutMe, cvUrl: e.target.value }
+                      }))
+                    }
+                    className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-white/10 text-white text-xs font-mono focus:border-blue-500 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-mono uppercase tracking-wider text-white/50 mb-1.5">
+                    GitHub URL
+                  </label>
+                  <input
+                    type="text"
+                    value={draftConfig.aboutMe.githubUrl}
+                    onChange={(e) =>
+                      updateDraft((prev) => ({
+                        ...prev,
+                        aboutMe: { ...prev.aboutMe, githubUrl: e.target.value }
+                      }))
+                    }
+                    className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-white/10 text-white text-xs font-mono focus:border-blue-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-mono uppercase tracking-wider text-white/50 mb-1.5">
+                  Bio Portrait Photo
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={draftConfig.aboutMe.portraitImage}
+                    onChange={(e) =>
+                      updateDraft((prev) => ({
+                        ...prev,
+                        aboutMe: { ...prev.aboutMe, portraitImage: e.target.value }
+                      }))
+                    }
+                    className="flex-1 px-3 py-2 rounded-xl bg-zinc-900 border border-white/10 text-white text-xs font-mono focus:border-blue-500 focus:outline-none"
+                  />
+                  <button
+                    onClick={() =>
+                      setImagePickerTarget({
+                        fieldPath: "aboutMe.portraitImage",
+                        currentValue: draftConfig.aboutMe.portraitImage
+                      })
+                    }
+                    className="px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold text-white flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <ImageIcon size={14} className="text-blue-400" />
+                    Browse
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Right: Bio Image Preview */}
+            <div className="lg:col-span-6 flex flex-col justify-center">
+              <span className="text-[10px] font-mono text-white/40 uppercase tracking-widest mb-2 flex items-center gap-1.5">
+                <Eye size={12} className="text-blue-400" />
+                Portrait Preview
+              </span>
+              <div className="relative h-64 rounded-2xl overflow-hidden border border-white/10 bg-zinc-950 flex items-center justify-center shadow-xl">
+                <img
+                  src={draftConfig.aboutMe.portraitImage}
+                  alt="Portrait preview"
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+                <div className="absolute bottom-3 left-3 text-left">
+                  <span className="text-xs font-bold text-white block">Roozbeh Tavakoli</span>
+                  <span className="text-[10px] font-mono text-white/60">Frontend Developer &amp; Security Engineer</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Bento Stats Cards Manager */}
+          <div className="pt-4 border-t border-white/[0.06] space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                  <Award size={15} className="text-emerald-400" />
+                  Bento Grid Cards ({draftConfig.aboutMe.cards.length} Cards)
+                </h3>
+                <p className="text-xs text-white/50">
+                  Manage the cards displayed next to the bio photo. Edit values, titles, badges, and bottom tags.
+                </p>
+              </div>
+
+              <button
+                onClick={() => {
+                  const newCard: CMSAboutCard = {
+                    id: `card-${Date.now()}`,
+                    tag: "SPECIALTY",
+                    badgeText: "High Impact",
+                    badgeIcon: "Sparkles",
+                    statNumber: "99%",
+                    statSubtitle: "Satisfaction & Excellence",
+                    footerLabel: "Performance",
+                    footerValue: "Verified"
+                  };
+                  updateDraft((prev) => ({
+                    ...prev,
+                    aboutMe: {
+                      ...prev.aboutMe,
+                      cards: [...prev.aboutMe.cards, newCard]
+                    }
+                  }));
+                  showCustomToast("New Bento card added!", "success");
+                }}
+                className="px-3 py-1.5 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-300 text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+              >
+                <Plus size={13} />
+                Add Bento Card
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {draftConfig.aboutMe.cards.map((card, idx) => (
+                <div
+                  key={card.id}
+                  className="p-4 rounded-2xl bg-zinc-950/80 border border-white/[0.08] hover:border-emerald-500/30 transition-all space-y-3 shadow-lg"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-white/5 text-emerald-400 font-bold">
+                      Card #{idx + 1}
+                    </span>
+                    <button
+                      onClick={() =>
+                        setDeleteDialog({
+                          type: "card",
+                          id: card.id,
+                          title: card.tag
+                        })
+                      }
+                      className="p-1.5 text-white/30 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors cursor-pointer"
+                    >
+                      <Trash2 size={13} />
+                    </button>
                   </div>
 
-                  {/* Expanded Form Section */}
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <div>
+                      <label className="block text-[10px] font-mono text-white/40 uppercase mb-1">
+                        Header Tag
+                      </label>
+                      <input
+                        type="text"
+                        value={card.tag}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          updateDraft((prev) => ({
+                            ...prev,
+                            aboutMe: {
+                              ...prev.aboutMe,
+                              cards: prev.aboutMe.cards.map((c) =>
+                                c.id === card.id ? { ...c, tag: val } : c
+                              )
+                            }
+                          }));
+                        }}
+                        className="w-full px-2.5 py-1.5 rounded-lg bg-zinc-900 border border-white/10 text-white text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-mono text-white/40 uppercase mb-1">
+                        Badge Text
+                      </label>
+                      <input
+                        type="text"
+                        value={card.badgeText}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          updateDraft((prev) => ({
+                            ...prev,
+                            aboutMe: {
+                              ...prev.aboutMe,
+                              cards: prev.aboutMe.cards.map((c) =>
+                                c.id === card.id ? { ...c, badgeText: val } : c
+                              )
+                            }
+                          }));
+                        }}
+                        className="w-full px-2.5 py-1.5 rounded-lg bg-zinc-900 border border-white/10 text-emerald-400 text-xs font-mono"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <div>
+                      <label className="block text-[10px] font-mono text-white/40 uppercase mb-1">
+                        Big Stat Number / Text
+                      </label>
+                      <input
+                        type="text"
+                        value={card.statNumber}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          updateDraft((prev) => ({
+                            ...prev,
+                            aboutMe: {
+                              ...prev.aboutMe,
+                              cards: prev.aboutMe.cards.map((c) =>
+                                c.id === card.id ? { ...c, statNumber: val } : c
+                              )
+                            }
+                          }));
+                        }}
+                        className="w-full px-2.5 py-1.5 rounded-lg bg-zinc-900 border border-white/10 text-white text-base font-bold"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-mono text-white/40 uppercase mb-1">
+                        Stat Subtitle
+                      </label>
+                      <input
+                        type="text"
+                        value={card.statSubtitle}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          updateDraft((prev) => ({
+                            ...prev,
+                            aboutMe: {
+                              ...prev.aboutMe,
+                              cards: prev.aboutMe.cards.map((c) =>
+                                c.id === card.id ? { ...c, statSubtitle: val } : c
+                              )
+                            }
+                          }));
+                        }}
+                        className="w-full px-2.5 py-1.5 rounded-lg bg-zinc-900 border border-white/10 text-white/80 text-xs"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2.5 pt-2 border-t border-white/5">
+                    <div>
+                      <label className="block text-[10px] font-mono text-white/40 uppercase mb-1">
+                        Footer Left Label
+                      </label>
+                      <input
+                        type="text"
+                        value={card.footerLabel}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          updateDraft((prev) => ({
+                            ...prev,
+                            aboutMe: {
+                              ...prev.aboutMe,
+                              cards: prev.aboutMe.cards.map((c) =>
+                                c.id === card.id ? { ...c, footerLabel: val } : c
+                              )
+                            }
+                          }));
+                        }}
+                        className="w-full px-2 py-1 rounded bg-zinc-900 border border-white/10 text-white/60 text-[11px]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-mono text-white/40 uppercase mb-1">
+                        Footer Right Status
+                      </label>
+                      <input
+                        type="text"
+                        value={card.footerValue}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          updateDraft((prev) => ({
+                            ...prev,
+                            aboutMe: {
+                              ...prev.aboutMe,
+                              cards: prev.aboutMe.cards.map((c) =>
+                                c.id === card.id ? { ...c, footerValue: val } : c
+                              )
+                            }
+                          }));
+                        }}
+                        className="w-full px-2 py-1 rounded bg-zinc-900 border border-white/10 text-emerald-400 text-[11px]"
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================================
+          SECTION 3: SKILLS & STACK MANAGEMENT
+         ========================================================================= */}
+      {activeSection === "skills" && (
+        <div className="space-y-6">
+          <div className="flex items-center justify-between border-b border-white/[0.04] pb-3">
+            <div>
+              <h2 className="text-base font-bold text-white flex items-center gap-2">
+                <Zap size={16} className="text-amber-400" />
+                Skills &amp; Tech Stack Cards
+              </h2>
+              <p className="text-xs text-white/50">
+                Configure skill items, proficiencies, progress bars, level badges, and category classifications.
+              </p>
+            </div>
+            <button
+              onClick={() => {
+                const newSkill: CMSSkillItem = {
+                  id: `sk-${Date.now()}`,
+                  name: "Docker & Kubernetes",
+                  category: "backend",
+                  percentage: 85,
+                  levelBadge: "Container Orchestration",
+                  description: "Containerization, microservice deployment, and cluster auto-scaling."
+                };
+                updateDraft((prev) => ({
+                  ...prev,
+                  skills: {
+                    ...prev.skills,
+                    skills: [...prev.skills.skills, newSkill]
+                  }
+                }));
+                showCustomToast("New skill card added!", "success");
+              }}
+              className="px-3.5 py-1.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-300 text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+            >
+              <Plus size={13} />
+              Add Skill Card
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <label className="block text-[11px] font-mono uppercase tracking-wider text-white/50 mb-1.5">
+                Badge Pill
+              </label>
+              <input
+                type="text"
+                value={draftConfig.skills.badge}
+                onChange={(e) =>
+                  updateDraft((prev) => ({
+                    ...prev,
+                    skills: { ...prev.skills, badge: e.target.value }
+                  }))
+                }
+                className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-white/10 text-white text-xs"
+              />
+            </div>
+            <div className="sm:col-span-2">
+              <label className="block text-[11px] font-mono uppercase tracking-wider text-white/50 mb-1.5">
+                Section Heading Title
+              </label>
+              <input
+                type="text"
+                value={draftConfig.skills.title}
+                onChange={(e) =>
+                  updateDraft((prev) => ({
+                    ...prev,
+                    skills: { ...prev.skills, title: e.target.value }
+                  }))
+                }
+                className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-white/10 text-white text-xs font-bold"
+              />
+            </div>
+          </div>
+
+          {/* Skills Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {draftConfig.skills.skills.map((skill, idx) => (
+              <div
+                key={skill.id}
+                className="p-4 rounded-2xl bg-zinc-950/80 border border-white/[0.08] hover:border-amber-500/30 transition-all space-y-3"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-white/5 text-amber-400 font-bold">
+                      #{idx + 1}
+                    </span>
+                    <input
+                      type="text"
+                      value={skill.name}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        updateDraft((prev) => ({
+                          ...prev,
+                          skills: {
+                            ...prev.skills,
+                            skills: prev.skills.skills.map((s) =>
+                              s.id === skill.id ? { ...s, name: val } : s
+                            )
+                          }
+                        }));
+                      }}
+                      className="px-2 py-1 rounded bg-zinc-900 border border-white/10 text-white font-bold text-xs"
+                    />
+                  </div>
+
+                  <div className="flex items-center gap-1.5">
+                    <select
+                      value={skill.category}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        updateDraft((prev) => ({
+                          ...prev,
+                          skills: {
+                            ...prev.skills,
+                            skills: prev.skills.skills.map((s) =>
+                              s.id === skill.id ? { ...s, category: val } : s
+                            )
+                          }
+                        }));
+                      }}
+                      className="px-2 py-1 rounded bg-zinc-900 border border-white/10 text-white/70 text-[10px] font-mono"
+                    >
+                      <option value="frontend">Frontend</option>
+                      <option value="backend">Backend</option>
+                      <option value="security">Security</option>
+                    </select>
+
+                    <button
+                      onClick={() =>
+                        setDeleteDialog({
+                          type: "skill",
+                          id: skill.id,
+                          title: skill.name
+                        })
+                      }
+                      className="p-1.5 text-white/30 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors cursor-pointer"
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Percentage Slider & Input */}
+                <div className="space-y-1.5">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-[11px] font-mono text-white/40">Proficiency:</span>
+                    <span className="font-mono text-emerald-400 font-bold">{skill.percentage}%</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="10"
+                    max="100"
+                    value={skill.percentage}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value, 10);
+                      updateDraft((prev) => ({
+                        ...prev,
+                        skills: {
+                          ...prev.skills,
+                          skills: prev.skills.skills.map((s) =>
+                            s.id === skill.id ? { ...s, percentage: val } : s
+                          )
+                        }
+                      }));
+                    }}
+                    className="w-full accent-emerald-500 cursor-pointer"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-mono text-white/40 uppercase mb-1">
+                    Level Badge
+                  </label>
+                  <input
+                    type="text"
+                    value={skill.levelBadge}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      updateDraft((prev) => ({
+                        ...prev,
+                        skills: {
+                          ...prev.skills,
+                          skills: prev.skills.skills.map((s) =>
+                            s.id === skill.id ? { ...s, levelBadge: val } : s
+                          )
+                        }
+                      }));
+                    }}
+                    className="w-full px-2.5 py-1.5 rounded-lg bg-zinc-900 border border-white/10 text-emerald-400 text-xs font-mono"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-mono text-white/40 uppercase mb-1">
+                    Description
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={skill.description}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      updateDraft((prev) => ({
+                        ...prev,
+                        skills: {
+                          ...prev.skills,
+                          skills: prev.skills.skills.map((s) =>
+                            s.id === skill.id ? { ...s, description: val } : s
+                          )
+                        }
+                      }));
+                    }}
+                    className="w-full px-2.5 py-1.5 rounded-lg bg-zinc-900 border border-white/10 text-white/70 text-xs leading-relaxed"
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================================
+          SECTION 4: FEATURED PROJECTS MANAGEMENT
+         ========================================================================= */}
+      {activeSection === "projects" && (
+        <div className="space-y-6">
+          <div className="flex items-center justify-between border-b border-white/[0.04] pb-3">
+            <div>
+              <h2 className="text-base font-bold text-white flex items-center gap-2">
+                <FolderOpen size={16} className="text-purple-400" />
+                Featured Projects &amp; Systems
+              </h2>
+              <p className="text-xs text-white/50">
+                Manage project tabs (TeacherShow / Aegis Sentinel / Nexus Engine), cover photos, disabled preview state, and descriptions.
+              </p>
+            </div>
+            <button
+              onClick={() => {
+                const newProj: CMSProjectItem = {
+                  id: `proj-${Date.now()}`,
+                  tabLabel: "New Project",
+                  title: "New Flagship Engineering Project",
+                  badge: "Full-Stack System",
+                  description: "High-performance web architecture with modern reactive state management.",
+                  coverImage: "https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop",
+                  tags: ["React", "TypeScript", "Vite"],
+                  liveDemoUrl: "#",
+                  githubUrl: "https://github.com/roozzero",
+                  isPreviewDisabled: false
+                };
+                updateDraft((prev) => ({
+                  ...prev,
+                  projects: {
+                    ...prev.projects,
+                    projects: [...prev.projects.projects, newProj]
+                  }
+                }));
+                showCustomToast("New project added!", "success");
+              }}
+              className="px-3.5 py-1.5 rounded-xl bg-purple-500/15 hover:bg-purple-500/25 border border-purple-500/30 text-purple-300 text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+            >
+              <Plus size={13} />
+              Add Project
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-[11px] font-mono uppercase tracking-wider text-white/50 mb-1.5">
+                Badge Pill
+              </label>
+              <input
+                type="text"
+                value={draftConfig.projects.badge}
+                onChange={(e) =>
+                  updateDraft((prev) => ({
+                    ...prev,
+                    projects: { ...prev.projects, badge: e.target.value }
+                  }))
+                }
+                className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-white/10 text-white text-xs"
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] font-mono uppercase tracking-wider text-white/50 mb-1.5">
+                Section Title
+              </label>
+              <input
+                type="text"
+                value={draftConfig.projects.title}
+                onChange={(e) =>
+                  updateDraft((prev) => ({
+                    ...prev,
+                    projects: { ...prev.projects, title: e.target.value }
+                  }))
+                }
+                className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-white/10 text-white text-xs font-bold"
+              />
+            </div>
+          </div>
+
+          {/* Projects List */}
+          <div className="space-y-4">
+            {draftConfig.projects.projects.map((proj, idx) => (
+              <div
+                key={proj.id}
+                className="p-5 rounded-2xl bg-zinc-950/90 border border-white/[0.08] hover:border-purple-500/30 transition-all space-y-4 shadow-xl"
+              >
+                <div className="flex items-center justify-between border-b border-white/5 pb-3">
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs font-mono px-2.5 py-0.5 rounded-full bg-purple-500/15 text-purple-300 font-bold border border-purple-500/30">
+                      Tab #{idx + 1}: {proj.tabLabel}
+                    </span>
+                    {proj.isPreviewDisabled && (
+                      <span className="inline-flex items-center gap-1 text-[10px] font-mono px-2 py-0.5 rounded bg-amber-500/15 border border-amber-500/30 text-amber-300">
+                        <Lock size={10} />
+                        Preview Disabled
+                      </span>
+                    )}
+                  </div>
+
+                  <button
+                    onClick={() =>
+                      setDeleteDialog({
+                        type: "project",
+                        id: proj.id,
+                        title: proj.title
+                      })
+                    }
+                    className="p-1.5 text-white/30 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors cursor-pointer"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-mono text-white/40 uppercase mb-1">
+                      Tab Switcher Label
+                    </label>
+                    <input
+                      type="text"
+                      value={proj.tabLabel}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        updateDraft((prev) => ({
+                          ...prev,
+                          projects: {
+                            ...prev.projects,
+                            projects: prev.projects.projects.map((p) =>
+                              p.id === proj.id ? { ...p, tabLabel: val } : p
+                            )
+                          }
+                        }));
+                      }}
+                      className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-white/10 text-white text-xs font-bold"
+                    />
+                  </div>
+
+                  <div className="md:col-span-2">
+                    <label className="block text-[10px] font-mono text-white/40 uppercase mb-1">
+                      Full Project Title
+                    </label>
+                    <input
+                      type="text"
+                      value={proj.title}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        updateDraft((prev) => ({
+                          ...prev,
+                          projects: {
+                            ...prev.projects,
+                            projects: prev.projects.projects.map((p) =>
+                              p.id === proj.id ? { ...p, title: val } : p
+                            )
+                          }
+                        }));
+                      }}
+                      className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-white/10 text-white text-xs font-bold"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-mono text-white/40 uppercase mb-1">
+                    Description Text
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={proj.description}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      updateDraft((prev) => ({
+                        ...prev,
+                        projects: {
+                          ...prev.projects,
+                          projects: prev.projects.projects.map((p) =>
+                            p.id === proj.id ? { ...p, description: val } : p
+                          )
+                        }
+                      }));
+                    }}
+                    className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-white/10 text-white text-xs leading-relaxed"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-mono text-white/40 uppercase mb-1">
+                      Cover Banner Image URL
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={proj.coverImage}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          updateDraft((prev) => ({
+                            ...prev,
+                            projects: {
+                              ...prev.projects,
+                              projects: prev.projects.projects.map((p) =>
+                                p.id === proj.id ? { ...p, coverImage: val } : p
+                              )
+                            }
+                          }));
+                        }}
+                        className="flex-1 px-3 py-2 rounded-xl bg-zinc-900 border border-white/10 text-white text-xs font-mono"
+                      />
+                      <button
+                        onClick={() =>
+                          setImagePickerTarget({
+                            fieldPath: `projects.projects.${idx}.coverImage`,
+                            currentValue: proj.coverImage
+                          })
+                        }
+                        className="px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold text-white flex items-center gap-1 cursor-pointer"
+                      >
+                        <ImageIcon size={13} className="text-purple-400" />
+                        Browse
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Disable Preview Toggle */}
+                  <div className="flex flex-col justify-end">
+                    <label className="block text-[10px] font-mono text-white/40 uppercase mb-1">
+                      Project Live Preview Button State
+                    </label>
+                    <div className="flex items-center gap-3 h-[42px] px-3.5 rounded-xl bg-zinc-900 border border-white/10">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          updateDraft((prev) => ({
+                            ...prev,
+                            projects: {
+                              ...prev.projects,
+                              projects: prev.projects.projects.map((p) =>
+                                p.id === proj.id ? { ...p, isPreviewDisabled: !p.isPreviewDisabled } : p
+                              )
+                            }
+                          }));
+                        }}
+                        className={`flex items-center gap-2 text-xs font-bold cursor-pointer ${
+                          proj.isPreviewDisabled ? "text-amber-400" : "text-emerald-400"
+                        }`}
+                      >
+                        {proj.isPreviewDisabled ? (
+                          <>
+                            <Lock size={14} />
+                            <span>Preview Disabled (Requested for Project 1)</span>
+                          </>
+                        ) : (
+                          <>
+                            <Unlock size={14} />
+                            <span>Preview Enabled (Active)</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================================
+          SECTION 5: CLASSES & CURRICULUM MANAGEMENT
+         ========================================================================= */}
+      {activeSection === "classes" && (
+        <div className="space-y-6">
+          <div className="flex items-center justify-between border-b border-white/[0.04] pb-3">
+            <div>
+              <h2 className="text-base font-bold text-white flex items-center gap-2">
+                <BookOpen size={16} className="text-emerald-400" />
+                Classes &amp; Academy Courses
+              </h2>
+              <p className="text-xs text-white/50">
+                Manage course cards, prices, instructor names, sessions count, banner images, and full syllabus modules.
+              </p>
+            </div>
+
+            <button
+              onClick={() => {
+                const nextOrder = draftConfig.classes.length + 1;
+                const newCourse: CMSClass = {
+                  id: `cl-${Date.now()}`,
+                  courseImage: "https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop",
+                  courseName: "New High-Fidelity Masterclass",
+                  instructor: "Roozbeh",
+                  price: "$199",
+                  shortDescription: "A fresh course focusing on modular design architecture and deployment patterns.",
+                  description: "A fresh course focusing on modular design architecture and deployment patterns.",
+                  sessions: 16,
+                  status: "Published",
+                  displayOrder: nextOrder,
+                  tags: ["React", "TypeScript", "Vite"] as any,
+                  syllabus: [
+                    { id: `s1-${Date.now()}`, title: "Module 1: Layout Fundamentals", description: "Structuring pixel-perfect CSS grids and flex containers.", duration: "Session 1" }
+                  ] as any
+                };
+                updateDraft((prev) => ({
+                  ...prev,
+                  classes: [...prev.classes, newCourse]
+                }));
+                setExpandedCourseId(newCourse.id);
+                showCustomToast("New course card added!", "success");
+              }}
+              className="px-3.5 py-1.5 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-300 text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+            >
+              <Plus size={13} />
+              Add Course Card
+            </button>
+          </div>
+
+          {/* Classes Header Info */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <label className="block text-[11px] font-mono uppercase tracking-wider text-white/50 mb-1.5">
+                Badge Pill
+              </label>
+              <input
+                type="text"
+                value={draftConfig.classesHeader?.badge || "Academy"}
+                onChange={(e) =>
+                  updateDraft((prev) => ({
+                    ...prev,
+                    classesHeader: {
+                      badge: e.target.value,
+                      title: prev.classesHeader?.title || "Latest Classes",
+                      description: prev.classesHeader?.description || ""
+                    }
+                  }))
+                }
+                className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-white/10 text-white text-xs"
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] font-mono uppercase tracking-wider text-white/50 mb-1.5">
+                Section Title
+              </label>
+              <input
+                type="text"
+                value={draftConfig.classesHeader?.title || "Latest Classes"}
+                onChange={(e) =>
+                  updateDraft((prev) => ({
+                    ...prev,
+                    classesHeader: {
+                      badge: prev.classesHeader?.badge || "Academy",
+                      title: e.target.value,
+                      description: prev.classesHeader?.description || ""
+                    }
+                  }))
+                }
+                className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-white/10 text-white text-xs font-bold"
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] font-mono uppercase tracking-wider text-white/50 mb-1.5">
+                Subtitle Description
+              </label>
+              <input
+                type="text"
+                value={draftConfig.classesHeader?.description || "Explore our dynamic curriculum, interactive resources, and live lecture schedules."}
+                onChange={(e) =>
+                  updateDraft((prev) => ({
+                    ...prev,
+                    classesHeader: {
+                      badge: prev.classesHeader?.badge || "Academy",
+                      title: prev.classesHeader?.title || "Latest Classes",
+                      description: e.target.value
+                    }
+                  }))
+                }
+                className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-white/10 text-white text-xs"
+              />
+            </div>
+          </div>
+
+          {/* Courses Accordion List */}
+          <div className="space-y-4">
+            {draftConfig.classes.map((cls, idx) => {
+              const isExpanded = expandedCourseId === cls.id;
+              const syllabusItems = (cls as any).syllabus || [];
+
+              return (
+                <div
+                  key={cls.id}
+                  className={`border rounded-2xl transition-all duration-300 overflow-hidden ${
+                    isExpanded
+                      ? "bg-zinc-950/95 border-emerald-500/30 shadow-2xl"
+                      : "bg-[#0b0b10] border-white/[0.06] hover:border-white/[0.12]"
+                  }`}
+                >
+                  {/* Summary Bar */}
+                  <div
+                    onClick={() => setExpandedCourseId(isExpanded ? null : cls.id)}
+                    className="p-4 flex items-center justify-between cursor-pointer select-none"
+                  >
+                    <div className="flex items-center gap-3.5 min-w-0">
+                      <div className="w-14 h-10 rounded-lg overflow-hidden border border-white/10 shrink-0 bg-zinc-900">
+                        <img src={cls.courseImage} alt={cls.courseName} className="w-full h-full object-cover" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-bold text-white truncate">{cls.courseName}</span>
+                          <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-emerald-500/10 text-emerald-400 font-bold">
+                            {cls.price}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-white/40 truncate">
+                          {cls.instructor} • {cls.sessions || 16} Sessions • {syllabusItems.length} Syllabus Modules
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      {/* Move buttons */}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (idx === 0) return;
+                          const list = [...draftConfig.classes];
+                          const temp = list[idx];
+                          list[idx] = list[idx - 1];
+                          list[idx - 1] = temp;
+                          updateDraft((prev) => ({ ...prev, classes: list }));
+                        }}
+                        disabled={idx === 0}
+                        className="p-1.5 text-white/40 hover:text-white disabled:opacity-20"
+                      >
+                        <ArrowUp size={13} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (idx === draftConfig.classes.length - 1) return;
+                          const list = [...draftConfig.classes];
+                          const temp = list[idx];
+                          list[idx] = list[idx + 1];
+                          list[idx + 1] = temp;
+                          updateDraft((prev) => ({ ...prev, classes: list }));
+                        }}
+                        disabled={idx === draftConfig.classes.length - 1}
+                        className="p-1.5 text-white/40 hover:text-white disabled:opacity-20"
+                      >
+                        <ArrowDown size={13} />
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDeleteDialog({
+                            type: "course",
+                            id: cls.id,
+                            title: cls.courseName
+                          });
+                        }}
+                        className="p-1.5 text-white/30 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors cursor-pointer"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+
+                      {isExpanded ? <ChevronUp size={16} className="text-emerald-400 ml-1" /> : <ChevronDown size={16} className="text-white/40 ml-1" />}
+                    </div>
+                  </div>
+
+                  {/* Expanded Edit Form */}
                   <AnimatePresence>
                     {isExpanded && (
                       <motion.div
-                        initial={{ height: 0 }}
-                        animate={{ height: "auto" }}
-                        exit={{ height: 0 }}
-                        transition={{ duration: 0.3, ease: "easeInOut" }}
-                        className="border-t border-white/[0.04] bg-black/35"
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        className="p-5 border-t border-white/5 space-y-4 bg-black/40"
                       >
-                        <div className="p-5 space-y-5">
-                          
-                          {/* Part A: Basic Configuration Row */}
-                          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                            
-                            {/* Course Title */}
-                            <div className="md:col-span-2 flex flex-col gap-1.5">
-                              <label className="text-[10px] uppercase font-black tracking-widest text-white/40">Course Name</label>
-                              <input
-                                type="text"
-                                value={cls.courseName}
-                                onChange={(e) => handleFieldChange(cls.id, "courseName", e.target.value)}
-                                className="w-full bg-zinc-900/50 border border-white/[0.06] focus:border-indigo-500 rounded-xl px-3 py-2 text-xs text-white focus:outline-none transition-all"
-                                placeholder="Enter course name..."
-                              />
-                            </div>
-
-                            {/* Instructor Name */}
-                            <div className="flex flex-col gap-1.5">
-                              <label className="text-[10px] uppercase font-black tracking-widest text-white/40">Instructor</label>
-                              <input
-                                type="text"
-                                value={cls.instructor || "Roozbeh"}
-                                onChange={(e) => handleFieldChange(cls.id, "instructor", e.target.value)}
-                                className="w-full bg-zinc-900/50 border border-white/[0.06] focus:border-indigo-500 rounded-xl px-3 py-2 text-xs text-white focus:outline-none transition-all"
-                                placeholder="Instructor name..."
-                              />
-                            </div>
-
-                            {/* Course Status */}
-                            <div className="flex flex-col gap-1.5">
-                              <label className="text-[10px] uppercase font-black tracking-widest text-white/40">Status</label>
-                              <select
-                                value={cls.status}
-                                onChange={(e) => handleFieldChange(cls.id, "status", e.target.value)}
-                                className="w-full bg-zinc-900/50 border border-white/[0.06] focus:border-indigo-500 rounded-xl px-3 py-2 text-xs text-indigo-400 font-bold focus:outline-none transition-all cursor-pointer"
-                              >
-                                <option value="Published">Published (Active on page)</option>
-                                <option value="Draft">Draft (Invisible on page)</option>
-                                <option value="Hidden">Hidden (Hidden)</option>
-                              </select>
-                            </div>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                          <div>
+                            <label className="block text-[10px] font-mono text-white/40 uppercase mb-1">
+                              Course Name
+                            </label>
+                            <input
+                              type="text"
+                              value={cls.courseName}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                updateDraft((prev) => ({
+                                  ...prev,
+                                  classes: prev.classes.map((c) => (c.id === cls.id ? { ...c, courseName: val } : c))
+                                }));
+                              }}
+                              className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-white/10 text-white text-xs font-bold"
+                            />
                           </div>
 
-                          {/* Part B: Layout metadata row */}
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            
-                            {/* Price */}
-                            <div className="flex flex-col gap-1.5">
-                              <label className="text-[10px] uppercase font-black tracking-widest text-white/40">Price (USD)</label>
-                              <input
-                                type="text"
-                                value={cls.price}
-                                onChange={(e) => handleFieldChange(cls.id, "price", e.target.value)}
-                                className="w-full bg-zinc-900/50 border border-white/[0.06] focus:border-indigo-500 rounded-xl px-3 py-2 text-xs text-white focus:outline-none transition-all"
-                                placeholder="e.g. $199"
-                              />
-                            </div>
-
-                            {/* Total sessions */}
-                            <div className="flex flex-col gap-1.5">
-                              <label className="text-[10px] uppercase font-black tracking-widest text-white/40">Number of Sessions</label>
-                              <input
-                                type="number"
-                                value={cls.sessions}
-                                onChange={(e) => handleFieldChange(cls.id, "sessions", parseInt(e.target.value) || 0)}
-                                className="w-full bg-zinc-900/50 border border-white/[0.06] focus:border-indigo-500 rounded-xl px-3 py-2 text-xs text-white focus:outline-none transition-all"
-                                placeholder="e.g. 12"
-                              />
-                            </div>
-
-                            {/* Tags list (comma separated) */}
-                            <div className="flex flex-col gap-1.5">
-                              <label className="text-[10px] uppercase font-black tracking-widest text-white/40">Badges/Tags (Comma separated)</label>
-                              <input
-                                type="text"
-                                value={tagsList.join(", ")}
-                                onChange={(e) => {
-                                  const list = e.target.value.split(",").map(item => item.trim()).filter(Boolean);
-                                  handleFieldChange(cls.id, "tags", list);
-                                }}
-                                className="w-full bg-zinc-900/50 border border-white/[0.06] focus:border-indigo-500 rounded-xl px-3 py-2 text-xs text-white focus:outline-none transition-all"
-                                placeholder="e.g. HTML5, React, Vite"
-                              />
-                            </div>
+                          <div>
+                            <label className="block text-[10px] font-mono text-white/40 uppercase mb-1">
+                              Instructor
+                            </label>
+                            <input
+                              type="text"
+                              value={cls.instructor}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                updateDraft((prev) => ({
+                                  ...prev,
+                                  classes: prev.classes.map((c) => (c.id === cls.id ? { ...c, instructor: val } : c))
+                                }));
+                              }}
+                              className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-white/10 text-white text-xs"
+                            />
                           </div>
 
-                          {/* Part C: Banner & Description */}
-                          <div className="space-y-4">
-                            
-                            {/* Image Selection Block */}
-                            <div className="p-4 rounded-xl bg-black/40 border border-white/[0.04] space-y-3">
-                              <div className="flex items-center justify-between">
-                                <span className="text-[10px] uppercase font-black tracking-widest text-white/40">Course Banner Image Source</span>
-                                <span className="text-[10px] text-white/30 font-mono">16:10 Aspect recommended</span>
-                              </div>
-                              
-                              <div className="flex flex-col md:flex-row items-stretch gap-4">
-                                <div className="flex-1 space-y-2">
+                          <div>
+                            <label className="block text-[10px] font-mono text-white/40 uppercase mb-1">
+                              Price (e.g. $199)
+                            </label>
+                            <input
+                              type="text"
+                              value={cls.price}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                updateDraft((prev) => ({
+                                  ...prev,
+                                  classes: prev.classes.map((c) => (c.id === cls.id ? { ...c, price: val } : c))
+                                }));
+                              }}
+                              className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-white/10 text-emerald-400 text-xs font-mono font-bold"
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-[10px] font-mono text-white/40 uppercase mb-1">
+                            Course Banner Image URL
+                          </label>
+                          <div className="flex gap-2">
+                            <input
+                              type="text"
+                              value={cls.courseImage}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                updateDraft((prev) => ({
+                                  ...prev,
+                                  classes: prev.classes.map((c) => (c.id === cls.id ? { ...c, courseImage: val } : c))
+                                }));
+                              }}
+                              className="flex-1 px-3 py-2 rounded-xl bg-zinc-900 border border-white/10 text-white text-xs font-mono"
+                            />
+                            <button
+                              onClick={() =>
+                                setImagePickerTarget({
+                                  fieldPath: `classes.${idx}.courseImage`,
+                                  currentValue: cls.courseImage
+                                })
+                              }
+                              className="px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold text-white flex items-center gap-1 cursor-pointer"
+                            >
+                              <ImageIcon size={13} className="text-emerald-400" />
+                              Browse
+                            </button>
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-[10px] font-mono text-white/40 uppercase mb-1">
+                            Course Description
+                          </label>
+                          <textarea
+                            rows={2}
+                            value={cls.description}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              updateDraft((prev) => ({
+                                ...prev,
+                                classes: prev.classes.map((c) =>
+                                  c.id === cls.id ? { ...c, description: val, shortDescription: val } : c
+                                )
+                              }));
+                            }}
+                            className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-white/10 text-white text-xs leading-relaxed"
+                          />
+                        </div>
+
+                        {/* Syllabus Item Manager */}
+                        <div className="pt-3 border-t border-white/5 space-y-3">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                              <BookOpen size={13} className="text-emerald-400" />
+                              Curriculum Modules ({syllabusItems.length})
+                            </span>
+                            <button
+                              onClick={() => {
+                                const nextNum = syllabusItems.length + 1;
+                                const newModule = {
+                                  id: `syl-${Date.now()}`,
+                                  title: `Module ${nextNum}: New Topic`,
+                                  description: "Comprehensive hands-on topic learning breakdown.",
+                                  duration: `Session ${nextNum}`
+                                };
+                                updateDraft((prev) => ({
+                                  ...prev,
+                                  classes: prev.classes.map((c) =>
+                                    c.id === cls.id ? { ...c, syllabus: [...syllabusItems, newModule] } : c
+                                  )
+                                }));
+                                showCustomToast("Added syllabus module.", "info");
+                              }}
+                              className="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-white text-xs flex items-center gap-1 cursor-pointer"
+                            >
+                              <Plus size={11} />
+                              Add Module
+                            </button>
+                          </div>
+
+                          <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                            {syllabusItems.map((mod: any, mIdx: number) => (
+                              <div key={mod.id || mIdx} className="p-2.5 rounded-xl bg-zinc-900 border border-white/5 flex items-start gap-2.5">
+                                <span className="w-5 h-5 rounded-full bg-emerald-500/10 text-emerald-400 text-[10px] font-mono flex items-center justify-center shrink-0 mt-1">
+                                  {mIdx + 1}
+                                </span>
+                                <div className="flex-1 space-y-1.5">
+                                  <div className="flex gap-2">
+                                    <input
+                                      type="text"
+                                      value={mod.title}
+                                      onChange={(e) => {
+                                        const val = e.target.value;
+                                        updateDraft((prev) => ({
+                                          ...prev,
+                                          classes: prev.classes.map((c) => {
+                                            if (c.id !== cls.id) return c;
+                                            const sCopy = [...(c.syllabus || [])];
+                                            sCopy[mIdx] = { ...sCopy[mIdx], title: val };
+                                            return { ...c, syllabus: sCopy };
+                                          })
+                                        }));
+                                      }}
+                                      className="flex-1 px-2 py-1 rounded bg-black/40 border border-white/10 text-white text-xs font-semibold"
+                                      placeholder="Module title"
+                                    />
+                                    <input
+                                      type="text"
+                                      value={mod.duration || ""}
+                                      onChange={(e) => {
+                                        const val = e.target.value;
+                                        updateDraft((prev) => ({
+                                          ...prev,
+                                          classes: prev.classes.map((c) => {
+                                            if (c.id !== cls.id) return c;
+                                            const sCopy = [...(c.syllabus || [])];
+                                            sCopy[mIdx] = { ...sCopy[mIdx], duration: val };
+                                            return { ...c, syllabus: sCopy };
+                                          })
+                                        }));
+                                      }}
+                                      className="w-24 px-2 py-1 rounded bg-black/40 border border-white/10 text-white/60 text-xs font-mono"
+                                      placeholder="Duration"
+                                    />
+                                  </div>
                                   <input
                                     type="text"
-                                    value={cls.courseImage}
-                                    onChange={(e) => handleFieldChange(cls.id, "courseImage", e.target.value)}
-                                    className="w-full bg-zinc-950 border border-white/[0.06] focus:border-indigo-500 rounded-xl px-3 py-2 text-xs text-white font-mono focus:outline-none transition-all"
-                                    placeholder="Enter image URL..."
+                                    value={mod.description || ""}
+                                    onChange={(e) => {
+                                      const val = e.target.value;
+                                      updateDraft((prev) => ({
+                                        ...prev,
+                                        classes: prev.classes.map((c) => {
+                                          if (c.id !== cls.id) return c;
+                                          const sCopy = [...(c.syllabus || [])];
+                                          sCopy[mIdx] = { ...sCopy[mIdx], description: val };
+                                          return { ...c, syllabus: sCopy };
+                                        })
+                                      }));
+                                    }}
+                                    className="w-full px-2 py-1 rounded bg-black/40 border border-white/10 text-white/50 text-[11px]"
+                                    placeholder="Short description"
                                   />
-                                  <div className="flex items-center gap-1.5">
-                                    <button
-                                      type="button"
-                                      onClick={() => setActivePickerIdx(activePickerIdx === idx ? null : idx)}
-                                      className="px-3 py-1 bg-indigo-600/10 hover:bg-indigo-600/20 border border-indigo-500/20 text-indigo-400 rounded-lg text-[10px] font-bold transition-all flex items-center gap-1 cursor-pointer"
-                                    >
-                                      <ImageIcon size={11} /> Select from Suggestions
-                                    </button>
-                                  </div>
                                 </div>
-                                <div className="w-24 shrink-0 rounded-xl border border-white/10 overflow-hidden relative bg-zinc-900 flex items-center justify-center">
-                                  <img src={cls.courseImage} className="w-full h-full object-cover" alt="" />
-                                </div>
+                                <button
+                                  onClick={() => {
+                                    updateDraft((prev) => ({
+                                      ...prev,
+                                      classes: prev.classes.map((c) => {
+                                        if (c.id !== cls.id) return c;
+                                        const sCopy = [...(c.syllabus || [])];
+                                        sCopy.splice(mIdx, 1);
+                                        return { ...c, syllabus: sCopy };
+                                      })
+                                    }));
+                                  }}
+                                  className="text-white/30 hover:text-rose-400 p-1"
+                                >
+                                  <Trash2 size={12} />
+                                </button>
                               </div>
-
-                              {/* Nested Suggested Image List */}
-                              <AnimatePresence>
-                                {activePickerIdx === idx && (
-                                  <motion.div
-                                    initial={{ opacity: 0, height: 0 }}
-                                    animate={{ opacity: 1, height: "auto" }}
-                                    exit={{ opacity: 0, height: 0 }}
-                                    className="overflow-hidden border-t border-white/5 pt-3 mt-2"
-                                  >
-                                    <p className="text-[9px] text-white/40 font-bold uppercase mb-2">Beautiful developer mockups (Click to choose):</p>
-                                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
-                                      {SUGGESTED_BANNER_IMAGES.map((img) => (
-                                        <button
-                                          key={img.url}
-                                          type="button"
-                                          onClick={() => {
-                                            handleFieldChange(cls.id, "courseImage", img.url);
-                                            setActivePickerIdx(null);
-                                            showCustomToast("Banner image updated.", "success");
-                                          }}
-                                          className="p-1 rounded-lg border border-white/5 hover:border-indigo-500/40 bg-zinc-950 overflow-hidden text-center transition-all group/picker cursor-pointer"
-                                        >
-                                          <div className="aspect-[16/10] rounded overflow-hidden relative mb-1">
-                                            <img src={img.url} className="h-full w-full object-cover group-hover/picker:scale-110 transition-transform duration-300" alt="" />
-                                          </div>
-                                          <span className="text-[8px] text-white/40 font-semibold group-hover/picker:text-white block truncate">{img.name}</span>
-                                        </button>
-                                      ))}
-                                    </div>
-                                  </motion.div>
-                                )}
-                              </AnimatePresence>
-                            </div>
-
-                            {/* Short description */}
-                            <div className="flex flex-col gap-1.5">
-                              <label className="text-[10px] uppercase font-black tracking-widest text-white/40">Short Course Description (Appears on Card)</label>
-                              <textarea
-                                rows={2}
-                                value={cls.description}
-                                onChange={(e) => handleFieldChange(cls.id, "description", e.target.value)}
-                                className="w-full bg-zinc-900/50 border border-white/[0.06] focus:border-indigo-500 rounded-xl px-3 py-2 text-xs text-white focus:outline-none transition-all resize-none"
-                                placeholder="Describe course outcomes cleanly..."
-                              />
-                            </div>
+                            ))}
                           </div>
-
-                          {/* Part D: Expandable Syllabus Modules List */}
-                          <div className="p-4 rounded-xl bg-black/40 border border-white/[0.04] space-y-4">
-                            <div className="flex items-center justify-between border-b border-white/5 pb-2">
-                              <div className="flex items-center gap-1.5">
-                                <BookOpenCheck size={14} className="text-indigo-400" />
-                                <span className="text-[10px] uppercase font-black tracking-widest text-white/80">Course Syllabus Chapters</span>
-                              </div>
-                              <button
-                                type="button"
-                                onClick={() => handleAddSyllabusItem(cls.id)}
-                                className="px-2.5 py-1 bg-indigo-600/10 hover:bg-indigo-600/20 text-indigo-400 border border-indigo-500/20 rounded-lg text-[10px] font-bold transition-all flex items-center gap-1 cursor-pointer"
-                              >
-                                <Plus size={11} /> Add Syllabus Module
-                              </button>
-                            </div>
-
-                            <div className="space-y-3">
-                              {syllabusItems.length === 0 ? (
-                                <p className="text-[10px] text-white/30 text-center py-3 font-semibold">No syllabus modules defined yet. Add some topics!</p>
-                              ) : (
-                                syllabusItems.map((syl: any, sIdx: number) => (
-                                  <div key={syl.id || sIdx} className="p-3.5 rounded-lg bg-zinc-950/70 border border-white/[0.03] flex items-start gap-3.5">
-                                    <span className="w-5 h-5 rounded-full bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-[10px] font-bold text-indigo-400 mt-0.5 shrink-0">
-                                      {sIdx + 1}
-                                    </span>
-                                    
-                                    <div className="flex-1 grid grid-cols-1 sm:grid-cols-12 gap-3.5">
-                                      {/* Chapter Title */}
-                                      <div className="sm:col-span-8 flex flex-col gap-1">
-                                        <span className="text-[8px] font-bold uppercase text-white/30 tracking-widest">Chapter Title</span>
-                                        <input
-                                          type="text"
-                                          value={syl.title}
-                                          onChange={(e) => handleEditSyllabusItem(cls.id, sIdx, "title", e.target.value)}
-                                          className="bg-transparent border-b border-white/10 hover:border-white/20 focus:border-indigo-500 text-xs font-bold text-white focus:outline-none pb-0.5"
-                                          placeholder="e.g. Advanced Routing..."
-                                        />
-                                      </div>
-
-                                      {/* Duration */}
-                                      <div className="sm:col-span-4 flex flex-col gap-1">
-                                        <span className="text-[8px] font-bold uppercase text-white/30 tracking-widest">Duration Label</span>
-                                        <input
-                                          type="text"
-                                          value={syl.duration}
-                                          onChange={(e) => handleEditSyllabusItem(cls.id, sIdx, "duration", e.target.value)}
-                                          className="bg-transparent border-b border-white/10 hover:border-white/20 focus:border-indigo-500 text-xs text-white/80 font-mono focus:outline-none pb-0.5"
-                                          placeholder="e.g. 45 mins"
-                                        />
-                                      </div>
-
-                                      {/* Chapter Description */}
-                                      <div className="sm:col-span-12 flex flex-col gap-1 mt-1">
-                                        <span className="text-[8px] font-bold uppercase text-white/30 tracking-widest">Chapter Content Details</span>
-                                        <input
-                                          type="text"
-                                          value={syl.description}
-                                          onChange={(e) => handleEditSyllabusItem(cls.id, sIdx, "description", e.target.value)}
-                                          className="bg-transparent border-b border-white/10 hover:border-white/20 focus:border-indigo-500 text-[11px] text-white/50 focus:outline-none pb-0.5"
-                                          placeholder="Brief overview of topics discussed..."
-                                        />
-                                      </div>
-                                    </div>
-
-                                    <button
-                                      type="button"
-                                      onClick={() => handleDeleteSyllabusItem(cls.id, sIdx)}
-                                      className="p-1.5 text-white/20 hover:text-rose-400 mt-1 cursor-pointer transition-colors"
-                                      title="Delete Syllabus Module"
-                                    >
-                                      <Trash size={12} />
-                                    </button>
-                                  </div>
-                                ))
-                              )}
-                            </div>
-                          </div>
-
                         </div>
                       </motion.div>
                     )}
                   </AnimatePresence>
-
                 </div>
               );
-            })
-          )}
+            })}
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* SECURE DELETE CONFIRMATION DIALOG */}
-      <AnimatePresence>
-        {deleteTargetId !== null && (
-          <div className="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-[#0b0b0f] border border-white/10 rounded-2xl w-full max-w-sm p-6 relative shadow-2xl text-center space-y-4"
+      {/* =========================================================================
+          SECTION 6: STUDENTS & REVIEWS MANAGEMENT
+         ========================================================================= */}
+      {activeSection === "students" && (
+        <div className="space-y-6">
+          <div className="flex items-center justify-between border-b border-white/[0.04] pb-3">
+            <div>
+              <h2 className="text-base font-bold text-white flex items-center gap-2">
+                <GraduationCap size={16} className="text-cyan-400" />
+                Students &amp; Testimonials Section
+              </h2>
+              <p className="text-xs text-white/50">
+                Manage student reviews, avatar images, star ratings, outcome achievements, and top statistics counters.
+              </p>
+            </div>
+
+            <button
+              onClick={() => {
+                const newRev: CMSTestimonialItem = {
+                  id: `rev-${Date.now()}`,
+                  name: "New Student",
+                  role: "Software Developer",
+                  company: "Tech Studio",
+                  course: "Modern React Development",
+                  rating: 5.0,
+                  avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=160&auto=format&fit=crop",
+                  text: "The practical exercises and guidance transformed my frontend engineering skills.",
+                  highlight: "Completed 5+ Production Apps"
+                };
+                updateDraft((prev) => ({
+                  ...prev,
+                  testimonials: {
+                    ...prev.testimonials,
+                    testimonials: [...prev.testimonials.testimonials, newRev]
+                  }
+                }));
+                showCustomToast("New student testimonial added!", "success");
+              }}
+              className="px-3.5 py-1.5 rounded-xl bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-500/30 text-cyan-300 text-xs font-bold flex items-center gap-1.5 cursor-pointer"
             >
-              <div className="h-12 w-12 rounded-full bg-rose-500/10 border border-rose-500/20 flex items-center justify-center mx-auto text-rose-400">
-                <AlertTriangle size={20} />
+              <Plus size={13} />
+              Add Review
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-[11px] font-mono uppercase tracking-wider text-white/50 mb-1.5">
+                Badge Pill
+              </label>
+              <input
+                type="text"
+                value={draftConfig.testimonials.badge}
+                onChange={(e) =>
+                  updateDraft((prev) => ({
+                    ...prev,
+                    testimonials: { ...prev.testimonials, badge: e.target.value }
+                  }))
+                }
+                className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-white/10 text-white text-xs"
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] font-mono uppercase tracking-wider text-white/50 mb-1.5">
+                Section Title
+              </label>
+              <input
+                type="text"
+                value={draftConfig.testimonials.title}
+                onChange={(e) =>
+                  updateDraft((prev) => ({
+                    ...prev,
+                    testimonials: { ...prev.testimonials, title: e.target.value }
+                  }))
+                }
+                className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-white/10 text-white text-xs font-bold"
+              />
+            </div>
+          </div>
+
+          {/* Testimonials List */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {draftConfig.testimonials.testimonials.map((rev, idx) => (
+              <div
+                key={rev.id}
+                className="p-4 rounded-2xl bg-zinc-950/80 border border-white/[0.08] hover:border-cyan-500/30 transition-all space-y-3"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-10 h-10 rounded-full overflow-hidden border border-white/10 shrink-0 bg-zinc-900">
+                      <img src={rev.avatar} alt={rev.name} className="w-full h-full object-cover" />
+                    </div>
+                    <div>
+                      <input
+                        type="text"
+                        value={rev.name}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          updateDraft((prev) => ({
+                            ...prev,
+                            testimonials: {
+                              ...prev.testimonials,
+                              testimonials: prev.testimonials.testimonials.map((t) =>
+                                t.id === rev.id ? { ...t, name: val } : t
+                              )
+                            }
+                          }));
+                        }}
+                        className="px-2 py-0.5 rounded bg-zinc-900 border border-white/10 text-white text-xs font-bold"
+                      />
+                      <div className="flex items-center gap-1.5 mt-1">
+                        <input
+                          type="text"
+                          value={rev.role}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            updateDraft((prev) => ({
+                              ...prev,
+                              testimonials: {
+                                ...prev.testimonials,
+                                testimonials: prev.testimonials.testimonials.map((t) =>
+                                  t.id === rev.id ? { ...t, role: val } : t
+                                )
+                              }
+                            }));
+                          }}
+                          className="px-1.5 py-0.5 rounded bg-zinc-900 border border-white/10 text-white/50 text-[10px]"
+                          placeholder="Role"
+                        />
+                        <span className="text-white/30 text-[10px]">@</span>
+                        <input
+                          type="text"
+                          value={rev.company}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            updateDraft((prev) => ({
+                              ...prev,
+                              testimonials: {
+                                ...prev.testimonials,
+                                testimonials: prev.testimonials.testimonials.map((t) =>
+                                  t.id === rev.id ? { ...t, company: val } : t
+                                )
+                              }
+                            }));
+                          }}
+                          className="px-1.5 py-0.5 rounded bg-zinc-900 border border-white/10 text-cyan-400 text-[10px]"
+                          placeholder="Company"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() =>
+                      setDeleteDialog({
+                        type: "testimonial",
+                        id: rev.id,
+                        title: rev.name
+                      })
+                    }
+                    className="p-1.5 text-white/30 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors cursor-pointer"
+                  >
+                    <Trash2 size={13} />
+                  </button>
+                </div>
+
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={rev.avatar}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      updateDraft((prev) => ({
+                        ...prev,
+                        testimonials: {
+                          ...prev.testimonials,
+                          testimonials: prev.testimonials.testimonials.map((t) =>
+                            t.id === rev.id ? { ...t, avatar: val } : t
+                          )
+                        }
+                      }));
+                    }}
+                    className="flex-1 px-2.5 py-1 rounded-lg bg-zinc-900 border border-white/10 text-white text-[11px] font-mono"
+                    placeholder="Avatar image URL"
+                  />
+                  <button
+                    onClick={() =>
+                      setImagePickerTarget({
+                        fieldPath: `testimonials.testimonials.${idx}.avatar`,
+                        currentValue: rev.avatar
+                      })
+                    }
+                    className="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-[11px] text-white flex items-center gap-1 cursor-pointer"
+                  >
+                    <ImageIcon size={11} className="text-cyan-400" />
+                    Browse
+                  </button>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-mono text-white/40 uppercase mb-1">
+                    Student Quote / Testimonial
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={rev.text}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      updateDraft((prev) => ({
+                        ...prev,
+                        testimonials: {
+                          ...prev.testimonials,
+                          testimonials: prev.testimonials.testimonials.map((t) =>
+                            t.id === rev.id ? { ...t, text: val } : t
+                          )
+                        }
+                      }));
+                    }}
+                    className="w-full px-2.5 py-1.5 rounded-lg bg-zinc-900 border border-white/10 text-white/70 text-xs leading-relaxed"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-[10px] font-mono text-white/40 uppercase mb-1">
+                      Highlight Badge
+                    </label>
+                    <input
+                      type="text"
+                      value={rev.highlight}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        updateDraft((prev) => ({
+                          ...prev,
+                          testimonials: {
+                            ...prev.testimonials,
+                            testimonials: prev.testimonials.testimonials.map((t) =>
+                              t.id === rev.id ? { ...t, highlight: val } : t
+                            )
+                          }
+                        }));
+                      }}
+                      className="w-full px-2.5 py-1 rounded bg-zinc-900 border border-white/10 text-emerald-400 text-xs font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-mono text-white/40 uppercase mb-1">
+                      Course Taken
+                    </label>
+                    <input
+                      type="text"
+                      value={rev.course}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        updateDraft((prev) => ({
+                          ...prev,
+                          testimonials: {
+                            ...prev.testimonials,
+                            testimonials: prev.testimonials.testimonials.map((t) =>
+                              t.id === rev.id ? { ...t, course: val } : t
+                            )
+                          }
+                        }));
+                      }}
+                      className="w-full px-2.5 py-1 rounded bg-zinc-900 border border-white/10 text-white/70 text-xs"
+                    />
+                  </div>
+                </div>
               </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================================
+          SECTION 7: CONTACT & SOCIAL MANAGEMENT
+         ========================================================================= */}
+      {activeSection === "contact" && (
+        <div className="space-y-6">
+          <div className="flex items-center justify-between border-b border-white/[0.04] pb-3">
+            <div>
+              <h2 className="text-base font-bold text-white flex items-center gap-2">
+                <Send size={16} className="text-rose-400" />
+                Contact Information &amp; Social Links
+              </h2>
+              <p className="text-xs text-white/50">
+                Update direct contact email, phone, location, and social media profile links (Telegram, Instagram, GitHub, LinkedIn).
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-[11px] font-mono uppercase tracking-wider text-white/50 mb-1.5">
+                Badge Pill
+              </label>
+              <input
+                type="text"
+                value={draftConfig.contact.badge}
+                onChange={(e) =>
+                  updateDraft((prev) => ({
+                    ...prev,
+                    contact: { ...prev.contact, badge: e.target.value }
+                  }))
+                }
+                className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-white/10 text-white text-xs"
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] font-mono uppercase tracking-wider text-white/50 mb-1.5">
+                Section Heading Title
+              </label>
+              <input
+                type="text"
+                value={draftConfig.contact.title}
+                onChange={(e) =>
+                  updateDraft((prev) => ({
+                    ...prev,
+                    contact: { ...prev.contact, title: e.target.value }
+                  }))
+                }
+                className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-white/10 text-white text-xs font-bold"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-[11px] font-mono uppercase tracking-wider text-white/50 mb-1.5">
+              Contact Subtitle Statement
+            </label>
+            <textarea
+              rows={2}
+              value={draftConfig.contact.description}
+              onChange={(e) =>
+                updateDraft((prev) => ({
+                  ...prev,
+                  contact: { ...prev.contact, description: e.target.value }
+                }))
+              }
+              className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-white/10 text-white text-xs leading-relaxed"
+            />
+          </div>
+
+          <div className="p-4 rounded-2xl bg-zinc-950/80 border border-white/[0.06] space-y-4">
+            <h3 className="text-xs font-bold text-white flex items-center gap-2">
+              <Link2 size={14} className="text-rose-400" />
+              Social Network &amp; Channel URLs
+            </h3>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <h4 className="text-sm font-black text-white">Delete Course Card?</h4>
-                <p className="text-xs text-white/55 mt-1.5 leading-relaxed">
-                  Are you absolutely sure you want to remove this course card layout? This action cannot be undone and will delete all associated course metadata.
+                <label className="block text-[10px] font-mono text-white/40 uppercase mb-1">
+                  Contact Email
+                </label>
+                <input
+                  type="text"
+                  value={draftConfig.contact.email}
+                  onChange={(e) =>
+                    updateDraft((prev) => ({
+                      ...prev,
+                      contact: { ...prev.contact, email: e.target.value }
+                    }))
+                  }
+                  className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-white/10 text-white text-xs font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-mono text-white/40 uppercase mb-1">
+                  Telegram Channel / Profile
+                </label>
+                <input
+                  type="text"
+                  value={draftConfig.contact.telegramUrl}
+                  onChange={(e) =>
+                    updateDraft((prev) => ({
+                      ...prev,
+                      contact: { ...prev.contact, telegramUrl: e.target.value }
+                    }))
+                  }
+                  className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-white/10 text-white text-xs font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-mono text-white/40 uppercase mb-1">
+                  Instagram Profile
+                </label>
+                <input
+                  type="text"
+                  value={draftConfig.contact.instagramUrl}
+                  onChange={(e) =>
+                    updateDraft((prev) => ({
+                      ...prev,
+                      contact: { ...prev.contact, instagramUrl: e.target.value }
+                    }))
+                  }
+                  className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-white/10 text-white text-xs font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-mono text-white/40 uppercase mb-1">
+                  LinkedIn Profile
+                </label>
+                <input
+                  type="text"
+                  value={draftConfig.contact.linkedinUrl}
+                  onChange={(e) =>
+                    updateDraft((prev) => ({
+                      ...prev,
+                      contact: { ...prev.contact, linkedinUrl: e.target.value }
+                    }))
+                  }
+                  className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-white/10 text-white text-xs font-mono"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================================
+          SECTION 8: FOOTER & BRANDING MANAGEMENT
+         ========================================================================= */}
+      {activeSection === "footer" && (
+        <div className="space-y-6">
+          <div className="flex items-center justify-between border-b border-white/[0.04] pb-3">
+            <div>
+              <h2 className="text-base font-bold text-white flex items-center gap-2">
+                <Layout size={16} className="text-indigo-400" />
+                Footer &amp; Global Branding
+              </h2>
+              <p className="text-xs text-white/50">
+                Configure brand name, footer mission tagline, copyright notice, and animated rotating words (e.g. LET'S BUILD / LET'S CREATE).
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-[11px] font-mono uppercase tracking-wider text-white/50 mb-1.5">
+                Brand Name
+              </label>
+              <input
+                type="text"
+                value={draftConfig.footer.brandName}
+                onChange={(e) =>
+                  updateDraft((prev) => ({
+                    ...prev,
+                    footer: { ...prev.footer, brandName: e.target.value }
+                  }))
+                }
+                className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-white/10 text-white text-xs font-bold"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-mono uppercase tracking-wider text-white/50 mb-1.5">
+                Copyright Notice
+              </label>
+              <input
+                type="text"
+                value={draftConfig.footer.copyright}
+                onChange={(e) =>
+                  updateDraft((prev) => ({
+                    ...prev,
+                    footer: { ...prev.footer, copyright: e.target.value }
+                  }))
+                }
+                className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-white/10 text-white text-xs"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-[11px] font-mono uppercase tracking-wider text-white/50 mb-1.5">
+              Mission / Tagline Statement
+            </label>
+            <textarea
+              rows={2}
+              value={draftConfig.footer.tagline}
+              onChange={(e) =>
+                updateDraft((prev) => ({
+                  ...prev,
+                  footer: { ...prev.footer, tagline: e.target.value }
+                }))
+              }
+              className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-white/10 text-white text-xs leading-relaxed"
+            />
+          </div>
+
+          {/* Animated Footer Words (LET'S BUILD / LET'S CREATE) */}
+          <div className="p-4 rounded-2xl bg-zinc-950/80 border border-white/[0.06] space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-xs font-bold text-white flex items-center gap-1.5">
+                  <Sparkles size={13} className="text-indigo-400" />
+                  Animated Vertical Words ("LET'S ...")
+                </h3>
+                <p className="text-[11px] text-white/40">
+                  These words cycle vertically in the large footer call-to-action title.
                 </p>
               </div>
-              <div className="flex items-center justify-center gap-2 pt-1.5">
+
+              <button
+                onClick={() => {
+                  updateDraft((prev) => ({
+                    ...prev,
+                    footer: {
+                      ...prev.footer,
+                      animatedWords: [...prev.footer.animatedWords, "DEVELOP"]
+                    }
+                  }));
+                  showCustomToast("Added new animated keyword.", "info");
+                }}
+                className="px-2.5 py-1 rounded-lg bg-indigo-500/15 hover:bg-indigo-500/25 border border-indigo-500/30 text-indigo-300 text-xs flex items-center gap-1 cursor-pointer"
+              >
+                <Plus size={11} />
+                Add Keyword
+              </button>
+            </div>
+
+            <div className="flex flex-wrap gap-2 pt-1">
+              {draftConfig.footer.animatedWords.map((word, idx) => (
+                <div key={idx} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-900 border border-white/10">
+                  <input
+                    type="text"
+                    value={word}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      updateDraft((prev) => {
+                        const copy = [...prev.footer.animatedWords];
+                        copy[idx] = val;
+                        return { ...prev, footer: { ...prev.footer, animatedWords: copy } };
+                      });
+                    }}
+                    className="w-24 bg-transparent text-white font-bold text-xs uppercase focus:outline-none"
+                  />
+                  <button
+                    onClick={() => {
+                      if (draftConfig.footer.animatedWords.length <= 1) return;
+                      updateDraft((prev) => ({
+                        ...prev,
+                        footer: {
+                          ...prev.footer,
+                          animatedWords: prev.footer.animatedWords.filter((_, i) => i !== idx)
+                        }
+                      }));
+                    }}
+                    className="text-white/30 hover:text-rose-400"
+                  >
+                    <Trash2 size={12} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================================
+          GLOBAL CURATED IMAGE PICKER MODAL
+         ========================================================================= */}
+      <AnimatePresence>
+        {imagePickerTarget && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="w-full max-w-2xl rounded-3xl bg-zinc-950 border border-white/10 p-6 space-y-5 shadow-2xl"
+            >
+              <div className="flex items-center justify-between border-b border-white/5 pb-3">
+                <div className="flex items-center gap-2">
+                  <span className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400">
+                    <ImageIcon size={16} />
+                  </span>
+                  <div>
+                    <h3 className="text-sm font-bold text-white">Select High-Resolution Image</h3>
+                    <p className="text-[11px] text-white/40">Choose from curated developer images or enter a custom URL.</p>
+                  </div>
+                </div>
                 <button
-                  type="button"
-                  onClick={() => setDeleteTargetId(null)}
-                  className="px-3.5 py-1.5 bg-white/5 hover:bg-white/10 rounded-xl text-xs font-bold text-white transition-colors cursor-pointer"
+                  onClick={() => setImagePickerTarget(null)}
+                  className="text-white/40 hover:text-white p-1"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Current URL Input */}
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-mono uppercase text-white/50">Custom URL</label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    defaultValue={imagePickerTarget.currentValue}
+                    id="custom-modal-image-input"
+                    className="flex-1 px-3.5 py-2 rounded-xl bg-zinc-900 border border-white/10 text-white text-xs font-mono"
+                    placeholder="https://..."
+                  />
+                  <button
+                    onClick={() => {
+                      const input = document.getElementById("custom-modal-image-input") as HTMLInputElement;
+                      if (input && input.value) {
+                        handleSelectSuggestedImage(input.value);
+                      }
+                    }}
+                    className="px-4 py-2 rounded-xl bg-emerald-500 text-black font-bold text-xs hover:bg-emerald-400 cursor-pointer"
+                  >
+                    Apply URL
+                  </button>
+                </div>
+              </div>
+
+              {/* Curated Grid */}
+              <div className="space-y-2">
+                <span className="text-[10px] font-mono uppercase text-white/50">Quick-Select Gallery</span>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-h-72 overflow-y-auto pr-1">
+                  {CURATED_IMAGE_SUGGESTIONS.map((img, i) => (
+                    <div
+                      key={i}
+                      onClick={() => handleSelectSuggestedImage(img.url)}
+                      className="group relative aspect-video rounded-xl overflow-hidden border border-white/10 hover:border-emerald-400 cursor-pointer transition-all bg-black"
+                    >
+                      <img src={img.url} alt={img.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent opacity-80 group-hover:opacity-95" />
+                      <span className="absolute bottom-1.5 left-2 right-2 text-[10px] font-medium text-white truncate">
+                        {img.name}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* =========================================================================
+          DELETE CONFIRMATION DIALOG MODAL
+         ========================================================================= */}
+      <AnimatePresence>
+        {deleteDialog && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="w-full max-w-md rounded-2xl bg-zinc-950 border border-rose-500/30 p-5 space-y-4 shadow-2xl text-left"
+            >
+              <div className="flex items-center gap-3 text-rose-400">
+                <AlertTriangle size={20} />
+                <h3 className="text-sm font-bold text-white">Confirm Removal</h3>
+              </div>
+              <p className="text-xs text-white/70 leading-relaxed">
+                Are you sure you want to remove <strong className="text-white">"{deleteDialog.title}"</strong> from the website layout?
+              </p>
+              <div className="flex items-center justify-end gap-2.5 pt-2">
+                <button
+                  onClick={() => setDeleteDialog(null)}
+                  className="px-3.5 py-1.5 rounded-xl border border-white/10 text-white/70 hover:text-white text-xs font-semibold"
                 >
                   Cancel
                 </button>
                 <button
-                  type="button"
-                  onClick={confirmDeleteCourse}
-                  className="px-4 py-1.5 bg-rose-600 hover:bg-rose-500 rounded-xl text-xs font-bold text-white transition-colors cursor-pointer"
+                  onClick={executeDelete}
+                  className="px-4 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold shadow-lg shadow-rose-600/20"
                 >
-                  Delete Course
+                  Confirm Delete
                 </button>
               </div>
             </motion.div>

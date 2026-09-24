@@ -1,5 +1,6 @@
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import { motion, useScroll, useTransform, useSpring, AnimatePresence } from "motion/react";
+import { loadCmsConfig } from "../constants/defaultCms";
 import {
   Sparkles,
   Award,
@@ -23,6 +24,20 @@ import {
 export default function SkillsSection() {
   const sectionRef = useRef<HTMLElement>(null);
   const [activeFilter, setActiveFilter] = useState<"all" | "frontend" | "backend" | "security">("all");
+
+  const [skillsConfig, setSkillsConfig] = useState(() => loadCmsConfig().skills);
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      setSkillsConfig(loadCmsConfig().skills);
+    };
+    window.addEventListener("cms_config_updated", handleUpdate);
+    window.addEventListener("storage", handleUpdate);
+    return () => {
+      window.removeEventListener("cms_config_updated", handleUpdate);
+      window.removeEventListener("storage", handleUpdate);
+    };
+  }, []);
 
   // Filter matching flags
   const showReact = activeFilter === "all" || activeFilter === "frontend";
@@ -93,7 +108,7 @@ export default function SkillsSection() {
               <Sparkles size={11} className="text-emerald-400" />
             </motion.span>
             <span className="font-sans text-[10px] font-semibold tracking-[0.2em] text-white/90 uppercase">
-              MY SKILLS &amp; STACK
+              {skillsConfig.badge || "MY SKILLS & STACK"}
             </span>
           </motion.div>
 
@@ -114,10 +129,10 @@ export default function SkillsSection() {
             className="space-y-3"
           >
             <h2 className="font-sans text-3xl sm:text-4xl md:text-5xl font-black tracking-tight text-white leading-none">
-              Skills &amp; Engineering Stack
+              {skillsConfig.title || "Skills & Engineering Stack"}
             </h2>
             <p className="font-sans text-sm sm:text-base text-white/60 leading-relaxed max-w-2xl">
-              Technologies, tools, and security skills I use to design, develop, and secure modern digital experiences.
+              {skillsConfig.description || "Technologies, tools, and security skills I use to design, develop, and secure modern digital experiences."}
             </p>
           </motion.div>
 

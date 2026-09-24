@@ -6,6 +6,7 @@ import {
   useTransform,
   useSpring
 } from "motion/react";
+import { loadCmsConfig } from "../constants/defaultCms";
 import {
   Star,
   GraduationCap,
@@ -52,6 +53,20 @@ interface Testimonial {
 export default function StudentsSection({ isLoggedIn, onOpenLoginModal }: StudentsSectionProps = {}) {
   const sectionRef = useRef<HTMLElement>(null);
 
+  const [studentsConfig, setStudentsConfig] = useState(() => loadCmsConfig().testimonials);
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      setStudentsConfig(loadCmsConfig().testimonials);
+    };
+    window.addEventListener("cms_config_updated", handleUpdate);
+    window.addEventListener("storage", handleUpdate);
+    return () => {
+      window.removeEventListener("cms_config_updated", handleUpdate);
+      window.removeEventListener("storage", handleUpdate);
+    };
+  }, []);
+
   // View mode: "carousel" for smooth gliding stream, "grid" for interactive matrix
   const [viewMode, setViewMode] = useState<"carousel" | "grid">("carousel");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
@@ -85,7 +100,9 @@ export default function StudentsSection({ isLoggedIn, onOpenLoginModal }: Studen
     { value: 4.8, decimals: 1, label: "Average Rating" },
   ];
 
-  const testimonials: Testimonial[] = [
+  const testimonials: Testimonial[] = (studentsConfig.testimonials && studentsConfig.testimonials.length > 0)
+    ? (studentsConfig.testimonials as any)
+    : [
     {
       id: "will",
       name: "Arman Ahmadi",
@@ -306,7 +323,7 @@ export default function StudentsSection({ isLoggedIn, onOpenLoginModal }: Studen
               <Sparkles size={11} />
             </motion.span>
             <span className="font-sans text-[10px] font-semibold tracking-[0.2em] text-white/90 uppercase">
-              MY STUDENTS &amp; ALUMNI
+              {studentsConfig.badge || "MY STUDENTS & ALUMNI"}
             </span>
           </motion.div>
 
@@ -326,10 +343,10 @@ export default function StudentsSection({ isLoggedIn, onOpenLoginModal }: Studen
             className="space-y-3"
           >
             <h2 className="font-sans text-3xl sm:text-4xl md:text-5xl font-black tracking-tight text-white leading-none">
-              My Lovely Students
+              {studentsConfig.title || "My Lovely Students"}
             </h2>
             <p className="font-sans text-sm sm:text-base text-white/60 leading-relaxed max-w-2xl">
-              Trusted by 100+ high-performing clients &amp; graduates worldwide, adding over $250M+ in cumulative commercial value.
+              {studentsConfig.description || "Trusted by 100+ high-performing clients & graduates worldwide, adding over $250M+ in cumulative commercial value."}
             </p>
           </motion.div>
 

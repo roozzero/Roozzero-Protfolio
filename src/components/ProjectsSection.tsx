@@ -1,5 +1,6 @@
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import { motion, useScroll, useTransform, useSpring } from "motion/react";
+import { loadCmsConfig } from "../constants/defaultCms";
 import {
   Sparkles,
   ArrowRight,
@@ -47,6 +48,20 @@ import {
 
 export default function ProjectsSection() {
   const sectionRef = useRef<HTMLElement>(null);
+
+  const [projectsConfig, setProjectsConfig] = useState(() => loadCmsConfig().projects);
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      setProjectsConfig(loadCmsConfig().projects);
+    };
+    window.addEventListener("cms_config_updated", handleUpdate);
+    window.addEventListener("storage", handleUpdate);
+    return () => {
+      window.removeEventListener("cms_config_updated", handleUpdate);
+      window.removeEventListener("storage", handleUpdate);
+    };
+  }, []);
 
   // Active Project Selection
   const [activeProject, setActiveProject] = useState<"cinema" | "security" | "cloud">("cinema");
@@ -126,7 +141,7 @@ export default function ProjectsSection() {
               <Sparkles size={11} className="text-emerald-400" />
             </motion.span>
             <span className="font-sans text-[10px] font-semibold tracking-[0.2em] text-white/90 uppercase">
-              FEATURED WORKS &amp; LABS
+              {projectsConfig.badge || "FEATURED WORKS & LABS"}
             </span>
           </motion.div>
 
@@ -146,19 +161,31 @@ export default function ProjectsSection() {
             className="space-y-3"
           >
             <h2 className="font-sans text-3xl sm:text-4xl md:text-5xl font-black tracking-tight text-white leading-none">
-              Main Works &amp; Systems
+              {projectsConfig.title || "Main Works & Systems"}
             </h2>
             <p className="font-sans text-sm sm:text-base text-white/60 leading-relaxed max-w-2xl">
-              Selected projects and systems showcasing my experience in frontend development, modern web technologies, and security-focused engineering.
+              {projectsConfig.description || "Selected projects and systems showcasing my experience in frontend development, modern web technologies, and security-focused engineering."}
             </p>
           </motion.div>
 
           {/* Project Switcher Navigation - Unified Emerald Theme */}
           <div className="flex items-center gap-1.5 p-1 rounded-xl bg-white/[0.02] border border-white/[0.07] backdrop-blur-md self-start md:self-auto shrink-0">
             {[
-              { id: "cinema", label: "TeacherShow", icon: GraduationCap },
-              { id: "security", label: "Aegis Sentinel", icon: ShieldCheck },
-              { id: "cloud", label: "Nexus Engine", icon: Terminal },
+              {
+                id: "cinema",
+                label: projectsConfig.projects.find((p) => p.id === "cinema")?.tabLabel || "TeacherShow",
+                icon: GraduationCap
+              },
+              {
+                id: "security",
+                label: projectsConfig.projects.find((p) => p.id === "security")?.tabLabel || "Aegis Sentinel",
+                icon: ShieldCheck
+              },
+              {
+                id: "cloud",
+                label: projectsConfig.projects.find((p) => p.id === "cloud")?.tabLabel || "Nexus Engine",
+                icon: Terminal
+              },
             ].map((p) => {
               const Icon = p.icon;
               const isCurrent = activeProject === p.id;

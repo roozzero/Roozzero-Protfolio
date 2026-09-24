@@ -18,6 +18,8 @@ import UserDashboard from "./components/UserDashboard";
 import AdminDashboard from "./components/AdminDashboard";
 import TeacherDashboard from "./components/TeacherDashboard";
 import BackToTop from "./components/BackToTop";
+import { loadCmsConfig } from "./constants/defaultCms";
+import { CMSFullConfig } from "./types/cms";
 
 interface Preset {
   name: string;
@@ -239,12 +241,37 @@ export default function App() {
   const [isDashboardPage, setIsDashboardPage] = useState(window.location.hash === "#dashboard");
   const [isAdminPage, setIsAdminPage] = useState(window.location.hash === "#admin");
 
-  const animatedTexts = useMemo(() => [
-    "Full Stack Engineering",
-    "React & Vite Optimization",
-    "Cloud Computing & Deployments",
-    "Elegant Design Systems"
-  ], []);
+  const [cmsConfig, setCmsConfig] = useState<CMSFullConfig>(() => loadCmsConfig());
+
+  // Real-time listener for homepage updates saved or published in the Admin CMS Dashboard
+  useEffect(() => {
+    const handleCmsUpdate = () => {
+      const fresh = loadCmsConfig();
+      setCmsConfig(fresh);
+      if (Array.isArray(fresh.classes)) {
+        setHomepageClasses(fresh.classes);
+      }
+    };
+    window.addEventListener("cms_config_updated", handleCmsUpdate);
+    window.addEventListener("storage", handleCmsUpdate);
+    return () => {
+      window.removeEventListener("cms_config_updated", handleCmsUpdate);
+      window.removeEventListener("storage", handleCmsUpdate);
+    };
+  }, []);
+
+  const animatedTexts = useMemo(() => {
+    if (cmsConfig.hero?.animatedTexts && cmsConfig.hero.animatedTexts.length > 0) {
+      return cmsConfig.hero.animatedTexts;
+    }
+    return [
+      "Full Stack Engineering",
+      "React & Vite Optimization",
+      "Cloud Computing & Deployments",
+      "Elegant Design Systems"
+    ];
+  }, [cmsConfig.hero?.animatedTexts]);
+
 
   const [currentTextIndex, setCurrentTextIndex] = useState(0);
   const [currentText, setCurrentText] = useState("");
@@ -600,7 +627,7 @@ export default function App() {
             className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden border border-white/[0.04] bg-black cursor-pointer shadow-lg active:scale-[0.99] transition-transform duration-300 animate-fade-in"
           >
             <img
-              src="/src/assets/images/ChatGPT Image Jun 28, 2026, 10_07_30 PM.png"
+              src={cmsConfig.hero?.heroImage || "/src/assets/images/ChatGPT Image Jun 28, 2026, 10_07_30 PM.png"}
               alt="ROOZZERO Portrait Background"
               referrerPolicy="no-referrer"
               className="w-full h-full object-cover object-[center_15%] opacity-80 mix-blend-luminosity filter brightness-[0.7] contrast-[105%]"
@@ -614,13 +641,13 @@ export default function App() {
           <div className="mt-8 flex flex-col items-start text-left px-2">
             {/* Small Heading */}
             <span className="font-sans text-xs font-semibold tracking-[0.3em] text-white/50 uppercase leading-none">
-              I'M
+              {cmsConfig.hero?.badge || "I'M"}
             </span>
 
             {/* Main Headline with typing effect */}
             <div className="flex flex-col items-start relative mt-4">
               <h1 className="font-sans text-3xl sm:text-4xl font-extrabold tracking-[0.22em] text-white uppercase leading-none z-20">
-                ROOZZERO
+                {cmsConfig.hero?.headline || "ROOZZERO"}
               </h1>
               
               <div className="flex items-center gap-1.5 mt-3 min-h-[20px]">
@@ -653,7 +680,7 @@ export default function App() {
          {/* Layer -1: Premium Dark Hero Background Image */}
         <div id="hero-image-background-container" className="absolute inset-0 w-full h-full pointer-events-none select-none z-0">
           <img
-            src="/src/assets/images/ChatGPT Image Jun 28, 2026, 10_07_30 PM.png"
+            src={cmsConfig.hero?.heroImage || "/src/assets/images/ChatGPT Image Jun 28, 2026, 10_07_30 PM.png"}
             alt="ROOZZERO Portrait Background"
             referrerPolicy="no-referrer"
             className="w-full h-full object-cover opacity-65 mix-blend-luminosity filter brightness-75 contrast-[105%]"
@@ -961,13 +988,13 @@ export default function App() {
         >
           {/* Small Heading */}
           <span className="font-sans text-xs sm:text-sm font-semibold tracking-[0.3em] text-white/50 uppercase leading-none">
-            I'M
+            {cmsConfig.hero?.badge || "I'M"}
           </span>
 
           {/* Main Headline with typing effect */}
           <div className="flex flex-col items-start relative mt-4">
             <h1 className="font-sans text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold tracking-[0.22em] text-white uppercase leading-none z-20">
-              ROOZZERO
+              {cmsConfig.hero?.headline || "ROOZZERO"}
             </h1>
             
             <div className="flex items-center gap-1.5 mt-3 min-h-[20px]">
@@ -998,7 +1025,7 @@ export default function App() {
             <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-white/10 bg-white/[0.03] backdrop-blur-md shadow-sm">
               <Sparkles size={11} className="text-white/80 animate-pulse" />
               <span className="font-sans text-[10px] font-semibold tracking-[0.2em] text-white/80 uppercase">
-                About Me
+                {cmsConfig.aboutMe?.badge || "About Me"}
               </span>
             </div>
           </div>
@@ -1006,16 +1033,16 @@ export default function App() {
           {/* Title & Subtitle Column (Right) */}
           <div className="lg:col-span-9 space-y-4">
             <h2 className="font-sans text-3xl sm:text-4xl md:text-5xl font-black tracking-tight text-white leading-none">
-              Who's Me
+              {cmsConfig.aboutMe?.title || "Who's Me"}
             </h2>
             <p className="font-sans text-base sm:text-lg text-white/60 leading-relaxed max-w-3xl">
-              Hi, I'm Roozbeh Tavakoli | a Computer Engineer and Frontend Developer focused on building modern, scalable, and user-centered web experiences.
+              {cmsConfig.aboutMe?.bio || "Hi, I'm Roozbeh Tavakoli | a Computer Engineer and Frontend Developer focused on building modern, scalable, and user-centered web experiences."}
             </p>
             
             {/* Elegant Action Buttons: CV & GitHub */}
             <div className="flex flex-wrap items-center gap-4 pt-2">
               <motion.a
-                href="#"
+                href={cmsConfig.aboutMe?.cvUrl || "#"}
                 className="inline-flex items-center justify-center w-12 h-12 rounded-full border border-white/15 bg-white/5 backdrop-blur-md text-white hover:bg-white hover:text-black hover:border-white hover:shadow-[0_0_25px_rgba(255,255,255,0.12)] active:scale-[0.98] transition-all duration-300 font-sans"
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -1024,7 +1051,7 @@ export default function App() {
                 <FileDown size={16} className="transition-transform duration-300 group-hover:translate-y-[-1px]" />
               </motion.a>
               <motion.a
-                href="https://github.com/roozzero"
+                href={cmsConfig.aboutMe?.githubUrl || "https://github.com/roozzero"}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center justify-center w-12 h-12 rounded-full border border-white/15 bg-white/5 backdrop-blur-md text-white hover:bg-white hover:text-black hover:border-white hover:shadow-[0_0_25px_rgba(255,255,255,0.12)] active:scale-[0.98] transition-all duration-300 font-sans"
@@ -1055,7 +1082,7 @@ export default function App() {
             <div className="absolute -inset-1 rounded-2xl bg-gradient-to-tr from-white/10 to-transparent opacity-20 group-hover:opacity-40 blur-md transition duration-1000"></div>
             <div className="relative h-full min-h-[380px] sm:min-h-[480px] lg:min-h-0 overflow-hidden rounded-2xl border border-white/10 bg-neutral-900 shadow-2xl">
               <img
-                src="/src/assets/images/photo_2024-10-20_19-21-55.jpg"
+                src={cmsConfig.aboutMe?.portraitImage || "/src/assets/images/photo_2024-10-20_19-21-55.jpg"}
                 alt="ROOZZERO Bio Portrait"
                 className="w-full h-full object-cover contrast-[1.05] brightness-[0.9] saturate-[0.85] transition-transform duration-700 ease-out group-hover:scale-[1.03]"
               />
@@ -1067,168 +1094,47 @@ export default function App() {
 
           {/* Right Side: Bento Grid of Stats Cards with Unified Equal Sizes */}
           <div className="lg:col-span-7 grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-6 items-stretch">
-            
-            {/* Card 1: Experience */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              whileHover={{ y: -5, borderColor: "rgba(16,185,129,0.3)" }}
-              transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-              className="h-[215px] sm:h-[220px] rounded-2xl border border-white/[0.08] bg-gradient-to-b from-white/[0.035] via-white/[0.015] to-transparent p-6 flex flex-col justify-between shadow-xl hover:bg-white/[0.05] transition-all duration-300 relative overflow-hidden group"
-            >
-              <div className="absolute -right-6 -bottom-6 w-28 h-28 rounded-full bg-emerald-500/10 blur-xl pointer-events-none group-hover:scale-150 transition-transform duration-500" />
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(16,185,129,0.05),transparent_70%)] pointer-events-none" />
+            {cmsConfig.aboutMe?.cards?.map((card, cIdx) => (
+              <motion.div
+                key={card.id || cIdx}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                whileHover={{ y: -5, borderColor: "rgba(16,185,129,0.3)" }}
+                transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1], delay: cIdx * 0.05 }}
+                className="h-[215px] sm:h-[220px] rounded-2xl border border-white/[0.08] bg-gradient-to-b from-white/[0.035] via-white/[0.015] to-transparent p-6 flex flex-col justify-between shadow-xl hover:bg-white/[0.05] transition-all duration-300 relative overflow-hidden group"
+              >
+                <div className="absolute -right-6 -bottom-6 w-28 h-28 rounded-full bg-emerald-500/10 blur-xl pointer-events-none group-hover:scale-150 transition-transform duration-500" />
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(16,185,129,0.05),transparent_70%)] pointer-events-none" />
 
-              <div className="flex items-center justify-between relative z-10">
-                <span className="font-mono text-[9px] font-semibold tracking-[0.2em] text-white/50 uppercase">
-                  EXPERIENCE
-                </span>
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border border-emerald-400/20 bg-emerald-400/10 text-[9px] font-mono text-emerald-400">
-                  <Clock size={10} className="text-emerald-400" />
-                  <span>7+ Years Exp</span>
-                </span>
-              </div>
-
-              <div className="my-auto py-1 relative z-10">
-                <span className="block font-sans text-4xl sm:text-5xl font-light tracking-tight text-white group-hover:text-emerald-300 transition-colors">
-                  7+
-                </span>
-                <p className="font-sans text-xs text-white/50 tracking-wide mt-1.5 truncate">
-                  React · Next.js · TypeScript
-                </p>
-              </div>
-
-              <div className="h-8 flex items-center justify-between pt-2.5 border-t border-white/[0.06] text-[10px] font-mono text-white/40 relative z-10">
-                <span>Core Technologies</span>
-                <span className="text-emerald-400 flex items-center gap-1.5">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  Production Active
-                </span>
-              </div>
-            </motion.div>
-
-            {/* Card 2: Main Fields */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              whileHover={{ y: -5, borderColor: "rgba(16,185,129,0.3)" }}
-              transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1], delay: 0.05 }}
-              className="h-[215px] sm:h-[220px] rounded-2xl border border-white/[0.08] bg-gradient-to-b from-white/[0.035] via-white/[0.015] to-transparent p-6 flex flex-col justify-between shadow-xl hover:bg-white/[0.05] transition-all duration-300 relative overflow-hidden group"
-            >
-              <div className="absolute -right-6 -bottom-6 w-28 h-28 rounded-full bg-emerald-500/10 blur-xl pointer-events-none group-hover:scale-150 transition-transform duration-500" />
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(16,185,129,0.05),transparent_70%)] pointer-events-none" />
-
-              <div className="flex items-center justify-between relative z-10">
-                <span className="font-mono text-[9px] font-semibold tracking-[0.2em] text-white/50 uppercase">
-                  Main Fields
-                </span>
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border border-emerald-400/20 bg-emerald-400/10 text-[9px] font-mono text-emerald-400">
-                  <ShieldCheck size={10} className="text-emerald-400" />
-                  <span>Dev &amp; Security</span>
-                </span>
-              </div>
-
-              <div className="my-auto py-1 relative z-10">
-                <span className="block font-sans text-4xl sm:text-5xl font-light tracking-tight text-white group-hover:text-emerald-300 transition-colors">
-                  2
-                </span>
-                <p className="font-sans text-xs text-white/50 tracking-wide mt-1.5 truncate">
-                  Development · Cybersecurity
-                </p>
-              </div>
-
-              <div className="h-8 flex items-center justify-between pt-2.5 border-t border-white/[0.06] text-[10px] font-mono text-white/40 relative z-10">
-                <span>Primary Disciplines</span>
-                <span className="text-emerald-400 flex items-center gap-1">
-                  <CheckCircle2 size={11} className="text-emerald-400" />
-                  Dual Expertise
-                </span>
-              </div>
-            </motion.div>
-
-            {/* Card 3: Development Tools */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              whileHover={{ y: -5, borderColor: "rgba(16,185,129,0.3)" }}
-              transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1], delay: 0.1 }}
-              className="h-[215px] sm:h-[220px] rounded-2xl border border-white/[0.08] bg-gradient-to-b from-white/[0.035] via-white/[0.015] to-transparent p-6 flex flex-col justify-between shadow-xl hover:bg-white/[0.05] transition-all duration-300 relative overflow-hidden group"
-            >
-              <div className="absolute -right-6 -bottom-6 w-28 h-28 rounded-full bg-emerald-500/10 blur-xl pointer-events-none group-hover:scale-150 transition-transform duration-500" />
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(16,185,129,0.05),transparent_70%)] pointer-events-none" />
-
-              <div className="flex items-center justify-between relative z-10">
-                <span className="font-mono text-[9px] font-semibold tracking-[0.2em] text-white/50 uppercase">
-                  Development Tools
-                </span>
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border border-emerald-400/20 bg-emerald-400/10 text-emerald-400 text-[9px] font-mono font-medium">
-                  <Terminal size={10} className="text-emerald-400" />
-                  <span>Frontend Stack</span>
+                <div className="flex items-center justify-between relative z-10">
+                  <span className="font-mono text-[9px] font-semibold tracking-[0.2em] text-white/50 uppercase">
+                    {card.tag}
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border border-emerald-400/20 bg-emerald-400/10 text-[9px] font-mono text-emerald-400">
+                    <Sparkles size={10} className="text-emerald-400" />
+                    <span>{card.badgeText}</span>
+                  </span>
                 </div>
-              </div>
 
-              <div className="my-auto py-1 relative z-10">
-                <span className="block font-sans text-4xl sm:text-5xl font-light tracking-tight text-white group-hover:text-emerald-300 transition-colors">
-                  4+
-                </span>
-                <p className="font-sans text-xs text-white/50 tracking-wide mt-1.5 truncate">
-                  React · Next.js · Tailwind · Git
-                </p>
-              </div>
-
-              <div className="h-8 flex items-center justify-between pt-2.5 border-t border-white/[0.06] text-[10px] font-mono text-white/40 relative z-10">
-                <span>Toolkit</span>
-                <span className="text-emerald-400 flex items-center gap-1">
-                  <CheckCircle2 size={11} className="text-emerald-400" />
-                  Production Ready
-                </span>
-              </div>
-            </motion.div>
-
-            {/* Card 4: Engineering Focus */}
-            <motion.div
-              id="who-s-me-card-security-design"
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              whileHover={{ y: -5, borderColor: "rgba(16,185,129,0.3)" }}
-              transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1], delay: 0.15 }}
-              className="h-[215px] sm:h-[220px] rounded-2xl border border-white/[0.08] bg-gradient-to-b from-white/[0.035] via-white/[0.015] to-transparent p-6 flex flex-col justify-between shadow-xl hover:bg-white/[0.05] transition-all duration-300 relative overflow-hidden group"
-            >
-              <div className="absolute -right-6 -bottom-6 w-28 h-28 rounded-full bg-emerald-500/10 blur-xl pointer-events-none group-hover:scale-150 transition-transform duration-500" />
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(16,185,129,0.05),transparent_70%)] pointer-events-none" />
-
-              <div className="flex items-center justify-between relative z-10">
-                <span className="font-mono text-[9px] font-semibold tracking-[0.2em] text-white/50 uppercase">
-                  Engineering Focus
-                </span>
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border border-emerald-400/20 bg-emerald-400/10 text-emerald-400 text-[9px] font-mono font-medium">
-                  <Award size={10} className="text-emerald-400" />
-                  <span>Architecture Quality</span>
+                <div className="my-auto py-1 relative z-10">
+                  <span className="block font-sans text-4xl sm:text-5xl font-light tracking-tight text-white group-hover:text-emerald-300 transition-colors">
+                    {card.statNumber}
+                  </span>
+                  <p className="font-sans text-xs text-white/50 tracking-wide mt-1.5 truncate">
+                    {card.statSubtitle}
+                  </p>
                 </div>
-              </div>
 
-              <div className="my-auto py-1 relative z-10">
-                <span className="block font-sans text-4xl sm:text-5xl font-light tracking-tight text-white group-hover:text-emerald-300 transition-colors">
-                  A+
-                </span>
-                <p className="font-sans text-xs text-white/50 tracking-wide mt-1.5 truncate">
-                  Software &amp; Web Development
-                </p>
-              </div>
-
-              <div className="h-8 flex items-center justify-between pt-2.5 border-t border-white/[0.06] text-[10px] font-mono text-white/40 relative z-10">
-                <span className="flex items-center gap-1 text-white/60">
-                  <Sparkles size={11} className="text-emerald-400" />
-                  <span>Full-Stack Standards</span>
-                </span>
-                <span className="text-emerald-400/90 font-semibold">ROOZZERO™</span>
-              </div>
-            </motion.div>
-
+                <div className="h-8 flex items-center justify-between pt-2.5 border-t border-white/[0.06] text-[10px] font-mono text-white/40 relative z-10">
+                  <span>{card.footerLabel}</span>
+                  <span className="text-emerald-400 flex items-center gap-1.5">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    {card.footerValue}
+                  </span>
+                </div>
+              </motion.div>
+            ))}
           </div>
         </div>
         </div>
@@ -1257,7 +1163,7 @@ export default function App() {
             <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-white/10 bg-white/[0.03] backdrop-blur-md shadow-sm">
               <Sparkles size={11} className="text-emerald-400 animate-pulse" />
               <span className="font-sans text-[10px] font-semibold tracking-[0.2em] text-white/80 uppercase">
-                Academy
+                {cmsConfig.classesHeader?.badge || "Academy"}
               </span>
             </div>
           </div>
@@ -1265,10 +1171,10 @@ export default function App() {
           {/* Title & Subtitle Column (Right) */}
           <div className="lg:col-span-9 space-y-4">
             <h2 className="font-sans text-3xl sm:text-4xl md:text-5xl font-black tracking-tight text-white leading-none">
-              Latest Classes
+              {cmsConfig.classesHeader?.title || "Latest Classes"}
             </h2>
             <p className="font-sans text-base sm:text-lg text-white/60 leading-relaxed max-w-3xl">
-              Explore our dynamic curriculum, interactive resources, and live lecture schedules.
+              {cmsConfig.classesHeader?.description || "Explore our dynamic curriculum, interactive resources, and live lecture schedules."}
             </p>
           </div>
         </div>

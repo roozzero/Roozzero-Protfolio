@@ -1,11 +1,26 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence, useScroll, useSpring, useTransform } from "motion/react";
 import { Mail, Send, Instagram, Github, Linkedin, Check, Sparkles } from "lucide-react";
+import { loadCmsConfig } from "../constants/defaultCms";
 
 export default function ContactSection() {
   const sectionRef = useRef<HTMLElement>(null);
   const [email, setEmail] = useState("");
   const [submitted, setSubmitted] = useState(false);
+
+  const [contactConfig, setContactConfig] = useState(() => loadCmsConfig().contact);
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      setContactConfig(loadCmsConfig().contact);
+    };
+    window.addEventListener("cms_config_updated", handleUpdate);
+    window.addEventListener("storage", handleUpdate);
+    return () => {
+      window.removeEventListener("cms_config_updated", handleUpdate);
+      window.removeEventListener("storage", handleUpdate);
+    };
+  }, []);
 
   // Scroll Progress and Parallax setup
   const { scrollYProgress } = useScroll({
@@ -30,22 +45,22 @@ export default function ContactSection() {
     {
       name: "Telegram",
       icon: Send,
-      url: "https://t.me/roozzero",
+      url: contactConfig.telegramUrl || "https://t.me/roozzero",
     },
     {
       name: "Instagram",
       icon: Instagram,
-      url: "https://instagram.com/roozzero",
+      url: contactConfig.instagramUrl || "https://instagram.com/roozzero",
     },
     {
       name: "GitHub",
       icon: Github,
-      url: "https://github.com/roozzero",
+      url: contactConfig.githubUrl || "https://github.com/roozzero",
     },
     {
       name: "LinkedIn",
       icon: Linkedin,
-      url: "https://linkedin.com/in/roozzero",
+      url: contactConfig.linkedinUrl || "https://linkedin.com/in/roozzero",
     },
   ];
 
@@ -65,7 +80,7 @@ export default function ContactSection() {
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-white/10 bg-white/[0.03] backdrop-blur-md shadow-sm">
             <Sparkles size={11} className="text-emerald-400 animate-pulse" />
             <span className="font-sans text-[10px] font-semibold tracking-[0.2em] text-white/80 uppercase">
-              CONTACT ME
+              {contactConfig.badge || "CONTACT ME"}
             </span>
           </div>
         </div>
@@ -73,10 +88,10 @@ export default function ContactSection() {
         {/* Title & Subtitle Column (Right) */}
         <div className="lg:col-span-9 space-y-4">
           <h2 className="font-sans text-3xl sm:text-4xl md:text-5xl font-black tracking-tight text-white leading-none">
-            Let's talk.
+            {contactConfig.title || "Let's talk."}
           </h2>
           <p className="font-sans text-base sm:text-lg text-white/60 leading-relaxed max-w-3xl">
-            Want to start a project, learn React, or just chat? Feel free to connect or subscribe below.
+            {contactConfig.description || "Want to start a project, learn React, or just chat? Feel free to connect or subscribe below."}
           </p>
         </div>
       </div>
