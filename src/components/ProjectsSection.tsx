@@ -27,7 +27,16 @@ import {
   Volume2,
   Lock,
   Zap,
-  Play
+  Play,
+  AlertTriangle,
+  Server,
+  Globe,
+  Wifi,
+  Database,
+  ShieldAlert,
+  Gauge,
+  RefreshCw,
+  Smartphone
 } from "lucide-react";
 
 export default function ProjectsSection() {
@@ -42,6 +51,16 @@ export default function ProjectsSection() {
   const [selectedShowtime, setSelectedShowtime] = useState<string>("13:00"); // Selected movie showtime
   const [selectedSeats, setSelectedSeats] = useState<string[]>(["C4", "C5"]); // Selected seat IDs
   const [showTicketModal, setShowTicketModal] = useState<boolean>(false);
+
+  // Interactive Project states for Aegis Sentinel (Multi-Mobile Showcase)
+  const [securityActiveScreen, setSecurityActiveScreen] = useState<number>(2); // Default to centerpiece (Active Shield)
+  const [shieldActive, setShieldActive] = useState<boolean>(true);
+  const [threatFilter, setThreatFilter] = useState<"all" | "critical" | "mitigated">("all");
+
+  // Interactive Project states for Nexus Engine (Multi-Mobile Showcase)
+  const [cloudActiveScreen, setCloudActiveScreen] = useState<number>(2); // Default to centerpiece (Engine Console)
+  const [selectedClusterRegion, setSelectedClusterRegion] = useState<string>("us-east");
+  const [isCompilingWasm, setIsCompilingWasm] = useState<boolean>(false);
 
   // Scroll Progress and Parallax setup
   const { scrollYProgress } = useScroll({
@@ -124,7 +143,7 @@ export default function ProjectsSection() {
               Main Works &amp; Systems
             </h2>
             <p className="font-sans text-sm sm:text-base text-white/60 leading-relaxed max-w-2xl">
-              High-impact digital productions, interactive simulation architectures, and production-ready applications.
+              Selected projects and systems showcasing my experience in frontend development, modern web technologies, and security-focused engineering.
             </p>
           </motion.div>
 
@@ -183,26 +202,7 @@ export default function ProjectsSection() {
               {/* Brand Logo & Rotating Film Reel Graphic (Scroll-linked & Continuous) */}
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 select-none">
-                  <span className="font-sans text-2xl sm:text-3xl font-black tracking-tight text-white uppercase">V</span>
-                  {/* Rotating Cinema Film Sprocket 1 */}
-                  <div className="relative w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center shadow-lg shadow-emerald-500/30">
-                    <motion.div
-                      style={{ rotate: filmReelRotate }}
-                      className="w-3.5 h-3.5 rounded-full border border-white/40 flex items-center justify-center"
-                    >
-                      <div className="w-1 h-1 rounded-full bg-white" />
-                    </motion.div>
-                  </div>
-                  {/* Rotating Cinema Film Sprocket 2 */}
-                  <div className="relative w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center shadow-lg shadow-emerald-500/30">
-                    <motion.div
-                      style={{ rotate: filmReelRotate }}
-                      className="w-3.5 h-3.5 rounded-full border border-white/40 flex items-center justify-center"
-                    >
-                      <div className="w-1 h-1 rounded-full bg-white" />
-                    </motion.div>
-                  </div>
-                  <span className="font-sans text-2xl sm:text-3xl font-black tracking-tight text-white uppercase">'s Cinema</span>
+                  <span className="font-sans text-2xl sm:text-3xl font-black tracking-tight text-white uppercase">TeacherShow</span>
                 </div>
 
                 {/* Status indicator */}
@@ -215,10 +215,10 @@ export default function ProjectsSection() {
               {/* Description & Overview */}
               <div className="space-y-3">
                 <h3 className="font-sans text-2xl sm:text-3xl font-bold tracking-tight text-white/95 leading-tight">
-                  Next-Gen Cinematic Ticketing Experience
+                  Educational Platform
                 </h3>
                 <p className="font-sans text-sm text-white/60 leading-relaxed">
-                  Engineered with real-time seat reservation synchronization, IMAX &amp; Cinetech acoustics visualization, dynamic showtime filters, and micro-animated ticket generation.
+                  A comprehensive educational management platform designed to streamline school operations, digital learning, examinations, reporting, student services, and administrative workflows.
                 </p>
               </div>
 
@@ -259,15 +259,15 @@ export default function ProjectsSection() {
                 <div className="grid grid-cols-3 gap-4">
                   <div className="p-2.5 rounded-xl bg-white/[0.015] border border-white/[0.04]">
                     <p className="font-sans text-[9px] text-white/40 uppercase tracking-widest mb-1">Architecture</p>
-                    <p className="font-sans text-xs font-bold text-white">React 19 + Vite</p>
+                    <p className="font-sans text-xs font-bold text-white">React</p>
                   </div>
                   <div className="p-2.5 rounded-xl bg-white/[0.015] border border-white/[0.04]">
                     <p className="font-sans text-[9px] text-white/40 uppercase tracking-widest mb-1">Motion Engine</p>
-                    <p className="font-sans text-xs font-bold text-emerald-400">Framer Motion</p>
+                    <p className="font-sans text-xs font-bold text-emerald-400">PHP</p>
                   </div>
                   <div className="p-2.5 rounded-xl bg-white/[0.015] border border-white/[0.04]">
                     <p className="font-sans text-[9px] text-white/40 uppercase tracking-widest mb-1">Target Markets</p>
-                    <p className="font-sans text-xs font-bold text-white">USA &amp; Global</p>
+                    <p className="font-sans text-xs font-bold text-white">SCHOOL</p>
                   </div>
                 </div>
               </div>
@@ -279,13 +279,8 @@ export default function ProjectsSection() {
                   className="inline-flex items-center gap-2 px-4 py-2 font-sans text-[10px] font-bold tracking-[0.18em] uppercase transition-all duration-300 rounded-xl bg-emerald-500 text-black shadow-lg shadow-emerald-500/25 hover:bg-emerald-400 hover:shadow-emerald-500/40 cursor-pointer"
                 >
                   <Ticket size={13} />
-                  <span>Generate e-Ticket</span>
+                  <span>View Project</span>
                 </button>
-
-                <div className="hidden sm:flex items-center gap-1.5 text-xs text-white/40 font-mono">
-                  <span>Seats:</span>
-                  <span className="text-emerald-400 font-bold">{selectedSeats.join(", ") || "None"}</span>
-                </div>
               </div>
             </motion.div>
 
@@ -305,10 +300,10 @@ export default function ProjectsSection() {
               {/* Screen Switcher Tabs */}
               <div className="flex flex-wrap items-center justify-center gap-1.5 p-1 bg-white/[0.02] border border-white/[0.06] rounded-2xl mb-4 self-center backdrop-blur-md">
                 {[
-                  { id: 1, label: "Date & Time", icon: CalendarIcon },
-                  { id: 2, label: "In Cinema", icon: Film },
-                  { id: 3, label: "Movie Details", icon: Clapperboard },
-                  { id: 4, label: "Seat Selection", icon: Ticket },
+                  { id: 1, label: "manage", icon: CalendarIcon },
+                  { id: 2, label: "Platform", icon: Film },
+                  { id: 3, label: "Teacher", icon: Clapperboard },
+                  { id: 4, label: "Student", icon: Ticket },
                 ].map((tab) => {
                   const Icon = tab.icon;
                   const isActive = activeScreen === tab.id;
@@ -855,25 +850,77 @@ export default function ProjectsSection() {
         )}
 
         {/* =========================================================================
-            VIEW 2: AEGIS SENTINEL - CYBERSECURITY & THREAT DEFENSE (Emerald Zero-Trust)
+            VIEW 2: AEGIS SENTINEL - CYBERSECURITY & THREAT DEFENSE (Multi-Mobile Deck)
            ========================================================================= */}
         {activeProject === "security" && (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center py-4">
-            <div className="lg:col-span-5 space-y-6">
-              <div className="flex items-center gap-3">
-                <span className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
-                  <ShieldCheck size={26} />
-                </span>
-                <div>
-                  <span className="font-mono text-[9px] text-emerald-400 tracking-widest uppercase">DEFENSE ARCHITECTURE</span>
-                  <h3 className="font-sans text-3xl font-black text-white">Aegis Sentinel</h3>
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-center">
+            {/* Left Column: Interactive Overview */}
+            <div className="lg:col-span-5 space-y-6 text-left">
+              {/* Brand Header & Mode Badge */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <span className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
+                    <ShieldCheck size={26} />
+                  </span>
+                  <div>
+                    <span className="font-mono text-[9px] text-emerald-400 tracking-widest uppercase">
+                      ZERO-TRUST DEFENSE
+                    </span>
+                    <h3 className="font-sans text-3xl sm:text-4xl font-black text-white">
+                      Aegis Sentinel
+                    </h3>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-mono text-emerald-400">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-ping" />
+                  <span>LIVE DECK</span>
                 </div>
               </div>
 
-              <p className="font-sans text-sm text-white/60 leading-relaxed">
+              <p className="font-sans text-sm sm:text-base text-white/70 leading-relaxed">
                 Automated vulnerability scanner and runtime intrusion prevention system. Inspects WebSocket packets, sanitizes incoming AST payloads, and protects enterprise APIs against OWASP Top 10 vectors in real-time.
               </p>
 
+              {/* Real-time Threat Radar Motion Graphic */}
+              <div className="rounded-2xl border border-white/[0.08] bg-black/50 p-4 relative overflow-hidden shadow-inner">
+                <div className="flex items-center justify-between border-b border-white/[0.06] pb-2 mb-3">
+                  <div className="flex items-center gap-2 font-mono text-xs text-white/70">
+                    <Terminal size={14} className="text-emerald-400" />
+                    <span>daemon/aegis-runtime.telemetry</span>
+                  </div>
+                  <span className="font-mono text-[9px] text-emerald-400 bg-emerald-400/10 border border-emerald-400/20 px-2 py-0.5 rounded-full flex items-center gap-1">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-ping" />
+                    PORT 443 ARMED
+                  </span>
+                </div>
+
+                {/* Radar visualization */}
+                <div className="relative h-28 rounded-xl bg-black border border-emerald-500/20 overflow-hidden flex items-center justify-center">
+                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(16,185,129,0.15)_0%,transparent_70%)] pointer-events-none" />
+                  <div className="w-24 h-24 rounded-full border border-emerald-500/20 flex items-center justify-center">
+                    <div className="w-14 h-14 rounded-full border border-emerald-500/30 flex items-center justify-center">
+                      <div className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_#10b981]" />
+                    </div>
+                  </div>
+                  {/* Rotating beam */}
+                  <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 3.5, repeat: Infinity, ease: "linear" }}
+                    className="absolute inset-0 flex items-center justify-center pointer-events-none"
+                  >
+                    <div className="w-full h-full rounded-full bg-[conic-gradient(from_0deg,transparent_0deg,rgba(16,185,129,0.35)_360deg)]" />
+                  </motion.div>
+                  {/* Pulsing Intercept Blips */}
+                  <span className="absolute top-4 left-10 w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+                  <span className="absolute bottom-5 right-12 w-2 h-2 rounded-full bg-emerald-300 animate-pulse" />
+                  <span className="absolute text-[8px] font-mono text-emerald-400/80 bottom-1 left-2">
+                    0.8ms SWEEP · 0 BREACHES
+                  </span>
+                </div>
+              </div>
+
+              {/* Technical Specifications Grid */}
               <div className="grid grid-cols-3 gap-3 font-mono">
                 <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.06]">
                   <span className="text-[10px] text-white/40 block">LATENCY</span>
@@ -888,99 +935,517 @@ export default function ProjectsSection() {
                   <span className="text-sm font-bold text-white">128 Global</span>
                 </div>
               </div>
+
+              {/* Master Shield Toggle */}
+              <button
+                onClick={() => setShieldActive(!shieldActive)}
+                className={`w-full py-2.5 px-4 rounded-xl font-mono text-xs font-bold transition-all flex items-center justify-between border cursor-pointer ${
+                  shieldActive
+                    ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20"
+                    : "bg-red-500/10 border-red-500/30 text-red-400 hover:bg-red-500/20"
+                }`}
+              >
+                <span className="flex items-center gap-2">
+                  <ShieldCheck size={16} />
+                  {shieldActive ? "Zero-Trust Shield: ARMED & PROTECTING" : "Zero-Trust Shield: PAUSED"}
+                </span>
+                <span className="px-2 py-0.5 rounded bg-black/40 text-[9px] uppercase tracking-wider">
+                  {shieldActive ? "Active" : "Standby"}
+                </span>
+              </button>
             </div>
 
-            {/* Interactive Threat Radar & Packet Stream Motion Graphic in Emerald */}
-            <div className="lg:col-span-7 h-[390px] rounded-2xl border border-white/[0.08] bg-black/60 p-6 relative overflow-hidden flex flex-col justify-between shadow-2xl">
-              {/* Radar Scanner Background reacting to continuous animation AND scroll */}
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[320px] h-[320px] rounded-full border border-emerald-500/15 pointer-events-none flex items-center justify-center">
-                <div className="w-[220px] h-[220px] rounded-full border border-emerald-500/15 flex items-center justify-center">
-                  <div className="w-[110px] h-[110px] rounded-full border border-emerald-500/20" />
-                </div>
-                
-                {/* Scroll-linked & Continuous Radar Beam */}
+            {/* Right Column: 3D Multi-Mobile Screen Deck */}
+            <motion.div style={{ y: yParallaxRight }} className="lg:col-span-7 flex flex-col items-center relative">
+              {/* Virtual Projector Light Beam from Top */}
+              <div className="absolute -top-12 left-1/2 -translate-x-1/2 w-full flex justify-center pointer-events-none">
                 <motion.div
-                  style={{ rotate: scrollRadarSweep }}
-                  className="absolute inset-0 rounded-full flex items-center justify-center pointer-events-none"
+                  style={{ rotate: projectorBeamAngle }}
+                  className="w-3/4 h-20 bg-gradient-to-b from-emerald-400/20 via-emerald-500/[0.05] to-transparent blur-2xl rounded-t-full pointer-events-none"
+                />
+              </div>
+
+              {/* Screen Switcher Tabs */}
+              <div className="flex flex-wrap items-center justify-center gap-1.5 p-1 bg-white/[0.02] border border-white/[0.06] rounded-2xl mb-4 self-center backdrop-blur-md">
+                {[
+                  { id: 1, label: "Threat Radar", icon: Radio },
+                  { id: 2, label: "Active Shield", icon: ShieldCheck },
+                  { id: 3, label: "AST Audit", icon: Terminal },
+                  { id: 4, label: "Incident Log", icon: Activity },
+                ].map((tab) => {
+                  const Icon = tab.icon;
+                  const isActive = securityActiveScreen === tab.id;
+                  return (
+                    <button
+                      key={tab.id}
+                      onClick={() => setSecurityActiveScreen(tab.id)}
+                      className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-[10px] font-sans tracking-wider transition-all duration-300 uppercase cursor-pointer ${
+                        isActive
+                          ? "bg-emerald-500 text-black shadow-[0_4px_14px_rgba(16,185,129,0.4)] font-bold scale-[1.02]"
+                          : "text-white/50 hover:text-white hover:bg-white/[0.03]"
+                      }`}
+                    >
+                      <Icon size={11} />
+                      <span>{tab.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* The 3D Mockup Arena */}
+              <div className="relative w-full max-w-[660px] h-[530px] sm:h-[570px] flex items-center justify-center overflow-visible select-none mt-2">
+                
+                {/* SCREEN 1: Threat Radar Mobile */}
+                <motion.div
+                  animate={{
+                    x: securityActiveScreen === 1 ? 0 : securityActiveScreen === 2 ? -155 : securityActiveScreen === 3 ? -265 : -340,
+                    y: securityActiveScreen === 1 ? 0 : securityActiveScreen === 2 ? 10 : securityActiveScreen === 3 ? 20 : 30,
+                    scale: securityActiveScreen === 1 ? 1.03 : securityActiveScreen === 2 ? 0.91 : securityActiveScreen === 3 ? 0.84 : 0.78,
+                    rotate: securityActiveScreen === 1 ? 0 : securityActiveScreen === 2 ? -4 : securityActiveScreen === 3 ? -7 : -10,
+                    opacity: securityActiveScreen === 1 ? 1 : securityActiveScreen === 2 ? 0.85 : securityActiveScreen === 3 ? 0.5 : 0.2,
+                    zIndex: securityActiveScreen === 1 ? 30 : securityActiveScreen === 2 ? 20 : securityActiveScreen === 3 ? 10 : 0,
+                  }}
+                  transition={{ type: "spring", stiffness: 110, damping: 18 }}
+                  onClick={() => setSecurityActiveScreen(1)}
+                  className="absolute w-[245px] h-[490px] rounded-[34px] border border-white/[0.08] bg-[#09090C] p-2.5 shadow-[0_25px_60px_rgba(0,0,0,0.85)] cursor-pointer select-none overflow-hidden group/phone"
                 >
-                  <motion.div
-                    animate={{ rotate: 360 }}
-                    transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
-                    className="w-full h-full rounded-full bg-[conic-gradient(from_0deg,transparent_0deg,rgba(16,185,129,0.3)_360deg)]"
-                  />
+                  <div className="absolute top-2.5 left-1/2 -translate-x-1/2 w-20 h-4 bg-black rounded-full z-40 border border-white/5 flex items-center justify-center">
+                    <div className="w-1.5 h-1.5 rounded-full bg-white/20 ml-auto mr-3" />
+                  </div>
+
+                  <div className="w-full h-full rounded-[24px] bg-black overflow-hidden flex flex-col p-3 pt-5 relative font-sans">
+                    {/* Status Bar */}
+                    <div className="flex justify-between items-center text-[9px] text-white/50 px-1 mb-2">
+                      <span>9:41</span>
+                      <div className="flex items-center gap-1">
+                        <span className="w-2.5 h-1.5 border border-white/30 rounded-[2px] flex items-center p-[0.5px]">
+                          <span className="w-full h-full bg-white/60 rounded-[1px]" />
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Nav Bar */}
+                    <div className="flex justify-between items-center border-b border-white/[0.05] pb-2 mb-3">
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-4 h-4 rounded-full bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center">
+                          <Radio size={9} className="text-emerald-400" />
+                        </div>
+                        <span className="text-[10px] text-white font-bold">Threat Radar</span>
+                      </div>
+                      <span className="text-[8px] font-mono text-emerald-400 bg-emerald-400/10 px-1.5 py-0.5 rounded">
+                        PORT 443
+                      </span>
+                    </div>
+
+                    {/* Mini Sweep Canvas */}
+                    <div className="relative w-full aspect-square rounded-2xl bg-zinc-950 border border-emerald-500/20 p-2 flex items-center justify-center mb-3 overflow-hidden">
+                      <div className="w-full h-full rounded-full border border-emerald-500/15 flex items-center justify-center">
+                        <div className="w-3/4 h-3/4 rounded-full border border-emerald-500/20 flex items-center justify-center">
+                          <div className="w-1/2 h-1/2 rounded-full border border-emerald-500/25 flex items-center justify-center">
+                            <div className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_6px_#10b981]" />
+                          </div>
+                        </div>
+                      </div>
+                      {/* Sweep line */}
+                      <motion.div
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
+                        className="absolute inset-0 flex items-center justify-center pointer-events-none"
+                      >
+                        <div className="w-full h-full rounded-full bg-[conic-gradient(from_0deg,transparent_0deg,rgba(16,185,129,0.3)_360deg)]" />
+                      </motion.div>
+                      <span className="absolute top-5 right-8 w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_5px_#10b981]" />
+                      <span className="absolute bottom-6 left-10 w-1.5 h-1.5 rounded-full bg-emerald-300 shadow-[0_0_5px_#10b981]" />
+                    </div>
+
+                    {/* Threat List */}
+                    <div className="space-y-1.5 text-[8.5px] font-mono overflow-y-auto flex-1">
+                      <div className="p-1.5 rounded-lg bg-white/[0.03] border border-white/[0.05] flex justify-between items-center">
+                        <div>
+                          <p className="text-white font-semibold">SQLi Injection Vector</p>
+                          <p className="text-white/40">192.168.1.104 · /auth</p>
+                        </div>
+                        <span className="text-emerald-400 bg-emerald-400/10 px-1.5 py-0.5 rounded text-[7.5px]">BLOCKED</span>
+                      </div>
+                      <div className="p-1.5 rounded-lg bg-white/[0.03] border border-white/[0.05] flex justify-between items-center">
+                        <div>
+                          <p className="text-white font-semibold">AST Buffer Exploit</p>
+                          <p className="text-white/40">Port 8080 · WebSocket</p>
+                        </div>
+                        <span className="text-emerald-400 bg-emerald-400/10 px-1.5 py-0.5 rounded text-[7.5px]">DROPPED</span>
+                      </div>
+                      <div className="p-1.5 rounded-lg bg-white/[0.03] border border-white/[0.05] flex justify-between items-center">
+                        <div>
+                          <p className="text-white font-semibold">DDoS SYN Packet Flood</p>
+                          <p className="text-white/40">50k req/s · Rate Limiter</p>
+                        </div>
+                        <span className="text-emerald-400 bg-emerald-400/10 px-1.5 py-0.5 rounded text-[7.5px]">MITIGATED</span>
+                      </div>
+                    </div>
+
+                    <div className="mt-auto pt-2 border-t border-white/[0.05]">
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); setSecurityActiveScreen(2); }}
+                        className="w-full h-6 rounded-lg bg-emerald-500 text-black text-[9px] font-bold tracking-wider uppercase flex items-center justify-center cursor-pointer shadow-lg hover:shadow-emerald-500/20"
+                      >
+                        Inspect Active Shield
+                      </button>
+                    </div>
+                  </div>
                 </motion.div>
 
-                {/* Pulsing Intercept Target Blips in Emerald */}
-                {[
-                  { top: "30%", left: "40%", delay: 0 },
-                  { top: "65%", left: "70%", delay: 1.2 },
-                  { top: "45%", left: "75%", delay: 2.1 },
-                ].map((blip, i) => (
-                  <motion.div
-                    key={i}
-                    style={{ top: blip.top, left: blip.left }}
-                    animate={{ scale: [1, 2, 1], opacity: [0.3, 1, 0.3] }}
-                    transition={{ duration: 2, delay: blip.delay, repeat: Infinity }}
-                    className="absolute w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_#10b981]"
+                {/* SCREEN 2: Active Shield Mobile (Centerpiece) */}
+                <motion.div
+                  animate={{
+                    x: securityActiveScreen === 2 ? 0 : securityActiveScreen === 1 ? 155 : securityActiveScreen === 3 ? -155 : -255,
+                    y: securityActiveScreen === 2 ? 0 : securityActiveScreen === 1 ? 10 : securityActiveScreen === 3 ? 10 : 20,
+                    scale: securityActiveScreen === 2 ? 1.05 : securityActiveScreen === 1 ? 0.91 : securityActiveScreen === 3 ? 0.91 : 0.85,
+                    rotate: securityActiveScreen === 2 ? 0 : securityActiveScreen === 1 ? 3.5 : securityActiveScreen === 3 ? -3.5 : -6,
+                    opacity: securityActiveScreen === 2 ? 1 : securityActiveScreen === 1 ? 0.85 : securityActiveScreen === 3 ? 0.85 : 0.55,
+                    zIndex: securityActiveScreen === 2 ? 30 : securityActiveScreen === 1 ? 20 : securityActiveScreen === 3 ? 20 : 10,
+                  }}
+                  transition={{ type: "spring", stiffness: 110, damping: 18 }}
+                  onClick={() => setSecurityActiveScreen(2)}
+                  className="absolute w-[245px] h-[490px] rounded-[34px] border border-white/[0.12] bg-[#0A0A0E] p-2.5 shadow-[0_30px_70px_rgba(0,0,0,0.9)] cursor-pointer select-none overflow-hidden group/device"
+                >
+                  <div className="absolute inset-0 bg-gradient-to-b from-emerald-500/[0.06] via-transparent to-emerald-600/[0.08] opacity-60 group-hover/device:opacity-100 transition-opacity duration-700 pointer-events-none" />
+
+                  <div className="absolute top-2.5 left-1/2 -translate-x-1/2 w-20 h-4 bg-black rounded-full z-40 border border-white/5 flex items-center justify-center">
+                    <div className="w-1.5 h-1.5 rounded-full bg-white/20 ml-auto mr-3" />
+                  </div>
+
+                  <div className="w-full h-full rounded-[24px] bg-black overflow-hidden flex flex-col p-3 pt-5 relative font-sans">
+                    {/* Status Bar */}
+                    <div className="flex justify-between items-center text-[9px] text-white/50 px-1 mb-2">
+                      <span>9:41</span>
+                      <div className="flex items-center gap-1">
+                        <span className="w-2.5 h-1.5 border border-white/30 rounded-[2px] flex items-center p-[0.5px]">
+                          <span className="w-full h-full bg-white/60 rounded-[1px]" />
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* App Header */}
+                    <div className="flex justify-between items-center border-b border-white/[0.05] pb-2 mb-3">
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-4 h-4 rounded-full bg-emerald-500 flex items-center justify-center">
+                          <ShieldCheck size={9} className="text-black" />
+                        </div>
+                        <span className="text-[10px] text-white font-bold">Aegis Sentinel</span>
+                      </div>
+                      <span className="text-[8px] font-mono text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded">
+                        GLOBAL EDGE
+                      </span>
+                    </div>
+
+                    {/* Shield Emblem Status Area */}
+                    <div className="relative py-4 flex flex-col items-center justify-center text-center">
+                      <div className="relative w-20 h-20 flex items-center justify-center mb-2">
+                        <div className="absolute inset-0 rounded-full bg-emerald-500/10 animate-ping" />
+                        <div className="relative w-16 h-16 rounded-full bg-emerald-950/40 border border-emerald-500/40 flex items-center justify-center shadow-[0_0_20px_rgba(16,185,129,0.3)]">
+                          <ShieldCheck size={30} className="text-emerald-400" />
+                        </div>
+                      </div>
+                      <h4 className="text-[13px] font-bold text-white tracking-wide">
+                        {shieldActive ? "System Armed & Protected" : "Shield Suspended"}
+                      </h4>
+                      <p className="text-[9px] font-mono text-emerald-400 mt-0.5">
+                        99.98% Defense Rate · 0.8ms
+                      </p>
+                    </div>
+
+                    {/* Defense Layer Checklist */}
+                    <div className="space-y-1.5 my-auto text-[8.5px] font-mono">
+                      <div className="p-2 rounded-xl bg-white/[0.03] border border-white/[0.05] flex items-center justify-between">
+                        <span className="text-white/80">WAF Zero-Trust Filter</span>
+                        <span className="text-emerald-400 flex items-center gap-1 font-bold">
+                          <CheckCircle2 size={10} /> Active
+                        </span>
+                      </div>
+                      <div className="p-2 rounded-xl bg-white/[0.03] border border-white/[0.05] flex items-center justify-between">
+                        <span className="text-white/80">AST Query Sanitizer</span>
+                        <span className="text-emerald-400 flex items-center gap-1 font-bold">
+                          <CheckCircle2 size={10} /> Online
+                        </span>
+                      </div>
+                      <div className="p-2 rounded-xl bg-white/[0.03] border border-white/[0.05] flex items-center justify-between">
+                        <span className="text-white/80">TLS 1.3 Strict Handshake</span>
+                        <span className="text-emerald-400 flex items-center gap-1 font-bold">
+                          <CheckCircle2 size={10} /> Enforced
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Bottom Action */}
+                    <div className="mt-auto pt-2 border-t border-white/[0.05]">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShieldActive(!shieldActive);
+                        }}
+                        className={`w-full h-7 rounded-lg text-[9px] font-bold tracking-wider uppercase flex items-center justify-center cursor-pointer transition-all ${
+                          shieldActive
+                            ? "bg-emerald-500 text-black shadow-lg shadow-emerald-500/20"
+                            : "bg-red-500 text-white"
+                        }`}
+                      >
+                        {shieldActive ? "Arm Defense Systems" : "Enable Protection"}
+                      </button>
+                    </div>
+                  </div>
+                </motion.div>
+
+                {/* SCREEN 3: AST Audit Mobile */}
+                <motion.div
+                  animate={{
+                    x: securityActiveScreen === 3 ? 0 : securityActiveScreen === 2 ? 155 : securityActiveScreen === 1 ? 265 : -155,
+                    y: securityActiveScreen === 3 ? 0 : securityActiveScreen === 2 ? 10 : securityActiveScreen === 1 ? 20 : 10,
+                    scale: securityActiveScreen === 3 ? 1.03 : securityActiveScreen === 2 ? 0.91 : securityActiveScreen === 1 ? 0.84 : 0.91,
+                    rotate: securityActiveScreen === 3 ? 0 : securityActiveScreen === 2 ? 4 : securityActiveScreen === 1 ? 7 : -4,
+                    opacity: securityActiveScreen === 3 ? 1 : securityActiveScreen === 2 ? 0.85 : securityActiveScreen === 1 ? 0.5 : 0.85,
+                    zIndex: securityActiveScreen === 3 ? 30 : securityActiveScreen === 2 ? 20 : securityActiveScreen === 1 ? 10 : 20,
+                  }}
+                  transition={{ type: "spring", stiffness: 110, damping: 18 }}
+                  onClick={() => setSecurityActiveScreen(3)}
+                  className="absolute w-[245px] h-[490px] rounded-[34px] border border-white/[0.08] bg-[#09090C] p-2.5 shadow-[0_25px_60px_rgba(0,0,0,0.85)] cursor-pointer select-none overflow-hidden group/phone"
+                >
+                  <div className="absolute top-2.5 left-1/2 -translate-x-1/2 w-20 h-4 bg-black rounded-full z-40 border border-white/5 flex items-center justify-center">
+                    <div className="w-1.5 h-1.5 rounded-full bg-white/20 ml-auto mr-3" />
+                  </div>
+
+                  <div className="w-full h-full rounded-[24px] bg-black overflow-hidden flex flex-col p-3 pt-5 relative font-sans">
+                    {/* Status Bar */}
+                    <div className="flex justify-between items-center text-[9px] text-white/50 px-1 mb-2">
+                      <span>9:41</span>
+                      <div className="flex items-center gap-1">
+                        <span className="w-2.5 h-1.5 border border-white/30 rounded-[2px] flex items-center p-[0.5px]">
+                          <span className="w-full h-full bg-white/60 rounded-[1px]" />
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex justify-between items-center border-b border-white/[0.05] pb-2 mb-3">
+                      <div className="flex items-center gap-1.5">
+                        <Terminal size={10} className="text-emerald-400" />
+                        <span className="text-[10px] text-white font-bold">AST Code Scanner</span>
+                      </div>
+                      <span className="text-[8px] font-mono text-white/40">V8 WASM</span>
+                    </div>
+
+                    {/* AST Node Tree Display */}
+                    <div className="rounded-xl bg-zinc-950 border border-white/[0.06] p-2.5 mb-3 font-mono text-[8px] space-y-1">
+                      <p className="text-emerald-400 font-bold">POST /api/graphql</p>
+                      <div className="pl-2 border-l border-emerald-500/20 space-y-1 text-white/70">
+                        <p className="flex items-center gap-1">
+                          <CheckCircle2 size={8} className="text-emerald-400" /> Payload Tokenizer [Clean]
+                        </p>
+                        <p className="flex items-center gap-1">
+                          <CheckCircle2 size={8} className="text-emerald-400" /> JWT Verified [RS256]
+                        </p>
+                        <p className="flex items-center gap-1">
+                          <CheckCircle2 size={8} className="text-emerald-400" /> Query Sanitizer [Safe]
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* OWASP Summary Checklist */}
+                    <div className="space-y-1.5 flex-1 font-mono text-[8.5px]">
+                      <div className="p-2 rounded-lg bg-white/[0.02] border border-white/[0.05]">
+                        <div className="flex justify-between text-white/80">
+                          <span>OWASP Top 10</span>
+                          <span className="text-emerald-400 font-bold">10/10 PASS</span>
+                        </div>
+                        <div className="w-full bg-white/10 h-1 rounded-full mt-1.5 overflow-hidden">
+                          <div className="bg-emerald-500 h-full w-full" />
+                        </div>
+                      </div>
+
+                      <div className="p-2 rounded-lg bg-white/[0.02] border border-white/[0.05]">
+                        <div className="flex justify-between text-white/80">
+                          <span>Memory Safety Index</span>
+                          <span className="text-emerald-400 font-bold">100% Rust WASM</span>
+                        </div>
+                        <div className="w-full bg-white/10 h-1 rounded-full mt-1.5 overflow-hidden">
+                          <div className="bg-emerald-500 h-full w-full" />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-auto pt-2 border-t border-white/[0.05]">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setSecurityActiveScreen(4); }}
+                        className="w-full h-6 rounded-lg bg-white/[0.05] hover:bg-white/[0.1] text-white text-[9px] font-bold tracking-wider uppercase flex items-center justify-center cursor-pointer"
+                      >
+                        View Incident Logs
+                      </button>
+                    </div>
+                  </div>
+                </motion.div>
+
+                {/* SCREEN 4: Incident Firewall Log Mobile */}
+                <motion.div
+                  animate={{
+                    x: securityActiveScreen === 4 ? 0 : securityActiveScreen === 3 ? 155 : securityActiveScreen === 2 ? 255 : 340,
+                    y: securityActiveScreen === 4 ? 0 : securityActiveScreen === 3 ? 10 : securityActiveScreen === 2 ? 20 : 30,
+                    scale: securityActiveScreen === 4 ? 1.03 : securityActiveScreen === 3 ? 0.91 : securityActiveScreen === 2 ? 0.85 : 0.78,
+                    rotate: securityActiveScreen === 4 ? 0 : securityActiveScreen === 3 ? 4 : securityActiveScreen === 2 ? 6 : 10,
+                    opacity: securityActiveScreen === 4 ? 1 : securityActiveScreen === 3 ? 0.85 : securityActiveScreen === 2 ? 0.55 : 0.2,
+                    zIndex: securityActiveScreen === 4 ? 30 : securityActiveScreen === 3 ? 20 : securityActiveScreen === 2 ? 10 : 0,
+                  }}
+                  transition={{ type: "spring", stiffness: 110, damping: 18 }}
+                  onClick={() => setSecurityActiveScreen(4)}
+                  className="absolute w-[245px] h-[490px] rounded-[34px] border border-white/[0.08] bg-[#09090C] p-2.5 shadow-[0_25px_60px_rgba(0,0,0,0.85)] cursor-pointer select-none overflow-hidden group/phone"
+                >
+                  <div className="absolute top-2.5 left-1/2 -translate-x-1/2 w-20 h-4 bg-black rounded-full z-40 border border-white/5 flex items-center justify-center">
+                    <div className="w-1.5 h-1.5 rounded-full bg-white/20 ml-auto mr-3" />
+                  </div>
+
+                  <div className="w-full h-full rounded-[24px] bg-black overflow-hidden flex flex-col p-3 pt-5 relative font-sans">
+                    {/* Status Bar */}
+                    <div className="flex justify-between items-center text-[9px] text-white/50 px-1 mb-2">
+                      <span>9:41</span>
+                      <div className="flex items-center gap-1">
+                        <span className="w-2.5 h-1.5 border border-white/30 rounded-[2px] flex items-center p-[0.5px]">
+                          <span className="w-full h-full bg-white/60 rounded-[1px]" />
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex justify-between items-center border-b border-white/[0.05] pb-2 mb-3">
+                      <div className="flex items-center gap-1.5">
+                        <Activity size={10} className="text-emerald-400" />
+                        <span className="text-[10px] text-white font-bold">Firewall Logs</span>
+                      </div>
+                      <span className="text-[8px] font-mono text-emerald-400 animate-pulse">STREAMING</span>
+                    </div>
+
+                    {/* Live Stream Packets */}
+                    <div className="space-y-1.5 font-mono text-[7.5px] overflow-y-auto flex-1">
+                      <div className="p-1.5 rounded bg-emerald-950/30 border border-emerald-500/20 text-emerald-300">
+                        <span className="text-white/40 block">[14:32:01.04]</span>
+                        <span>200 OK - TLS 1.3 Key Exchange Signed</span>
+                      </div>
+                      <div className="p-1.5 rounded bg-red-950/30 border border-red-500/20 text-red-300">
+                        <span className="text-white/40 block">[14:32:02.12]</span>
+                        <span>403 BLOCKED - SQLi Payload Quarantined</span>
+                      </div>
+                      <div className="p-1.5 rounded bg-emerald-950/30 border border-emerald-500/20 text-emerald-300">
+                        <span className="text-white/40 block">[14:32:02.89]</span>
+                        <span>200 OK - Token Signature Validated (RS256)</span>
+                      </div>
+                      <div className="p-1.5 rounded bg-amber-950/30 border border-amber-500/20 text-amber-300">
+                        <span className="text-white/40 block">[14:32:03.44]</span>
+                        <span>429 RATE LIMIT - Bot Pattern Throttled</span>
+                      </div>
+                      <div className="p-1.5 rounded bg-emerald-950/30 border border-emerald-500/20 text-emerald-300">
+                        <span className="text-white/40 block">[14:32:04.01]</span>
+                        <span>200 OK - Edge Mesh Telemetry Synced</span>
+                      </div>
+                    </div>
+
+                    <div className="mt-auto pt-2 border-t border-white/[0.05]">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setSecurityActiveScreen(2); }}
+                        className="w-full h-6 rounded-lg bg-emerald-500 text-black text-[9px] font-bold tracking-wider uppercase flex items-center justify-center cursor-pointer shadow-lg hover:shadow-emerald-500/20"
+                      >
+                        Return to Active Shield
+                      </button>
+                    </div>
+                  </div>
+                </motion.div>
+
+              </div>
+
+              {/* Mobile pagination dots */}
+              <div className="flex gap-2.5 mt-8 lg:hidden">
+                {[1, 2, 3, 4].map((id) => (
+                  <button
+                    key={id}
+                    onClick={() => setSecurityActiveScreen(id)}
+                    className={`w-2.5 h-2.5 rounded-full transition-all cursor-pointer ${
+                      securityActiveScreen === id ? "bg-emerald-400 w-6" : "bg-white/20 hover:bg-white/40"
+                    }`}
+                    aria-label={`Go to security mockup ${id}`}
                   />
                 ))}
               </div>
-
-              {/* Terminal Logs Header */}
-              <div className="flex items-center justify-between border-b border-white/[0.06] pb-3 relative z-10">
-                <div className="flex items-center gap-2 font-mono text-xs text-white/70">
-                  <Terminal size={14} className="text-emerald-400" />
-                  <span>aegis-core/daemon/runtime.telemetry</span>
-                </div>
-                <span className="font-mono text-[9px] text-emerald-400 bg-emerald-400/10 border border-emerald-400/20 px-2 py-0.5 rounded-full flex items-center gap-1">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-ping" />
-                  LIVE INTERCEPT
-                </span>
-              </div>
-
-              {/* Real-time Streaming Packet Logs */}
-              <div className="space-y-2 font-mono text-[11px] relative z-10 py-4">
-                <div className="text-white/40">[14:32:01.04] Initializing packet inspection handshake...</div>
-                <div className="text-emerald-400/90 flex items-center gap-2">
-                  <CheckCircle2 size={12} />
-                  <span>Payload hash verified SHA-256 (0x7f...a9c)</span>
-                </div>
-                <div className="text-emerald-300 flex items-center gap-2 bg-emerald-500/10 p-2 rounded-lg border border-emerald-500/20">
-                  <ShieldCheck size={14} className="text-emerald-400" />
-                  <span>SECURED: SQLi Vector injection neutralized on endpoint /api/auth/query</span>
-                </div>
-                <div className="text-white/40">[14:32:02.12] Zero-day signature matching against OWASP CVE-2026-X</div>
-                <div className="text-emerald-400/80">[14:32:02.89] Zero-trust rate limiter applied: TLS 1.3 Key Exchange Signed</div>
-              </div>
-
-              <div className="flex items-center justify-between pt-3 border-t border-white/[0.06] relative z-10 font-mono text-[10px] text-white/40">
-                <span>Threat Level: SECURE (SEC-0)</span>
-                <span className="text-emerald-400 font-bold animate-pulse">Monitoring Active Ports...</span>
-              </div>
-            </div>
+            </motion.div>
           </div>
         )}
 
         {/* =========================================================================
-            VIEW 3: NEXUS ENGINE - HIGH-PERFORMANCE RUNTIME (Emerald Compiler)
+            VIEW 3: NEXUS ENGINE - CLOUD COMPILER & RUNTIME (Multi-Mobile Deck)
            ========================================================================= */}
         {activeProject === "cloud" && (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center py-4">
-            <div className="lg:col-span-5 space-y-6">
-              <div className="flex items-center gap-3">
-                <span className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
-                  <Code2 size={26} />
-                </span>
-                <div>
-                  <span className="font-mono text-[9px] text-emerald-400 tracking-widest uppercase">DISTRIBUTED CLOUD COMPILER</span>
-                  <h3 className="font-sans text-3xl font-black text-white">Nexus Engine</h3>
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-center">
+            {/* Left Column: Interactive Overview */}
+            <div className="lg:col-span-5 space-y-6 text-left">
+              {/* Brand Header & Mode Badge */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <span className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
+                    <Code2 size={26} />
+                  </span>
+                  <div>
+                    <span className="font-mono text-[9px] text-emerald-400 tracking-widest uppercase">
+                      DISTRIBUTED CLOUD COMPILER
+                    </span>
+                    <h3 className="font-sans text-3xl sm:text-4xl font-black text-white">
+                      Nexus Engine
+                    </h3>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-mono text-emerald-400">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-ping" />
+                  <span>WASM DECK</span>
                 </div>
               </div>
 
-              <p className="font-sans text-sm text-white/60 leading-relaxed">
+              <p className="font-sans text-sm sm:text-base text-white/70 leading-relaxed">
                 Zero-bundle runtime engine with serverless WASM execution. Provides ultra-low cold start times, instant Hot Module Reloading for distributed teams, and declarative tree-shaking algorithms.
               </p>
 
+              {/* Real-time Compiler Visualization Motion Graphic */}
+              <div className="rounded-2xl border border-white/[0.08] bg-black/50 p-4 relative overflow-hidden shadow-inner">
+                <div className="flex items-center justify-between border-b border-white/[0.06] pb-2 mb-3">
+                  <div className="flex items-center gap-2 font-mono text-xs text-white/70">
+                    <Terminal size={14} className="text-emerald-400" />
+                    <span>nexus-compiler --target=wasm-v8</span>
+                  </div>
+                  <span className="font-mono text-[9px] text-emerald-400 bg-emerald-400/10 border border-emerald-400/20 px-2 py-0.5 rounded-full flex items-center gap-1">
+                    <CheckCircle2 size={10} />
+                    <span>BUILD OPTIMIZED</span>
+                  </span>
+                </div>
+
+                {/* Animated AST Graph Nodes */}
+                <div className="grid grid-cols-3 gap-2.5 my-1">
+                  {[
+                    { step: "Parsing AST", sub: "Lexer Matrix" },
+                    { step: "Tree Shaking", sub: "Dead Code Elim" },
+                    { step: "WASM Emit", sub: "V8 Bytecode" }
+                  ].map((item, idx) => (
+                    <motion.div
+                      key={item.step}
+                      animate={{
+                        borderColor: ["rgba(16,185,129,0.2)", "rgba(16,185,129,0.7)", "rgba(16,185,129,0.2)"],
+                        y: [0, -3, 0]
+                      }}
+                      transition={{ duration: 2.2, delay: idx * 0.35, repeat: Infinity, ease: "easeInOut" }}
+                      className="p-2.5 rounded-xl border border-emerald-500/20 bg-emerald-950/20 text-center flex flex-col items-center gap-1 relative overflow-hidden"
+                    >
+                      <motion.div style={{ rotate: scrollCpuRotate }}>
+                        <Cpu size={18} className="text-emerald-400" />
+                      </motion.div>
+                      <span className="font-mono text-[9px] text-white/90 font-bold">{item.step}</span>
+                      <span className="font-mono text-[7px] text-emerald-300">{item.sub}</span>
+                    </motion.div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Technical Specifications Grid */}
               <div className="grid grid-cols-3 gap-3 font-mono">
                 <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.06]">
                   <span className="text-[10px] text-white/40 block">COLD START</span>
@@ -995,56 +1460,425 @@ export default function ProjectsSection() {
                   <span className="text-sm font-bold text-emerald-400">-64% Size</span>
                 </div>
               </div>
+
+              {/* Instant WASM Build Trigger */}
+              <button
+                onClick={() => {
+                  setIsCompilingWasm(true);
+                  setTimeout(() => setIsCompilingWasm(false), 1200);
+                }}
+                className="w-full py-2.5 px-4 rounded-xl font-mono text-xs font-bold transition-all flex items-center justify-between border bg-emerald-500/10 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20 cursor-pointer"
+              >
+                <span className="flex items-center gap-2">
+                  <Zap size={16} className={isCompilingWasm ? "animate-spin" : ""} />
+                  {isCompilingWasm ? "Compiling Bytecode..." : "Trigger Instant WASM Build"}
+                </span>
+                <span className="px-2 py-0.5 rounded bg-black/40 text-[9px] uppercase tracking-wider">
+                  {isCompilingWasm ? "12ms..." : "14.2 KB"}
+                </span>
+              </button>
             </div>
 
-            {/* Interactive Compiler Visualization in Emerald */}
-            <div className="lg:col-span-7 h-[390px] rounded-2xl border border-white/[0.08] bg-black/60 p-6 relative overflow-hidden flex flex-col justify-between shadow-2xl">
-              <div className="flex items-center justify-between border-b border-white/[0.06] pb-3">
-                <div className="flex items-center gap-2 font-mono text-xs text-white/70">
-                  <Terminal size={14} className="text-emerald-400" />
-                  <span>nexus-compiler --target=wasm-v8</span>
-                </div>
-                <span className="font-mono text-[9px] text-emerald-400 bg-emerald-400/10 border border-emerald-400/20 px-2 py-0.5 rounded-full flex items-center gap-1">
-                  <CheckCircle2 size={10} />
-                  <span>BUILD OPTIMIZED</span>
-                </span>
+            {/* Right Column: 3D Multi-Mobile Screen Deck */}
+            <motion.div style={{ y: yParallaxRight }} className="lg:col-span-7 flex flex-col items-center relative">
+              {/* Virtual Projector Light Beam from Top */}
+              <div className="absolute -top-12 left-1/2 -translate-x-1/2 w-full flex justify-center pointer-events-none">
+                <motion.div
+                  style={{ rotate: projectorBeamAngle }}
+                  className="w-3/4 h-20 bg-gradient-to-b from-emerald-400/20 via-emerald-500/[0.05] to-transparent blur-2xl rounded-t-full pointer-events-none"
+                />
               </div>
 
-              {/* Animated AST Graph Nodes reacting to scroll rotation & continuous pulse */}
-              <div className="relative flex-1 flex items-center justify-center my-4">
-                <div className="grid grid-cols-3 gap-6 w-full max-w-[440px]">
-                  {[
-                    { step: "Parsing AST", sub: "Lexer Matrix" },
-                    { step: "Tree Shaking", sub: "Dead Code Elim" },
-                    { step: "WASM Emit", sub: "V8 Bytecode" }
-                  ].map((item, idx) => (
-                    <motion.div
-                      key={item.step}
-                      animate={{
-                        borderColor: ["rgba(16,185,129,0.2)", "rgba(16,185,129,0.8)", "rgba(16,185,129,0.2)"],
-                        y: [0, -5, 0]
-                      }}
-                      transition={{ duration: 2.2, delay: idx * 0.4, repeat: Infinity, ease: "easeInOut" }}
-                      className="p-4 rounded-xl border border-emerald-500/20 bg-emerald-950/20 text-center flex flex-col items-center gap-2 relative overflow-hidden group"
+              {/* Screen Switcher Tabs */}
+              <div className="flex flex-wrap items-center justify-center gap-1.5 p-1 bg-white/[0.02] border border-white/[0.06] rounded-2xl mb-4 self-center backdrop-blur-md">
+                {[
+                  { id: 1, label: "Cluster Nodes", icon: Globe },
+                  { id: 2, label: "Engine Console", icon: Cpu },
+                  { id: 3, label: "Build Pipelines", icon: Layers },
+                  { id: 4, label: "Resource Matrix", icon: Activity },
+                ].map((tab) => {
+                  const Icon = tab.icon;
+                  const isActive = cloudActiveScreen === tab.id;
+                  return (
+                    <button
+                      key={tab.id}
+                      onClick={() => setCloudActiveScreen(tab.id)}
+                      className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-[10px] font-sans tracking-wider transition-all duration-300 uppercase cursor-pointer ${
+                        isActive
+                          ? "bg-emerald-500 text-black shadow-[0_4px_14px_rgba(16,185,129,0.4)] font-bold scale-[1.02]"
+                          : "text-white/50 hover:text-white hover:bg-white/[0.03]"
+                      }`}
                     >
-                      <motion.div style={{ rotate: scrollCpuRotate }}>
-                        <Cpu size={22} className="text-emerald-400" />
-                      </motion.div>
-                      <span className="font-mono text-[10px] text-white/90 font-bold">{item.step}</span>
-                      <span className="font-mono text-[8px] text-emerald-300">{item.sub}</span>
-                    </motion.div>
-                  ))}
-                </div>
+                      <Icon size={11} />
+                      <span>{tab.label}</span>
+                    </button>
+                  );
+                })}
               </div>
 
-              <div className="flex items-center justify-between pt-3 border-t border-white/[0.06] font-mono text-[10px] text-white/40">
-                <span>Output Bundle: dist/bundle.wasm (14.2 KB)</span>
-                <span className="text-emerald-400 font-bold flex items-center gap-1">
-                  <Zap size={11} />
-                  Deploy Ready
-                </span>
+              {/* The 3D Mockup Arena */}
+              <div className="relative w-full max-w-[660px] h-[530px] sm:h-[570px] flex items-center justify-center overflow-visible select-none mt-2">
+                
+                {/* SCREEN 1: Cluster Nodes Mobile */}
+                <motion.div
+                  animate={{
+                    x: cloudActiveScreen === 1 ? 0 : cloudActiveScreen === 2 ? -155 : cloudActiveScreen === 3 ? -265 : -340,
+                    y: cloudActiveScreen === 1 ? 0 : cloudActiveScreen === 2 ? 10 : cloudActiveScreen === 3 ? 20 : 30,
+                    scale: cloudActiveScreen === 1 ? 1.03 : cloudActiveScreen === 2 ? 0.91 : cloudActiveScreen === 3 ? 0.84 : 0.78,
+                    rotate: cloudActiveScreen === 1 ? 0 : cloudActiveScreen === 2 ? -4 : cloudActiveScreen === 3 ? -7 : -10,
+                    opacity: cloudActiveScreen === 1 ? 1 : cloudActiveScreen === 2 ? 0.85 : cloudActiveScreen === 3 ? 0.5 : 0.2,
+                    zIndex: cloudActiveScreen === 1 ? 30 : cloudActiveScreen === 2 ? 20 : cloudActiveScreen === 3 ? 10 : 0,
+                  }}
+                  transition={{ type: "spring", stiffness: 110, damping: 18 }}
+                  onClick={() => setCloudActiveScreen(1)}
+                  className="absolute w-[245px] h-[490px] rounded-[34px] border border-white/[0.08] bg-[#09090C] p-2.5 shadow-[0_25px_60px_rgba(0,0,0,0.85)] cursor-pointer select-none overflow-hidden group/phone"
+                >
+                  <div className="absolute top-2.5 left-1/2 -translate-x-1/2 w-20 h-4 bg-black rounded-full z-40 border border-white/5 flex items-center justify-center">
+                    <div className="w-1.5 h-1.5 rounded-full bg-white/20 ml-auto mr-3" />
+                  </div>
+
+                  <div className="w-full h-full rounded-[24px] bg-black overflow-hidden flex flex-col p-3 pt-5 relative font-sans">
+                    {/* Status Bar */}
+                    <div className="flex justify-between items-center text-[9px] text-white/50 px-1 mb-2">
+                      <span>9:41</span>
+                      <div className="flex items-center gap-1">
+                        <span className="w-2.5 h-1.5 border border-white/30 rounded-[2px] flex items-center p-[0.5px]">
+                          <span className="w-full h-full bg-white/60 rounded-[1px]" />
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex justify-between items-center border-b border-white/[0.05] pb-2 mb-3">
+                      <div className="flex items-center gap-1.5">
+                        <Globe size={10} className="text-emerald-400" />
+                        <span className="text-[10px] text-white font-bold">Edge Mesh Nodes</span>
+                      </div>
+                      <span className="text-[8px] font-mono text-emerald-400 bg-emerald-400/10 px-1.5 py-0.5 rounded">
+                        128 NODES
+                      </span>
+                    </div>
+
+                    {/* Regional Nodes list */}
+                    <div className="space-y-2 flex-1 overflow-y-auto font-mono text-[8px]">
+                      <div className="p-2 rounded-xl bg-white/[0.03] border border-white/[0.05] space-y-1">
+                        <div className="flex justify-between items-center">
+                          <span className="text-white font-bold">US-East (Virginia)</span>
+                          <span className="text-emerald-400 font-bold">0.6 ms</span>
+                        </div>
+                        <div className="flex justify-between text-white/50 text-[7px]">
+                          <span>42 Workers Active</span>
+                          <span>99.99% Uptime</span>
+                        </div>
+                      </div>
+
+                      <div className="p-2 rounded-xl bg-white/[0.03] border border-white/[0.05] space-y-1">
+                        <div className="flex justify-between items-center">
+                          <span className="text-white font-bold">EU-Central (Frankfurt)</span>
+                          <span className="text-emerald-400 font-bold">0.9 ms</span>
+                        </div>
+                        <div className="flex justify-between text-white/50 text-[7px]">
+                          <span>38 Workers Active</span>
+                          <span>100% Uptime</span>
+                        </div>
+                      </div>
+
+                      <div className="p-2 rounded-xl bg-white/[0.03] border border-white/[0.05] space-y-1">
+                        <div className="flex justify-between items-center">
+                          <span className="text-white font-bold">AP-Northeast (Tokyo)</span>
+                          <span className="text-emerald-400 font-bold">1.2 ms</span>
+                        </div>
+                        <div className="flex justify-between text-white/50 text-[7px]">
+                          <span>48 Workers Active</span>
+                          <span>99.98% Uptime</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-auto pt-2 border-t border-white/[0.05]">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setCloudActiveScreen(2); }}
+                        className="w-full h-6 rounded-lg bg-emerald-500 text-black text-[9px] font-bold tracking-wider uppercase flex items-center justify-center cursor-pointer shadow-lg hover:shadow-emerald-500/20"
+                      >
+                        Launch Engine Console
+                      </button>
+                    </div>
+                  </div>
+                </motion.div>
+
+                {/* SCREEN 2: Engine Console Mobile (Centerpiece) */}
+                <motion.div
+                  animate={{
+                    x: cloudActiveScreen === 2 ? 0 : cloudActiveScreen === 1 ? 155 : cloudActiveScreen === 3 ? -155 : -255,
+                    y: cloudActiveScreen === 2 ? 0 : cloudActiveScreen === 1 ? 10 : cloudActiveScreen === 3 ? 10 : 20,
+                    scale: cloudActiveScreen === 2 ? 1.05 : cloudActiveScreen === 1 ? 0.91 : cloudActiveScreen === 3 ? 0.91 : 0.85,
+                    rotate: cloudActiveScreen === 2 ? 0 : cloudActiveScreen === 1 ? 3.5 : cloudActiveScreen === 3 ? -3.5 : -6,
+                    opacity: cloudActiveScreen === 2 ? 1 : cloudActiveScreen === 1 ? 0.85 : cloudActiveScreen === 3 ? 0.85 : 0.55,
+                    zIndex: cloudActiveScreen === 2 ? 30 : cloudActiveScreen === 1 ? 20 : cloudActiveScreen === 3 ? 20 : 10,
+                  }}
+                  transition={{ type: "spring", stiffness: 110, damping: 18 }}
+                  onClick={() => setCloudActiveScreen(2)}
+                  className="absolute w-[245px] h-[490px] rounded-[34px] border border-white/[0.12] bg-[#0A0A0E] p-2.5 shadow-[0_30px_70px_rgba(0,0,0,0.9)] cursor-pointer select-none overflow-hidden group/device"
+                >
+                  <div className="absolute inset-0 bg-gradient-to-b from-emerald-500/[0.06] via-transparent to-emerald-600/[0.08] opacity-60 group-hover/device:opacity-100 transition-opacity duration-700 pointer-events-none" />
+
+                  <div className="absolute top-2.5 left-1/2 -translate-x-1/2 w-20 h-4 bg-black rounded-full z-40 border border-white/5 flex items-center justify-center">
+                    <div className="w-1.5 h-1.5 rounded-full bg-white/20 ml-auto mr-3" />
+                  </div>
+
+                  <div className="w-full h-full rounded-[24px] bg-black overflow-hidden flex flex-col p-3 pt-5 relative font-sans">
+                    {/* Status Bar */}
+                    <div className="flex justify-between items-center text-[9px] text-white/50 px-1 mb-2">
+                      <span>9:41</span>
+                      <div className="flex items-center gap-1">
+                        <span className="w-2.5 h-1.5 border border-white/30 rounded-[2px] flex items-center p-[0.5px]">
+                          <span className="w-full h-full bg-white/60 rounded-[1px]" />
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex justify-between items-center border-b border-white/[0.05] pb-2 mb-3">
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-4 h-4 rounded-full bg-emerald-500 flex items-center justify-center">
+                          <Cpu size={9} className="text-black" />
+                        </div>
+                        <span className="text-[10px] text-white font-bold">Nexus Engine</span>
+                      </div>
+                      <span className="text-[8px] font-mono text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded">
+                        V8 WASM
+                      </span>
+                    </div>
+
+                    {/* Reactor Status Area */}
+                    <div className="relative py-4 flex flex-col items-center justify-center text-center">
+                      <div className="relative w-20 h-20 flex items-center justify-center mb-2">
+                        <motion.div
+                          animate={{ rotate: 360 }}
+                          transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
+                          className="absolute inset-0 rounded-full border border-dashed border-emerald-500/40"
+                        />
+                        <div className="relative w-16 h-16 rounded-full bg-emerald-950/40 border border-emerald-500/40 flex items-center justify-center shadow-[0_0_20px_rgba(16,185,129,0.3)]">
+                          <Cpu size={28} className="text-emerald-400" />
+                        </div>
+                      </div>
+                      <h4 className="text-[13px] font-bold text-white tracking-wide">
+                        12ms Cold Start
+                      </h4>
+                      <p className="text-[9px] font-mono text-emerald-400 mt-0.5">
+                        45,000 Requests / Second
+                      </p>
+                    </div>
+
+                    {/* Metrics Grid */}
+                    <div className="space-y-1.5 my-auto text-[8.5px] font-mono">
+                      <div className="p-2 rounded-xl bg-white/[0.03] border border-white/[0.05] flex items-center justify-between">
+                        <span className="text-white/80">Bundle Footprint</span>
+                        <span className="text-emerald-400 font-bold">14.2 KB (-64%)</span>
+                      </div>
+                      <div className="p-2 rounded-xl bg-white/[0.03] border border-white/[0.05] flex items-center justify-between">
+                        <span className="text-white/80">Edge Cache Hit</span>
+                        <span className="text-emerald-400 font-bold">98.6%</span>
+                      </div>
+                      <div className="p-2 rounded-xl bg-white/[0.03] border border-white/[0.05] flex items-center justify-between">
+                        <span className="text-white/80">HMR Pipeline</span>
+                        <span className="text-emerald-400 font-bold">Instant (0.4ms)</span>
+                      </div>
+                    </div>
+
+                    <div className="mt-auto pt-2 border-t border-white/[0.05]">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setIsCompilingWasm(true);
+                          setTimeout(() => setIsCompilingWasm(false), 1200);
+                        }}
+                        className="w-full h-7 rounded-lg bg-emerald-500 text-black text-[9px] font-bold tracking-wider uppercase flex items-center justify-center cursor-pointer shadow-lg hover:shadow-emerald-500/20"
+                      >
+                        {isCompilingWasm ? "Building Bytecode..." : "Execute Fast Deploy"}
+                      </button>
+                    </div>
+                  </div>
+                </motion.div>
+
+                {/* SCREEN 3: Build Pipelines Mobile */}
+                <motion.div
+                  animate={{
+                    x: cloudActiveScreen === 3 ? 0 : cloudActiveScreen === 2 ? 155 : cloudActiveScreen === 1 ? 265 : -155,
+                    y: cloudActiveScreen === 3 ? 0 : cloudActiveScreen === 2 ? 10 : cloudActiveScreen === 1 ? 20 : 10,
+                    scale: cloudActiveScreen === 3 ? 1.03 : cloudActiveScreen === 2 ? 0.91 : cloudActiveScreen === 1 ? 0.84 : 0.91,
+                    rotate: cloudActiveScreen === 3 ? 0 : cloudActiveScreen === 2 ? 4 : cloudActiveScreen === 1 ? 7 : -4,
+                    opacity: cloudActiveScreen === 3 ? 1 : cloudActiveScreen === 2 ? 0.85 : cloudActiveScreen === 1 ? 0.5 : 0.85,
+                    zIndex: cloudActiveScreen === 3 ? 30 : cloudActiveScreen === 2 ? 20 : cloudActiveScreen === 1 ? 10 : 20,
+                  }}
+                  transition={{ type: "spring", stiffness: 110, damping: 18 }}
+                  onClick={() => setCloudActiveScreen(3)}
+                  className="absolute w-[245px] h-[490px] rounded-[34px] border border-white/[0.08] bg-[#09090C] p-2.5 shadow-[0_25px_60px_rgba(0,0,0,0.85)] cursor-pointer select-none overflow-hidden group/phone"
+                >
+                  <div className="absolute top-2.5 left-1/2 -translate-x-1/2 w-20 h-4 bg-black rounded-full z-40 border border-white/5 flex items-center justify-center">
+                    <div className="w-1.5 h-1.5 rounded-full bg-white/20 ml-auto mr-3" />
+                  </div>
+
+                  <div className="w-full h-full rounded-[24px] bg-black overflow-hidden flex flex-col p-3 pt-5 relative font-sans">
+                    {/* Status Bar */}
+                    <div className="flex justify-between items-center text-[9px] text-white/50 px-1 mb-2">
+                      <span>9:41</span>
+                      <div className="flex items-center gap-1">
+                        <span className="w-2.5 h-1.5 border border-white/30 rounded-[2px] flex items-center p-[0.5px]">
+                          <span className="w-full h-full bg-white/60 rounded-[1px]" />
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex justify-between items-center border-b border-white/[0.05] pb-2 mb-3">
+                      <div className="flex items-center gap-1.5">
+                        <Layers size={10} className="text-emerald-400" />
+                        <span className="text-[10px] text-white font-bold">Build Pipeline</span>
+                      </div>
+                      <span className="text-[8px] font-mono text-emerald-400">12ms TOTAL</span>
+                    </div>
+
+                    {/* Pipeline stages */}
+                    <div className="space-y-2 flex-1 font-mono text-[8px]">
+                      <div className="p-2 rounded-lg bg-white/[0.02] border border-white/[0.05] flex items-center justify-between">
+                        <div>
+                          <p className="text-white font-bold">1. AST Lexer &amp; Parser</p>
+                          <p className="text-white/40">Tokens normalized</p>
+                        </div>
+                        <span className="text-emerald-400 font-bold">1.4ms</span>
+                      </div>
+
+                      <div className="p-2 rounded-lg bg-white/[0.02] border border-white/[0.05] flex items-center justify-between">
+                        <div>
+                          <p className="text-white font-bold">2. Dead Code Tree-Shaking</p>
+                          <p className="text-white/40">-128 KB eliminated</p>
+                        </div>
+                        <span className="text-emerald-400 font-bold">2.1ms</span>
+                      </div>
+
+                      <div className="p-2 rounded-lg bg-white/[0.02] border border-white/[0.05] flex items-center justify-between">
+                        <div>
+                          <p className="text-white font-bold">3. WASM Bytecode Emit</p>
+                          <p className="text-white/40">V8 compliant assembly</p>
+                        </div>
+                        <span className="text-emerald-400 font-bold">3.2ms</span>
+                      </div>
+
+                      <div className="p-2 rounded-lg bg-white/[0.02] border border-white/[0.05] flex items-center justify-between">
+                        <div>
+                          <p className="text-white font-bold">4. Edge Mesh Propagation</p>
+                          <p className="text-white/40">128 nodes synchronized</p>
+                        </div>
+                        <span className="text-emerald-400 font-bold">5.3ms</span>
+                      </div>
+                    </div>
+
+                    <div className="mt-auto pt-2 border-t border-white/[0.05]">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setCloudActiveScreen(4); }}
+                        className="w-full h-6 rounded-lg bg-white/[0.05] hover:bg-white/[0.1] text-white text-[9px] font-bold tracking-wider uppercase flex items-center justify-center cursor-pointer"
+                      >
+                        Open Telemetry Matrix
+                      </button>
+                    </div>
+                  </div>
+                </motion.div>
+
+                {/* SCREEN 4: Resource Matrix Mobile */}
+                <motion.div
+                  animate={{
+                    x: cloudActiveScreen === 4 ? 0 : cloudActiveScreen === 3 ? 155 : cloudActiveScreen === 2 ? 255 : 340,
+                    y: cloudActiveScreen === 4 ? 0 : cloudActiveScreen === 3 ? 10 : cloudActiveScreen === 2 ? 20 : 30,
+                    scale: cloudActiveScreen === 4 ? 1.03 : cloudActiveScreen === 3 ? 0.91 : cloudActiveScreen === 2 ? 0.85 : 0.78,
+                    rotate: cloudActiveScreen === 4 ? 0 : cloudActiveScreen === 3 ? 4 : cloudActiveScreen === 2 ? 6 : 10,
+                    opacity: cloudActiveScreen === 4 ? 1 : cloudActiveScreen === 3 ? 0.85 : cloudActiveScreen === 2 ? 0.55 : 0.2,
+                    zIndex: cloudActiveScreen === 4 ? 30 : cloudActiveScreen === 3 ? 20 : cloudActiveScreen === 2 ? 10 : 0,
+                  }}
+                  transition={{ type: "spring", stiffness: 110, damping: 18 }}
+                  onClick={() => setCloudActiveScreen(4)}
+                  className="absolute w-[245px] h-[490px] rounded-[34px] border border-white/[0.08] bg-[#09090C] p-2.5 shadow-[0_25px_60px_rgba(0,0,0,0.85)] cursor-pointer select-none overflow-hidden group/phone"
+                >
+                  <div className="absolute top-2.5 left-1/2 -translate-x-1/2 w-20 h-4 bg-black rounded-full z-40 border border-white/5 flex items-center justify-center">
+                    <div className="w-1.5 h-1.5 rounded-full bg-white/20 ml-auto mr-3" />
+                  </div>
+
+                  <div className="w-full h-full rounded-[24px] bg-black overflow-hidden flex flex-col p-3 pt-5 relative font-sans">
+                    {/* Status Bar */}
+                    <div className="flex justify-between items-center text-[9px] text-white/50 px-1 mb-2">
+                      <span>9:41</span>
+                      <div className="flex items-center gap-1">
+                        <span className="w-2.5 h-1.5 border border-white/30 rounded-[2px] flex items-center p-[0.5px]">
+                          <span className="w-full h-full bg-white/60 rounded-[1px]" />
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex justify-between items-center border-b border-white/[0.05] pb-2 mb-3">
+                      <div className="flex items-center gap-1.5">
+                        <Activity size={10} className="text-emerald-400" />
+                        <span className="text-[10px] text-white font-bold">Telemetry Matrix</span>
+                      </div>
+                      <span className="text-[8px] font-mono text-emerald-400">45k req/s</span>
+                    </div>
+
+                    {/* Gauges & Telemetry */}
+                    <div className="space-y-2 flex-1 font-mono text-[8px]">
+                      <div className="p-2 rounded-xl bg-white/[0.02] border border-white/[0.05] space-y-1">
+                        <div className="flex justify-between text-white/80">
+                          <span>CPU Load</span>
+                          <span className="text-emerald-400 font-bold">18% (Nominal)</span>
+                        </div>
+                        <div className="w-full bg-white/10 h-1.5 rounded-full overflow-hidden">
+                          <div className="bg-emerald-500 h-full w-[18%]" />
+                        </div>
+                      </div>
+
+                      <div className="p-2 rounded-xl bg-white/[0.02] border border-white/[0.05] space-y-1">
+                        <div className="flex justify-between text-white/80">
+                          <span>Memory Allocated</span>
+                          <span className="text-emerald-400 font-bold">24 MB / 128 MB</span>
+                        </div>
+                        <div className="w-full bg-white/10 h-1.5 rounded-full overflow-hidden">
+                          <div className="bg-emerald-500 h-full w-[19%]" />
+                        </div>
+                      </div>
+
+                      <div className="p-2 rounded-xl bg-white/[0.02] border border-white/[0.05] space-y-1">
+                        <div className="flex justify-between text-white/80">
+                          <span>Throughput Rate</span>
+                          <span className="text-emerald-400 font-bold">45,120 req/s</span>
+                        </div>
+                        <div className="w-full bg-white/10 h-1.5 rounded-full overflow-hidden">
+                          <div className="bg-emerald-400 h-full w-[82%]" />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-auto pt-2 border-t border-white/[0.05]">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setCloudActiveScreen(2); }}
+                        className="w-full h-6 rounded-lg bg-emerald-500 text-black text-[9px] font-bold tracking-wider uppercase flex items-center justify-center cursor-pointer shadow-lg hover:shadow-emerald-500/20"
+                      >
+                        Return to Engine Console
+                      </button>
+                    </div>
+                  </div>
+                </motion.div>
+
               </div>
-            </div>
+
+              {/* Mobile pagination dots */}
+              <div className="flex gap-2.5 mt-8 lg:hidden">
+                {[1, 2, 3, 4].map((id) => (
+                  <button
+                    key={id}
+                    onClick={() => setCloudActiveScreen(id)}
+                    className={`w-2.5 h-2.5 rounded-full transition-all cursor-pointer ${
+                      cloudActiveScreen === id ? "bg-emerald-400 w-6" : "bg-white/20 hover:bg-white/40"
+                    }`}
+                    aria-label={`Go to cloud mockup ${id}`}
+                  />
+                ))}
+              </div>
+            </motion.div>
           </div>
         )}
       </motion.div>

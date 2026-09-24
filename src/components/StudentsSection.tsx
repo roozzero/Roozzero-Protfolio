@@ -39,7 +39,7 @@ interface Testimonial {
   role: string;
   company: string;
   course: string;
-  category: "all" | "agency" | "lumin" | "fullstack" | "design";
+  category: "all" | "frontend" | "react" | "nextjs" | "security" | "typescript" | string;
   rating: number;
   avatar: string;
   avatarBg: string;
@@ -88,93 +88,93 @@ export default function StudentsSection({ isLoggedIn, onOpenLoginModal }: Studen
   const testimonials: Testimonial[] = [
     {
       id: "will",
-      name: "Will Smith",
-      role: "Founder & Creative Director",
-      company: "Techzo Agency",
-      course: "Techzo: Creative Agency System",
-      category: "agency",
+      name: "Arman Ahmadi",
+      role: "Frontend Developer",
+      company: "Rayan Web Studio",
+      course: "Modern React & Frontend Development",
+      category: "frontend",
       rating: 4.9,
       avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=160&auto=format&fit=crop",
       avatarBg: "from-emerald-500 to-teal-700",
-      text: "The structured course modules and hands-on project templates allowed me to transition from theory to high-fidelity interactive web development in weeks!",
-      highlight: "Scaled client retainer contracts by +320%",
-      roiStat: "+320% Revenue",
-      location: "San Francisco, CA"
+      text: "The practical projects and structured lessons helped me understand React deeply and gave me the confidence to build real-world applications.",
+      highlight: "Built 5+ real-world projects",
+      roiStat: "5+ Projects",
+      location: "Tehran, Iran"
     },
     {
       id: "ikta",
-      name: "Ikta Sollork",
-      role: "Principal Product Designer",
-      company: "Lumin Studio",
-      course: "Lumin Studio Masterclass",
-      category: "lumin",
-      rating: 4.7,
+  name: "Amir Hosseini",
+  role: "React Developer",
+  company: "Nava Digital",
+  course: "Advanced React Architecture",
+  category: "react",
+  rating: 4.8,
       avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=160&auto=format&fit=crop",
       avatarBg: "from-emerald-600 to-zinc-800",
-      text: "Working with this process was effortless. The vision was understood perfectly, and the designs truly represent my brand with mathematical precision.",
-      highlight: "Shipped enterprise design token system",
-      roiStat: "6x Dev Velocity",
-      location: "Berlin, Germany"
+  text: "I learned how to structure React applications properly and turn complex ideas into clean, reusable, and maintainable components.",
+  highlight: "Improved development workflow",
+  roiStat: "+45% Productivity",
+  location: "Mashhad, Iran"
     },
     {
       id: "liloch",
-      name: "Liloch Chen",
-      role: "Staff Frontend Architect",
-      company: "Nexus Labs",
-      course: "Full Stack Web Development",
-      category: "fullstack",
-      rating: 5.0,
+      name: "Niloofar Karimi",
+      role: "Junior Frontend Developer",
+  company: "Pixel Studio",
+  course: "Frontend Development with JavaScript",
+  category: "frontend",
+  rating: 4.9,
       avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=160&auto=format&fit=crop",
       avatarBg: "from-teal-600 to-emerald-900",
-      text: "Exceptional creativity and attention to detail! The final product not only looks great but also enhances user engagement across millions of active sessions.",
-      highlight: "Sub-50ms render latency at 2M MAU",
-      roiStat: "99.98% Reliability",
-      location: "Singapore"
+  text: "The hands-on projects made frontend development much easier to understand and gave me the confidence to start building my own applications.",
+  highlight: "Started professional frontend journey",
+  roiStat: "10+ Projects",
+  location: "Isfahan, Iran"
     },
     {
       id: "diane",
-      name: "Diane Swag",
-      role: "Design Systems Lead",
-      company: "Apex Design",
-      course: "Aesthetics Design System",
-      category: "design",
-      rating: 4.8,
+  name: "Mohammad Rezaei",
+  role: "Web Developer",
+  company: "Dadeh Web",
+  course: "Next.js & Modern Web Development",
+  category: "nextjs",
+  rating: 4.8,
       avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=160&auto=format&fit=crop",
       avatarBg: "from-emerald-400 to-teal-800",
-      text: "The curriculum is meticulously crafted. The combination of design principles, motion kinetics, and modern tech stack integration is unmatched.",
-      highlight: "Unified 40+ cross-platform components",
-      roiStat: "100% Token Adherence",
-      location: "London, UK"
+  text: "The Next.js lessons helped me understand modern web architecture and how to combine performance, scalability, and clean development practices.",
+  highlight: "Built production-ready applications",
+  roiStat: "3+ Live Apps",
+  location: "Shiraz, Iran"
     },
     {
       id: "sarah",
-      name: "Sarah Connor",
-      role: "Senior Engineering Manager",
-      company: "Cyberdyne Systems",
-      course: "React & Vite Optimization",
-      category: "fullstack",
-      rating: 4.9,
+  name: "Ali Moradi",
+  role: "Cybersecurity Learner",
+  company: "Independent Researcher",
+  course: "Web Security & Bug Bounty",
+  category: "security",
+  rating: 4.9,
       avatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?q=80&w=160&auto=format&fit=crop",
       avatarBg: "from-teal-500 to-emerald-700",
-      text: "The performance and optimization course saved our startup months of engineering effort. A truly stellar program that paid for itself immediately.",
-      highlight: "Cut bundle footprint by 68% in production",
-      roiStat: "68% Faster TTI",
-      location: "Austin, TX"
+  text: "The security-focused lessons changed the way I look at web applications and taught me how to approach vulnerabilities like a security researcher.",
+  highlight: "Started hands-on security research",
+  roiStat: "20+ Labs",
+  location: "Tabriz, Iran"
     },
     {
       id: "marcus",
-      name: "Marcus Aurelius",
-      role: "Senior UI/UX Strategist",
-      company: "Stoic Dynamics",
-      course: "Creative Agency System",
-      category: "agency",
-      rating: 5.0,
+  name: "Sara Ebrahimi",
+  role: "Frontend Developer",
+  company: "Rahkaran Tech",
+  course: "TypeScript & Modern Frontend",
+  category: "typescript",
+  rating: 5.0,
       avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=160&auto=format&fit=crop",
       avatarBg: "from-emerald-700 to-teal-900",
-      text: "A masterclass in modern digital aesthetics. It completely changed my perspective on frontend engineering and client pitch storytelling.",
-      highlight: "Closed $180K brand identity contract",
-      roiStat: "$180K Contract Won",
-      location: "Zurich, Switzerland"
+  text: "Combining TypeScript, React, and practical development gave me a much clearer understanding of how to build reliable and scalable web applications.",
+  highlight: "Moved from beginner to professional projects",
+  roiStat: "8+ Projects",
+  location: "Tehran, Iran"
     }
   ];
 
@@ -337,22 +337,20 @@ export default function StudentsSection({ isLoggedIn, onOpenLoginModal }: Studen
           <div className="flex items-center gap-1.5 p-1 rounded-xl bg-white/[0.02] border border-white/[0.07] backdrop-blur-md self-start md:self-auto shrink-0">
             <button
               onClick={() => setViewMode("carousel")}
-              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-[10px] font-sans font-semibold tracking-wider uppercase transition-all duration-300 ${
-                viewMode === "carousel"
-                  ? "bg-white text-black shadow-lg shadow-white/10"
-                  : "text-white/50 hover:text-white hover:bg-white/[0.05]"
-              }`}
+              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-[10px] font-sans font-semibold tracking-wider uppercase transition-all duration-300 ${viewMode === "carousel"
+                ? "bg-white text-black shadow-lg shadow-white/10"
+                : "text-white/50 hover:text-white hover:bg-white/[0.05]"
+                }`}
             >
               <Layers size={12} className={viewMode === "carousel" ? "text-black" : "text-emerald-400"} />
               <span>Carousel Flow</span>
             </button>
             <button
               onClick={() => setViewMode("grid")}
-              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-[10px] font-sans font-semibold tracking-wider uppercase transition-all duration-300 ${
-                viewMode === "grid"
-                  ? "bg-white text-black shadow-lg shadow-white/10"
-                  : "text-white/50 hover:text-white hover:bg-white/[0.05]"
-              }`}
+              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-[10px] font-sans font-semibold tracking-wider uppercase transition-all duration-300 ${viewMode === "grid"
+                ? "bg-white text-black shadow-lg shadow-white/10"
+                : "text-white/50 hover:text-white hover:bg-white/[0.05]"
+                }`}
             >
               <LayoutGrid size={12} className={viewMode === "grid" ? "text-black" : "text-emerald-400"} />
               <span>Matrix Grid</span>
@@ -380,7 +378,7 @@ export default function StudentsSection({ isLoggedIn, onOpenLoginModal }: Studen
         <div className="absolute inset-0 bg-[radial-gradient(rgba(16,185,129,0.06)_1px,transparent_1px)] [background-size:24px_24px] pointer-events-none" />
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center relative z-10">
-          
+
           {/* LEFT: Orbital Constellation Graphic (Scroll-Driven Rotation) */}
           <div className="lg:col-span-5 flex flex-col items-center justify-center relative min-h-[220px] sm:min-h-[240px]">
             {/* Outer Orbit Ring */}
@@ -756,9 +754,8 @@ export default function StudentsSection({ isLoggedIn, onOpenLoginModal }: Studen
                                   <Star
                                     key={i}
                                     size={10}
-                                    className={`${
-                                      i < Math.floor(test.rating) ? "fill-emerald-400 text-emerald-400" : "text-white/10"
-                                    } shrink-0`}
+                                    className={`${i < Math.floor(test.rating) ? "fill-emerald-400 text-emerald-400" : "text-white/10"
+                                      } shrink-0`}
                                   />
                                 ))}
                               </div>
@@ -838,19 +835,19 @@ export default function StudentsSection({ isLoggedIn, onOpenLoginModal }: Studen
             <div className="flex flex-wrap items-center gap-2 pb-2">
               {[
                 { id: "all", label: "All Students" },
-                { id: "agency", label: "Techzo Agency" },
-                { id: "lumin", label: "Lumin Studio" },
-                { id: "fullstack", label: "Full Stack" },
-                { id: "design", label: "Design Systems" },
+                { id: "frontend", label: "Frontend" },
+                { id: "react", label: "React" },
+                { id: "nextjs", label: "Next.js" },
+                { id: "security", label: "Web Security" },
+                { id: "typescript", label: "TypeScript" },
               ].map((cat) => (
                 <button
                   key={cat.id}
                   onClick={() => setSelectedCategory(cat.id)}
-                  className={`px-3.5 py-1.5 rounded-xl text-[10px] font-sans font-semibold tracking-wider uppercase transition-all duration-300 cursor-pointer ${
-                    selectedCategory === cat.id
-                      ? "bg-emerald-500 text-black shadow-lg shadow-emerald-500/25 font-bold scale-[1.02]"
-                      : "bg-white/[0.03] text-white/50 border border-white/5 hover:text-white hover:bg-white/[0.08]"
-                  }`}
+                  className={`px-3.5 py-1.5 rounded-xl text-[10px] font-sans font-semibold tracking-wider uppercase transition-all duration-300 cursor-pointer ${selectedCategory === cat.id
+                    ? "bg-emerald-500 text-black shadow-lg shadow-emerald-500/25 font-bold scale-[1.02]"
+                    : "bg-white/[0.03] text-white/50 border border-white/5 hover:text-white hover:bg-white/[0.08]"
+                    }`}
                 >
                   {cat.label}
                 </button>
@@ -935,9 +932,8 @@ export default function StudentsSection({ isLoggedIn, onOpenLoginModal }: Studen
                               <Star
                                 key={i}
                                 size={10}
-                                className={`${
-                                  i < Math.floor(test.rating) ? "fill-emerald-400 text-emerald-400" : "text-white/10"
-                                } shrink-0`}
+                                className={`${i < Math.floor(test.rating) ? "fill-emerald-400 text-emerald-400" : "text-white/10"
+                                  } shrink-0`}
                               />
                             ))}
                           </div>

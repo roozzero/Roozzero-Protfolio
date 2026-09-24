@@ -39,7 +39,7 @@ export default function SkillsSection() {
   const scaleCenter = useTransform(smoothProgress, [0, 0.4, 0.8, 1], [0.97, 1, 1, 0.97]);
   const glowOpacity = useTransform(smoothProgress, [0, 0.3, 0.7, 1], [0.2, 0.85, 0.85, 0.2]);
   const progressBarWidth = useTransform(smoothProgress, [0.12, 0.88], ["0%", "100%"]);
-  
+
   // Dynamic rotations linked directly to user scrolling
   const scrollRotateAtom = useTransform(smoothProgress, [0, 1], [0, 360]);
   const scrollRotateRadar = useTransform(smoothProgress, [0, 1], [0, 540]);
@@ -105,7 +105,7 @@ export default function SkillsSection() {
               Skills &amp; Engineering Stack
             </h2>
             <p className="font-sans text-sm sm:text-base text-white/60 leading-relaxed max-w-2xl">
-              High-performance architectural foundations, defense-grade security protocols, and precision interface craftsmanship.
+              Technologies, tools, and security skills I use to design, develop, and secure modern digital experiences.
             </p>
           </motion.div>
 
@@ -120,11 +120,10 @@ export default function SkillsSection() {
               <button
                 key={tab.id}
                 onClick={() => setActiveFilter(tab.id as any)}
-                className={`px-3 py-1.5 rounded-lg text-[10px] font-sans font-semibold tracking-wider uppercase transition-all duration-300 ${
-                  activeFilter === tab.id
+                className={`px-3 py-1.5 rounded-lg text-[10px] font-sans font-semibold tracking-wider uppercase transition-all duration-300 ${activeFilter === tab.id
                     ? "bg-white text-black shadow-lg shadow-white/10"
                     : "text-white/50 hover:text-white hover:bg-white/[0.05]"
-                }`}
+                  }`}
               >
                 {tab.label}
               </button>
@@ -147,12 +146,12 @@ export default function SkillsSection() {
         className="w-full p-5 sm:p-7 md:p-9 rounded-3xl border border-white/10 bg-white/[0.02] backdrop-blur-md shadow-2xl relative z-10"
       >
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-7 items-stretch">
-          
+
           {/* =========================================================================
               LEFT COLUMN: High-Fidelity Interactive Hero Motion Graphic Cards
              ========================================================================= */}
           <motion.div style={{ y: yLeft }} className="lg:col-span-5 flex flex-col gap-6">
-            
+
             {/* 1. REACT: Quantum Orbital Atom Motion Graphic (Emerald Theme + Scroll Linked) */}
             <motion.div
               initial={{ opacity: 0, y: 25 }}
@@ -160,9 +159,8 @@ export default function SkillsSection() {
               viewport={{ once: true }}
               whileHover={{ y: -6, borderColor: "rgba(16,185,129,0.35)" }}
               transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-              className={`relative h-[250px] sm:h-[265px] w-full rounded-2xl border border-white/[0.08] bg-gradient-to-br from-emerald-950/25 via-white/[0.02] to-transparent flex flex-col justify-between p-6 sm:p-7 shadow-xl group overflow-hidden transition-all duration-500 ${
-                activeFilter !== "all" && activeFilter !== "frontend" ? "opacity-30 grayscale" : "opacity-100"
-              }`}
+              className={`relative h-[250px] sm:h-[265px] w-full rounded-2xl border border-white/[0.08] bg-gradient-to-br from-emerald-950/25 via-white/[0.02] to-transparent flex flex-col justify-between p-6 sm:p-7 shadow-xl group overflow-hidden transition-all duration-500 ${activeFilter !== "all" && activeFilter !== "frontend" ? "opacity-30 grayscale" : "opacity-100"
+                }`}
             >
               {/* Radial Emerald Glow on Hover */}
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_30%,rgba(16,185,129,0.12)_0%,transparent_70%)] pointer-events-none opacity-60 group-hover:opacity-100 transition-opacity duration-700" />
@@ -252,7 +250,7 @@ export default function SkillsSection() {
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
                   Frontend Core
                 </span>
-                <span className="font-mono text-[10px] text-white/40">v19.x · Fiber Engine</span>
+                <span className="font-mono text-[10px] text-white/40">React · JavaScript Fibe · Frontend</span>
               </div>
 
               {/* Bottom Information & Interactive Telemetry */}
@@ -290,9 +288,8 @@ export default function SkillsSection() {
               viewport={{ once: true }}
               whileHover={{ y: -6, borderColor: "rgba(16,185,129,0.35)" }}
               transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1], delay: 0.1 }}
-              className={`relative h-[250px] sm:h-[265px] w-full rounded-2xl border border-white/[0.08] bg-gradient-to-br from-emerald-950/20 via-white/[0.02] to-transparent flex flex-col justify-between p-6 sm:p-7 shadow-xl group overflow-hidden transition-all duration-500 ${
-                activeFilter !== "all" && activeFilter !== "frontend" && activeFilter !== "backend" ? "opacity-30 grayscale" : "opacity-100"
-              }`}
+              className={`relative h-[250px] sm:h-[265px] w-full rounded-2xl border border-white/[0.08] bg-gradient-to-br from-emerald-950/20 via-white/[0.02] to-transparent flex flex-col justify-between p-6 sm:p-7 shadow-xl group overflow-hidden transition-all duration-500 ${activeFilter !== "all" && activeFilter !== "frontend" && activeFilter !== "backend" ? "opacity-30 grayscale" : "opacity-100"
+                }`}
             >
               {/* Laser Grid Background */}
               <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff05_1px,transparent_1px),linear-gradient(to_bottom,#ffffff05_1px,transparent_1px)] bg-[size:16px_16px] pointer-events-none opacity-40 group-hover:opacity-70 transition-opacity" />
@@ -351,17 +348,17 @@ export default function SkillsSection() {
                 </span>
                 <span className="font-mono text-[10px] text-emerald-400 flex items-center gap-1">
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-ping" />
-                  Edge Runtime
+                  Next.js · React · Web
                 </span>
               </div>
 
               {/* Bottom Information & Interactive Telemetry */}
               <div className="relative z-10 mt-auto">
                 <h4 className="font-sans text-xl font-bold tracking-tight text-white group-hover:text-emerald-300 transition-colors">
-                  Next.js App Router
+                  Next.js
                 </h4>
                 <p className="font-sans text-xs text-white/50 mt-1 max-w-[80%] line-clamp-2">
-                  Server Components, streaming SSR, parallel routes, dynamic caching strategies, and edge middleware.
+                  Developing modern web applications with Next.js, routing, optimized rendering, and scalable architectures.
                 </p>
 
                 {/* Telemetry Metric Bar */}
@@ -389,7 +386,7 @@ export default function SkillsSection() {
               RIGHT COLUMN: 6 Interactive Motion Graphic Competency Tiles (All Emerald)
              ========================================================================= */}
           <motion.div style={{ y: yRight }} className="lg:col-span-7 grid grid-cols-1 sm:grid-cols-2 gap-5 sm:gap-6">
-            
+
             {/* 3. Node.js (Asynchronous Event Loop Motion Graphic) */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -397,12 +394,11 @@ export default function SkillsSection() {
               viewport={{ once: true }}
               whileHover={{ y: -5, borderColor: "rgba(16,185,129,0.35)" }}
               transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-              className={`h-[160px] rounded-2xl border border-emerald-500/[0.12] bg-gradient-to-b from-emerald-500/[0.04] to-transparent p-5 flex flex-col justify-between shadow-lg relative overflow-hidden group transition-all duration-300 ${
-                activeFilter !== "all" && activeFilter !== "backend" ? "opacity-30 grayscale" : "opacity-100"
-              }`}
+              className={`h-[160px] rounded-2xl border border-emerald-500/[0.12] bg-gradient-to-b from-emerald-500/[0.04] to-transparent p-5 flex flex-col justify-between shadow-lg relative overflow-hidden group transition-all duration-300 ${activeFilter !== "all" && activeFilter !== "backend" ? "opacity-30 grayscale" : "opacity-100"
+                }`}
             >
               <div className="absolute -right-6 -bottom-6 w-24 h-24 rounded-full bg-emerald-500/10 blur-xl pointer-events-none group-hover:scale-150 transition-transform duration-500" />
-              
+
               <div className="flex items-center justify-between relative z-10">
                 <div className="h-10 w-10 rounded-xl bg-black/40 border border-emerald-500/20 flex items-center justify-center relative overflow-hidden">
                   {/* Rotating Event Loop Hexagon reacting to scroll */}
@@ -415,7 +411,7 @@ export default function SkillsSection() {
                       viewBox="0 0 256 256"
                       fill="none"
                     >
-                      <path d="M128 0L24 60v120l104 60 104-60V60L128 0zm78 163.5l-78 45-78-45V85.5l78-45 78 45v78z" fill="#10b981"/>
+                      <path d="M128 0L24 60v120l104 60 104-60V60L128 0zm78 163.5l-78 45-78-45V85.5l78-45 78 45v78z" fill="#10b981" />
                     </motion.svg>
                   </motion.div>
                   {/* Blinking Async Pulse */}
@@ -430,18 +426,18 @@ export default function SkillsSection() {
                   libuv · Event Loop
                 </span>
               </div>
-              
+
               <div className="relative z-10">
                 <div className="flex items-center justify-between">
                   <h5 className="font-sans text-base font-bold text-white group-hover:text-emerald-300 transition-colors">Node.js</h5>
                   <span className="font-mono text-[10px] text-white/50">92%</span>
                 </div>
                 <p className="font-sans text-[11px] text-white/40 mt-0.5 line-clamp-1">Scalable async runtimes, microservices &amp; streams</p>
-                
+
                 <div className="w-full h-1 bg-white/5 rounded-full mt-2.5 overflow-hidden">
                   <motion.div
                     initial={{ width: 0 }}
-                    whileInView={{ width: "92%" }}
+                    whileInView={{ width: "76%" }}
                     viewport={{ once: true }}
                     transition={{ duration: 1, ease: "easeOut" }}
                     className="h-full bg-emerald-500 rounded-full"
@@ -457,9 +453,8 @@ export default function SkillsSection() {
               viewport={{ once: true }}
               whileHover={{ y: -5, borderColor: "rgba(16,185,129,0.35)" }}
               transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1], delay: 0.05 }}
-              className={`h-[160px] rounded-2xl border border-emerald-500/[0.12] bg-gradient-to-b from-emerald-500/[0.04] to-transparent p-5 flex flex-col justify-between shadow-lg relative overflow-hidden group transition-all duration-300 ${
-                activeFilter !== "all" && activeFilter !== "security" ? "opacity-30 grayscale" : "opacity-100"
-              }`}
+              className={`h-[160px] rounded-2xl border border-emerald-500/[0.12] bg-gradient-to-b from-emerald-500/[0.04] to-transparent p-5 flex flex-col justify-between shadow-lg relative overflow-hidden group transition-all duration-300 ${activeFilter !== "all" && activeFilter !== "security" ? "opacity-30 grayscale" : "opacity-100"
+                }`}
             >
               {/* Radar Sweep Effect inside Card reacting to scroll & continuous loop */}
               <div className="absolute top-2 right-2 w-20 h-20 pointer-events-none opacity-40 group-hover:opacity-80 transition-opacity">
@@ -474,7 +469,7 @@ export default function SkillsSection() {
                   />
                 </motion.div>
               </div>
-              
+
               <div className="flex items-center justify-between relative z-10">
                 <div className="h-10 w-10 rounded-xl bg-black/40 border border-emerald-500/20 flex items-center justify-center">
                   <motion.div
@@ -490,14 +485,14 @@ export default function SkillsSection() {
                   <span>Zero-Day Defended</span>
                 </span>
               </div>
-              
+
               <div className="relative z-10">
                 <div className="flex items-center justify-between">
                   <h5 className="font-sans text-base font-bold text-white group-hover:text-emerald-300 transition-colors">OWASP Top 10</h5>
                   <span className="font-mono text-[10px] text-white/50">98%</span>
                 </div>
                 <p className="font-sans text-[11px] text-white/40 mt-0.5 line-clamp-1">XSS, CSRF, SQLi sanitization &amp; defense</p>
-                
+
                 <div className="w-full h-1 bg-white/5 rounded-full mt-2.5 overflow-hidden">
                   <motion.div
                     initial={{ width: 0 }}
@@ -517,9 +512,8 @@ export default function SkillsSection() {
               viewport={{ once: true }}
               whileHover={{ y: -5, borderColor: "rgba(16,185,129,0.35)" }}
               transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1], delay: 0.1 }}
-              className={`h-[160px] rounded-2xl border border-emerald-500/[0.12] bg-gradient-to-b from-emerald-500/[0.04] to-transparent p-5 flex flex-col justify-between shadow-lg relative overflow-hidden group transition-all duration-300 ${
-                activeFilter !== "all" && activeFilter !== "frontend" && activeFilter !== "backend" ? "opacity-30 grayscale" : "opacity-100"
-              }`}
+              className={`h-[160px] rounded-2xl border border-emerald-500/[0.12] bg-gradient-to-b from-emerald-500/[0.04] to-transparent p-5 flex flex-col justify-between shadow-lg relative overflow-hidden group transition-all duration-300 ${activeFilter !== "all" && activeFilter !== "frontend" && activeFilter !== "backend" ? "opacity-30 grayscale" : "opacity-100"
+                }`}
             >
               {/* Floating Syntax Particles in Emerald */}
               <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-30 group-hover:opacity-60 transition-opacity">
@@ -548,14 +542,14 @@ export default function SkillsSection() {
                   ESNext · V8 Engine
                 </span>
               </div>
-              
+
               <div className="relative z-10">
                 <div className="flex items-center justify-between">
                   <h5 className="font-sans text-base font-bold text-white group-hover:text-emerald-300 transition-colors">JavaScript</h5>
                   <span className="font-mono text-[10px] text-white/50">97%</span>
                 </div>
                 <p className="font-sans text-[11px] text-white/40 mt-0.5 line-clamp-1">Prototypes, closures, concurrency &amp; Web APIs</p>
-                
+
                 <div className="w-full h-1 bg-white/5 rounded-full mt-2.5 overflow-hidden">
                   <motion.div
                     initial={{ width: 0 }}
@@ -575,9 +569,8 @@ export default function SkillsSection() {
               viewport={{ once: true }}
               whileHover={{ y: -5, borderColor: "rgba(16,185,129,0.35)" }}
               transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1], delay: 0.15 }}
-              className={`h-[160px] rounded-2xl border border-emerald-500/[0.12] bg-gradient-to-b from-emerald-500/[0.04] to-transparent p-5 flex flex-col justify-between shadow-lg relative overflow-hidden group transition-all duration-300 ${
-                activeFilter !== "all" && activeFilter !== "frontend" ? "opacity-30 grayscale" : "opacity-100"
-              }`}
+              className={`h-[160px] rounded-2xl border border-emerald-500/[0.12] bg-gradient-to-b from-emerald-500/[0.04] to-transparent p-5 flex flex-col justify-between shadow-lg relative overflow-hidden group transition-all duration-300 ${activeFilter !== "all" && activeFilter !== "frontend" ? "opacity-30 grayscale" : "opacity-100"
+                }`}
             >
               {/* Morphing SVG Wave Path in Emerald */}
               <div className="absolute -right-4 -bottom-2 w-28 h-16 pointer-events-none opacity-30 group-hover:opacity-70 transition-opacity">
@@ -601,7 +594,7 @@ export default function SkillsSection() {
                     viewBox="0 0 24 24"
                     fill="none"
                   >
-                    <path d="M12 6.095c-1.334 0-2.333.667-3 2 1.333-2 2.667-2.333 4-1 .762.762 1.543 1.543 2.5 2.5 1.556 1.555 3.321 2.333 5.3 2.333 1.333 0 2.333-.667 3-2-1.333 2-2.667 2.333-4 1-.762-.762-1.543-1.543-2.5-2.5-1.556-1.556-3.321-2.333-5.3-2.333zm-6 6c-1.334 0-2.333.667-3 2 1.333-2 2.667-2.333 4-1 .762.762 1.543 1.543 2.5 2.5 1.556 1.555 3.321 2.333 5.3 2.333 1.333 0 2.333-.667 3-2-1.333 2-2.667 2.333-4 1-.762-.762-1.543-1.543-2.5-2.5-1.556-1.556-3.321-2.333-5.3-2.333z" fill="#10b981"/>
+                    <path d="M12 6.095c-1.334 0-2.333.667-3 2 1.333-2 2.667-2.333 4-1 .762.762 1.543 1.543 2.5 2.5 1.556 1.555 3.321 2.333 5.3 2.333 1.333 0 2.333-.667 3-2-1.333 2-2.667 2.333-4 1-.762-.762-1.543-1.543-2.5-2.5-1.556-1.556-3.321-2.333-5.3-2.333zm-6 6c-1.334 0-2.333.667-3 2 1.333-2 2.667-2.333 4-1 .762.762 1.543 1.543 2.5 2.5 1.556 1.555 3.321 2.333 5.3 2.333 1.333 0 2.333-.667 3-2-1.333 2-2.667 2.333-4 1-.762-.762-1.543-1.543-2.5-2.5-1.556-1.556-3.321-2.333-5.3-2.333z" fill="#10b981" />
                   </motion.svg>
                 </div>
 
@@ -609,14 +602,14 @@ export default function SkillsSection() {
                   Zero Runtime · JIT
                 </span>
               </div>
-              
+
               <div className="relative z-10">
                 <div className="flex items-center justify-between">
                   <h5 className="font-sans text-base font-bold text-white group-hover:text-emerald-300 transition-colors">Tailwind CSS</h5>
                   <span className="font-mono text-[10px] text-white/50">99%</span>
                 </div>
                 <p className="font-sans text-[11px] text-white/40 mt-0.5 line-clamp-1">Fluid typography, tokens, animations &amp; dark mode</p>
-                
+
                 <div className="w-full h-1 bg-white/5 rounded-full mt-2.5 overflow-hidden">
                   <motion.div
                     initial={{ width: 0 }}
@@ -636,9 +629,8 @@ export default function SkillsSection() {
               viewport={{ once: true }}
               whileHover={{ y: -5, borderColor: "rgba(16,185,129,0.35)" }}
               transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1], delay: 0.2 }}
-              className={`h-[160px] rounded-2xl border border-emerald-500/[0.12] bg-gradient-to-b from-emerald-500/[0.04] to-transparent p-5 flex flex-col justify-between shadow-lg relative overflow-hidden group transition-all duration-300 ${
-                activeFilter !== "all" && activeFilter !== "frontend" && activeFilter !== "backend" ? "opacity-30 grayscale" : "opacity-100"
-              }`}
+              className={`h-[160px] rounded-2xl border border-emerald-500/[0.12] bg-gradient-to-b from-emerald-500/[0.04] to-transparent p-5 flex flex-col justify-between shadow-lg relative overflow-hidden group transition-all duration-300 ${activeFilter !== "all" && activeFilter !== "frontend" && activeFilter !== "backend" ? "opacity-30 grayscale" : "opacity-100"
+                }`}
             >
               <div className="flex items-center justify-between relative z-10">
                 <div className="h-10 w-10 rounded-xl bg-black/40 border border-emerald-500/20 flex items-center justify-center">
@@ -650,14 +642,14 @@ export default function SkillsSection() {
                   <span>Strict Type System</span>
                 </span>
               </div>
-              
+
               <div className="relative z-10">
                 <div className="flex items-center justify-between">
                   <h5 className="font-sans text-base font-bold text-white group-hover:text-emerald-300 transition-colors">TypeScript</h5>
                   <span className="font-mono text-[10px] text-white/50">95%</span>
                 </div>
                 <p className="font-sans text-[11px] text-white/40 mt-0.5 line-clamp-1">Generics, discriminated unions &amp; AST validation</p>
-                
+
                 <div className="w-full h-1 bg-white/5 rounded-full mt-2.5 overflow-hidden">
                   <motion.div
                     initial={{ width: 0 }}
@@ -677,9 +669,8 @@ export default function SkillsSection() {
               viewport={{ once: true }}
               whileHover={{ y: -5, borderColor: "rgba(16,185,129,0.35)" }}
               transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1], delay: 0.25 }}
-              className={`h-[160px] rounded-2xl border border-emerald-500/[0.12] bg-gradient-to-b from-emerald-500/[0.04] to-transparent p-5 flex flex-col justify-between shadow-lg relative overflow-hidden group transition-all duration-300 ${
-                activeFilter !== "all" && activeFilter !== "security" ? "opacity-30 grayscale" : "opacity-100"
-              }`}
+              className={`h-[160px] rounded-2xl border border-emerald-500/[0.12] bg-gradient-to-b from-emerald-500/[0.04] to-transparent p-5 flex flex-col justify-between shadow-lg relative overflow-hidden group transition-all duration-300 ${activeFilter !== "all" && activeFilter !== "security" ? "opacity-30 grayscale" : "opacity-100"
+                }`}
             >
               {/* Rotating Tactical Crosshair reacting to scroll */}
               <div className="absolute top-2 right-2 w-16 h-16 pointer-events-none opacity-25 group-hover:opacity-80 transition-opacity">
@@ -706,14 +697,14 @@ export default function SkillsSection() {
                   <span>Threat Intelligence</span>
                 </span>
               </div>
-              
+
               <div className="relative z-10">
                 <div className="flex items-center justify-between">
                   <h5 className="font-sans text-base font-bold text-white group-hover:text-emerald-300 transition-colors">Threat Hunting</h5>
                   <span className="font-mono text-[10px] text-white/50">93%</span>
                 </div>
                 <p className="font-sans text-[11px] text-white/40 mt-0.5 line-clamp-1">Proactive threat detection &amp; attack vector triage</p>
-                
+
                 <div className="w-full h-1 bg-white/5 rounded-full mt-2.5 overflow-hidden">
                   <motion.div
                     initial={{ width: 0 }}

@@ -4,8 +4,8 @@
  */
 
 import React, { useState, useEffect, useRef, useMemo } from "react";
-import { motion, useMotionValue, useSpring } from "motion/react";
-import { Sparkles, ArrowRight, Star, MapPin, Calendar as CalendarIcon, User, X, ChevronLeft, ChevronRight, Clock, Heart, Compass as CompassIcon, ChevronDown, ChevronUp, BookOpen, Award, CheckCircle2, FileDown, Github, ShieldCheck, Terminal, Layers, Code2, Lock } from "lucide-react";
+import { motion, AnimatePresence, useMotionValue, useSpring, useScroll, useTransform } from "motion/react";
+import { Sparkles, ArrowRight, Star, MapPin, Calendar as CalendarIcon, User, X, ChevronLeft, ChevronRight, Clock, Heart, Compass as CompassIcon, ChevronDown, ChevronUp, BookOpen, Award, CheckCircle2, FileDown, Github, ShieldCheck, Terminal, Layers, Code2, Lock, GraduationCap } from "lucide-react";
 import Navbar from "./components/Navbar";
 import SkillsSection from "./components/SkillsSection";
 import ProjectsSection from "./components/ProjectsSection";
@@ -13,6 +13,7 @@ import StudentsSection from "./components/StudentsSection";
 import ContactSection from "./components/ContactSection";
 import Footer from "./components/Footer";
 import LoginModal from "./components/LoginModal";
+import CourseRegistrationModal, { CourseRegistrationData } from "./components/CourseRegistrationModal";
 import UserDashboard from "./components/UserDashboard";
 import AdminDashboard from "./components/AdminDashboard";
 import TeacherDashboard from "./components/TeacherDashboard";
@@ -77,40 +78,135 @@ const DEFAULT_HOMEPAGE_CLASSES = [
   {
     id: "techzo",
     courseImage: "https://images.unsplash.com/photo-1550751827-4bd374c3f58b?q=80&w=800&auto=format&fit=crop",
-    courseName: "Techzo: Creative Agency System",
+    courseName: "Advanced React & Frontend Architecture",
     instructor: "Roozbeh",
     price: "$149",
-    description: "An immersive masterclass on building highly interactive, micro-animated studio systems with smooth spring physics, responsive grid architectures, and cinematic lighting.",
+    shortDescription: "Learn how to build scalable React applications using component architecture, reusable patterns, modern JavaScript, and practical frontend engineering principles.",
+    description: "Learn how to build scalable React applications using component architecture, reusable patterns, modern JavaScript, and practical frontend engineering principles.",
     sessions: 12,
     status: "Published",
     displayOrder: 1,
-    tags: ["HTML5 & CSS", "Framer Motion", "Vite"],
+    tags: ["React", "JavaScript", "Frontend"],
     syllabus: [
-      { id: "s1", title: "Advanced Grid & Immersive Layout Layouts", description: "Mastering multi-column modern alignment, viewport control, and custom margins.", duration: "45 mins" },
-      { id: "s2", title: "Framer Motion Micro-Animations", description: "Designing spring physics, hover interactions, page reveals, and viewport triggering.", duration: "60 mins" },
-      { id: "s3", title: "Dark Theme Colors & Ambient Shadows", description: "Defining professional color palettes, blur ratios, gradients, and custom overlays.", duration: "30 mins" },
-      { id: "s4", title: "Deploying High-Fidelity Apps with Vite", description: "Packaging final static web assets, bundle size checks, and hosting on lightning-fast CDNs.", duration: "40 mins" }
+      { id: "s1", title: "Module 1: Advanced Grid & Immersive Layouts", description: "Mastering multi-column modern alignment, viewport control, and custom margins.", duration: "45 mins" },
+      { id: "s2", title: "Module 2: Framer Motion Micro-Animations", description: "Designing spring physics, hover interactions, page reveals, and viewport triggering.", duration: "60 mins" },
+      { id: "s3", title: "Module 3: Dark Theme Colors & Ambient Shadows", description: "Defining professional color palettes, blur ratios, gradients, and custom overlays.", duration: "30 mins" },
+      { id: "s4", title: "Module 4: Deploying High-Fidelity Apps with Vite", description: "Packaging final static web assets, bundle size checks, and hosting on lightning-fast CDNs.", duration: "40 mins" }
     ]
   },
   {
     id: "lumin",
     courseImage: "https://images.unsplash.com/photo-1518770660439-4636190af475?q=80&w=800&auto=format&fit=crop",
-    courseName: "Lumin Studio: Design Aesthetics",
+    courseName: "Modern Next.js Development",
     instructor: "Roozbeh",
     price: "$199",
-    description: "A comprehensive design system course focused on crafting clean component libraries, implementing responsive styling, and deploying production-ready applications.",
+    shortDescription: "Explore modern Next.js application development, routing, rendering strategies, project structure, and scalable web architectures.",
+    description: "Explore modern Next.js application development, routing, rendering strategies, project structure, and scalable web architectures.",
     sessions: 16,
     status: "Published",
     displayOrder: 2,
-    tags: ["HTML5 & Tailwind CSS", "React", "Vite"],
+    tags: ["Next.js", "React", "Web"],
     syllabus: [
-      { id: "s1", title: "React Design System Architecture", description: "Creating modular UI tokens, layouts, buttons, and fully dynamic state structures.", duration: "50 mins" },
-      { id: "s2", title: "Responsive Styling with Tailwind CSS", description: "Using responsive flex/grids, customized font utilities, and pixel-perfect sizing.", duration: "45 mins" },
-      { id: "s3", title: "Typography Reflections & Vector Styling", description: "Recreating high-end reflection aesthetics, blur mechanics, and responsive device shells.", duration: "40 mins" },
-      { id: "s4", title: "Sleek Showcase & Portfolio SEO", description: "Optimizing load times, search engine configurations, meta tags, and premium client pitch decks.", duration: "35 mins" }
+      { id: "s1", title: "Module 1: React Design System Architecture", description: "Creating modular UI tokens, layouts, buttons, and fully dynamic state structures.", duration: "50 mins" },
+      { id: "s2", title: "Module 2: Responsive Styling with Tailwind CSS", description: "Using responsive flex/grids, customized font utilities, and pixel-perfect sizing.", duration: "45 mins" },
+      { id: "s3", title: "Module 3: Typography Reflections & Vector Styling", description: "Recreating high-end reflection aesthetics, blur mechanics, and responsive device shells.", duration: "40 mins" },
+      { id: "s4", title: "Module 4: Sleek Showcase & Portfolio SEO", description: "Optimizing load times, search engine configurations, meta tags, and premium client pitch decks.", duration: "35 mins" }
+    ]
+  },
+  {
+    id: "apex",
+    courseImage: "https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop",
+    courseName: "Frontend Development with TypeScript",
+    instructor: "Roozbeh",
+    price: "$179",
+    shortDescription: "Learn how TypeScript improves code quality, maintainability, and scalability in modern frontend applications.",
+    description: "Learn how TypeScript improves code quality, maintainability, and scalability in modern frontend applications.",
+    sessions: 14,
+    status: "Published",
+    displayOrder: 3,
+    tags: ["TypeScript", "React", "Javascript"],
+    syllabus: [
+      { id: "s1", title: "Module 1: Next.js App Router & Server Actions", description: "Mastering server actions, route handlers, streaming suspense, and nested layout architecture.", duration: "50 mins" },
+      { id: "s2", title: "Module 2: State Orchestration & WebSocket Gateways", description: "Architecting low-latency real-time states, optimistic updates, and resilient socket reconnects.", duration: "55 mins" },
+      { id: "s3", title: "Module 3: Zero-Trust Security & API Hardening", description: "Implementing JWT cryptographic rotation, OWASP guardrails, rate limiters, and edge middleware.", duration: "45 mins" },
+      { id: "s4", title: "Module 4: Edge Deployments & Telemetry", description: "Deploying to globally distributed edge networks, bundle profiling, and real-time observability.", duration: "40 mins" }
+    ]
+  },
+  {
+    id: "bgbunty",
+    courseImage: "https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop",
+    courseName: "Web Security & Bug Bounty",
+    instructor: "Roozbeh",
+    price: "$179",
+    shortDescription: "An introduction to web application security, vulnerability discovery, OWASP methodologies, and practical bug bounty research.",
+    description: "An introduction to web application security, vulnerability discovery, OWASP methodologies, and practical bug bounty research.",
+    sessions: 14,
+    status: "Published",
+    displayOrder: 3,
+    tags: ["Cybersecurity", "OWASP", "Bug Bounty"],
+    syllabus: [
+      { id: "s1", title: "Module 1: Next.js App Router & Server Actions", description: "Mastering server actions, route handlers, streaming suspense, and nested layout architecture.", duration: "50 mins" },
+      { id: "s2", title: "Module 2: State Orchestration & WebSocket Gateways", description: "Architecting low-latency real-time states, optimistic updates, and resilient socket reconnects.", duration: "55 mins" },
+      { id: "s3", title: "Module 3: Zero-Trust Security & API Hardening", description: "Implementing JWT cryptographic rotation, OWASP guardrails, rate limiters, and edge middleware.", duration: "45 mins" },
+      { id: "s4", title: "Module 4: Edge Deployments & Telemetry", description: "Deploying to globally distributed edge networks, bundle profiling, and real-time observability.", duration: "40 mins" }
+    ]
+  },
+  {
+    id: "hunt",
+    courseImage: "https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop",
+    courseName: "Ethical Hacking & Hunting",
+    instructor: "Roozbeh",
+    price: "$179",
+    shortDescription: "Practical learning focused on security testing, reconnaissance, vulnerability research, and threat hunting fundamentals.",
+    description: "Practical learning focused on security testing, reconnaissance, vulnerability research, and threat hunting fundamentals.",
+    sessions: 14,
+    status: "Published",
+    displayOrder: 3,
+    tags: ["Ethical Hacking", "Hunting", "Security"],
+    syllabus: [
+      { id: "s1", title: "Module 1: Next.js App Router & Server Actions", description: "Mastering server actions, route handlers, streaming suspense, and nested layout architecture.", duration: "50 mins" },
+      { id: "s2", title: "Module 2: State Orchestration & WebSocket Gateways", description: "Architecting low-latency real-time states, optimistic updates, and resilient socket reconnects.", duration: "55 mins" },
+      { id: "s3", title: "Module 3: Zero-Trust Security & API Hardening", description: "Implementing JWT cryptographic rotation, OWASP guardrails, rate limiters, and edge middleware.", duration: "45 mins" },
+      { id: "s4", title: "Module 4: Edge Deployments & Telemetry", description: "Deploying to globally distributed edge networks, bundle profiling, and real-time observability.", duration: "40 mins" }
     ]
   }
 ];
+
+const FALLBACK_COURSE_SYLLABUS: Record<string, Array<{ id: string; title: string; description: string; duration: string }>> = {
+  techzo: [
+    { id: "s1", title: "Module 1: Advanced Grid & Immersive Layouts", description: "Mastering multi-column modern alignment, viewport control, and custom architectural margins.", duration: "45 mins" },
+    { id: "s2", title: "Module 2: Framer Motion Micro-Animations", description: "Designing spring physics, hover interactions, page reveals, and viewport triggering.", duration: "60 mins" },
+    { id: "s3", title: "Module 3: Dark Theme Colors & Ambient Shadows", description: "Defining professional color palettes, blur ratios, gradients, and custom overlays.", duration: "30 mins" },
+    { id: "s4", title: "Module 4: Deploying High-Fidelity Apps with Vite", description: "Packaging final static web assets, bundle size checks, and hosting on lightning-fast CDNs.", duration: "40 mins" }
+  ],
+  lumin: [
+    { id: "s1", title: "Module 1: React Design System Architecture", description: "Creating modular UI tokens, layouts, buttons, and fully dynamic state structures.", duration: "50 mins" },
+    { id: "s2", title: "Module 2: Responsive Styling with Tailwind CSS", description: "Using responsive flex/grids, customized font utilities, and pixel-perfect sizing.", duration: "45 mins" },
+    { id: "s3", title: "Module 3: Typography Reflections & Vector Styling", description: "Recreating high-end reflection aesthetics, blur mechanics, and responsive device shells.", duration: "40 mins" },
+    { id: "s4", title: "Module 4: Sleek Showcase & Portfolio SEO", description: "Optimizing load times, search engine configurations, meta tags, and premium client pitch decks.", duration: "35 mins" }
+  ],
+  apex: [
+    { id: "s1", title: "Module 1: Next.js App Router & Server Actions", description: "Mastering server actions, route handlers, streaming suspense, and nested layout architecture.", duration: "50 mins" },
+    { id: "s2", title: "Module 2: State Orchestration & WebSocket Gateways", description: "Architecting low-latency real-time states, optimistic updates, and resilient socket reconnects.", duration: "55 mins" },
+    { id: "s3", title: "Module 3: Zero-Trust Security & API Hardening", description: "Implementing JWT cryptographic rotation, OWASP guardrails, rate limiters, and edge middleware.", duration: "45 mins" },
+    { id: "s4", title: "Module 4: Edge Deployments & Telemetry", description: "Deploying to globally distributed edge networks, bundle profiling, and real-time observability.", duration: "40 mins" }
+  ]
+};
+
+function getCourseSyllabus(cls: any): Array<{ id: string; title: string; description: string; duration: string }> {
+  if (Array.isArray(cls?.syllabus) && cls.syllabus.length > 0) {
+    return cls.syllabus;
+  }
+  if (cls?.id && FALLBACK_COURSE_SYLLABUS[cls.id]) {
+    return FALLBACK_COURSE_SYLLABUS[cls.id];
+  }
+  return [
+    { id: "m1", title: "Module 1: Foundations & Architecture Setup", description: "Core concepts, project initialization, design tokens, and environment configuration.", duration: "45 mins" },
+    { id: "m2", title: "Module 2: Interactive Components & State Flow", description: "Building reusable components, state handling, and interactive layouts.", duration: "60 mins" },
+    { id: "m3", title: "Module 3: Visual Polish & Performance Engineering", description: "Optimization techniques, animation polish, and edge case resilience.", duration: "50 mins" },
+    { id: "m4", title: "Module 4: Production Deployment & Best Practices", description: "Testing, CI/CD pipeline integration, production builds, and documentation.", duration: "40 mins" }
+  ];
+}
 
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(() => localStorage.getItem("isLoggedIn") === "true");
@@ -213,6 +309,28 @@ export default function App() {
   const [presetIndex, setPresetIndex] = useState(0);
   const [ripples, setRipples] = useState<Ripple[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
+  const heroSectionRef = useRef<HTMLElement>(null);
+  const classesSectionRef = useRef<HTMLElement>(null);
+
+  // Global sticky scroll progress
+  const { scrollYProgress: globalScrollYProgress } = useScroll();
+  const globalScrollWidth = useTransform(globalScrollYProgress, [0, 1], ["0%", "100%"]);
+
+  // Scroll Progress for Hero / Who's Me
+  const { scrollYProgress: heroScrollProgress } = useScroll({
+    target: heroSectionRef,
+    offset: ["start start", "end start"],
+  });
+  const smoothHeroProgress = useSpring(heroScrollProgress, { stiffness: 85, damping: 22, restDelta: 0.001 });
+  const heroProgressBarWidth = useTransform(smoothHeroProgress, [0.05, 0.95], ["0%", "100%"]);
+
+  // Scroll Progress for Classes / Academy Section
+  const { scrollYProgress: classesScrollProgress } = useScroll({
+    target: classesSectionRef,
+    offset: ["start end", "end start"],
+  });
+  const smoothClassesProgress = useSpring(classesScrollProgress, { stiffness: 85, damping: 22, restDelta: 0.001 });
+  const classesProgressBarWidth = useTransform(smoothClassesProgress, [0.1, 0.9], ["0%", "100%"]);
 
   const preset = PRESETS[presetIndex];
 
@@ -223,7 +341,9 @@ export default function App() {
       try {
         const config = JSON.parse(saved);
         if (config && Array.isArray(config.classes)) {
-          return config.classes;
+          const existingIds = new Set(config.classes.map((c: any) => c.id));
+          const missingDefaults = DEFAULT_HOMEPAGE_CLASSES.filter((c) => !existingIds.has(c.id));
+          return [...config.classes, ...missingDefaults];
         }
       } catch (e) {
         console.error("Failed to parse homepage classes", e);
@@ -234,6 +354,28 @@ export default function App() {
 
   // Interactive Classes state
   const [openSyllabus, setOpenSyllabus] = useState<Record<string, boolean>>({});
+
+  // Course Registration States
+  const [selectedCourseForRegistration, setSelectedCourseForRegistration] = useState<any | null>(null);
+  const [isCourseRegModalOpen, setIsCourseRegModalOpen] = useState(false);
+  const [registeredCourseIds, setRegisteredCourseIds] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem("user_registered_courses");
+      if (saved) {
+        const list = JSON.parse(saved);
+        if (Array.isArray(list)) return list.map((item: any) => item.courseId);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+    return [];
+  });
+  const [courseToast, setCourseToast] = useState<string | null>(null);
+
+  const showCourseToast = (msg: string) => {
+    setCourseToast(msg);
+    setTimeout(() => setCourseToast(null), 4000);
+  };
 
   // Reload homepage classes whenever hash changes so that it picks up any admin dashboard edits!
   useEffect(() => {
@@ -384,8 +526,16 @@ export default function App() {
 
   return (
     <div id="ambient-canvas-wrapper" className="min-h-screen w-full bg-black overflow-x-hidden font-sans scroll-smooth flex flex-col items-center">
-        {/* Premium Navigation Header */}
-        <Navbar
+      {/* Global Sticky Scroll Progress Line */}
+      <div className="fixed top-0 left-0 right-0 h-[2.5px] z-50 pointer-events-none">
+        <motion.div
+          style={{ width: globalScrollWidth }}
+          className="h-full bg-gradient-to-r from-emerald-500 via-emerald-400 to-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.8)]"
+        />
+      </div>
+
+      {/* Premium Navigation Header */}
+      <Navbar
         onPresetChange={() => setPresetIndex((prev) => (prev + 1) % PRESETS.length)}
         currentPresetName={preset.name}
         isLoggedIn={isLoggedIn}
@@ -394,6 +544,7 @@ export default function App() {
 
       {/* Hero Section */}
       <section
+        ref={heroSectionRef}
         id="home"
         className="relative flex min-h-screen w-full items-center justify-center p-4 sm:p-6 md:p-12 pt-24 sm:pt-28 md:pt-32 overflow-hidden"
       >
@@ -814,7 +965,7 @@ export default function App() {
               Who's Me
             </h2>
             <p className="font-sans text-base sm:text-lg text-white/60 leading-relaxed max-w-3xl">
-              Think like a hacker. Build like a developer. Create like a designer.
+              Hi, I'm Roozbeh Tavakoli | a Computer Engineer and Frontend Developer focused on building modern, scalable, and user-centered web experiences.
             </p>
             
             {/* Elegant Action Buttons: CV & GitHub */}
@@ -843,6 +994,14 @@ export default function App() {
           </div>
         </div>
 
+        {/* Dynamic Scroll Progress Line - Unified to Emerald Glow */}
+        <div className="relative w-full h-[2px] bg-white/[0.06] rounded-full mb-8 overflow-hidden z-10">
+          <motion.div
+            style={{ width: heroProgressBarWidth }}
+            className="absolute top-0 left-0 h-full bg-gradient-to-r from-emerald-500 via-emerald-400 to-emerald-300 shadow-[0_0_14px_rgba(16,185,129,0.8)]"
+          />
+        </div>
+
         {/* Bottom Body Row: Image & Cards Grid wrapped in our specified container */}
         <div className="w-full p-6 sm:p-8 md:p-10 rounded-3xl border border-white/10 bg-white/[0.02] backdrop-blur-md shadow-2xl relative z-10">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-stretch">
@@ -852,7 +1011,7 @@ export default function App() {
             <div className="absolute -inset-1 rounded-2xl bg-gradient-to-tr from-white/10 to-transparent opacity-20 group-hover:opacity-40 blur-md transition duration-1000"></div>
             <div className="relative h-full min-h-[380px] sm:min-h-[480px] lg:min-h-0 overflow-hidden rounded-2xl border border-white/10 bg-neutral-900 shadow-2xl">
               <img
-                src="/src/assets/images/002.png"
+                src="/src/assets/images/photo_2024-10-20_19-21-55.jpg"
                 alt="ROOZZERO Bio Portrait"
                 className="w-full h-full object-cover contrast-[1.05] brightness-[0.9] saturate-[0.85] transition-transform duration-700 ease-out group-hover:scale-[1.03]"
               />
@@ -889,15 +1048,15 @@ export default function App() {
 
               <div className="my-auto py-1 relative z-10">
                 <span className="block font-sans text-4xl sm:text-5xl font-light tracking-tight text-white group-hover:text-emerald-300 transition-colors">
-                  5+
+                  7+
                 </span>
                 <p className="font-sans text-xs text-white/50 tracking-wide mt-1.5 truncate">
-                  Years Crafting Digital Products
+                  React · Next.js · TypeScript
                 </p>
               </div>
 
               <div className="h-8 flex items-center justify-between pt-2.5 border-t border-white/[0.06] text-[10px] font-mono text-white/40 relative z-10">
-                <span>Architecture</span>
+                <span>Core Technologies</span>
                 <span className="text-emerald-400 flex items-center gap-1.5">
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
                   Production Active
@@ -919,7 +1078,7 @@ export default function App() {
 
               <div className="flex items-center justify-between relative z-10">
                 <span className="font-mono text-[9px] font-semibold tracking-[0.2em] text-white/50 uppercase">
-                  PARTNERSHIPS
+                  Main Fields
                 </span>
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border border-emerald-400/20 bg-emerald-400/10 text-[9px] font-mono text-emerald-400">
                   <CheckCircle2 size={10} className="text-emerald-400" />
@@ -929,10 +1088,10 @@ export default function App() {
 
               <div className="my-auto py-1 relative z-10">
                 <span className="block font-sans text-4xl sm:text-5xl font-light tracking-tight text-white group-hover:text-emerald-300 transition-colors">
-                  20+
+                  2
                 </span>
                 <p className="font-sans text-xs text-white/50 tracking-wide mt-1.5 truncate">
-                  Enterprise Client Deployments
+                  Development · Cybersecurity
                 </p>
               </div>
 
@@ -959,7 +1118,7 @@ export default function App() {
 
               <div className="flex items-center justify-between relative z-10">
                 <span className="font-mono text-[9px] font-semibold tracking-[0.2em] text-white/50 uppercase">
-                  SATISFACTION
+                  Development Tools
                 </span>
                 <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border border-emerald-400/20 bg-emerald-400/10 text-emerald-400 text-[10px] font-mono font-semibold">
                   <Star size={10} fill="currentColor" />
@@ -969,10 +1128,10 @@ export default function App() {
 
               <div className="my-auto py-1 relative z-10">
                 <span className="block font-sans text-4xl sm:text-5xl font-light tracking-tight text-white group-hover:text-emerald-300 transition-colors">
-                  120+
+                  4+
                 </span>
                 <p className="font-sans text-xs text-white/50 tracking-wide mt-1.5 truncate">
-                  Satisfied Clients &amp; Students
+                  React · Next.js · Tailwind · Git
                 </p>
               </div>
 
@@ -980,6 +1139,7 @@ export default function App() {
                 <span>Reviews</span>
                 
                 {/* Micro Avatars overlapping cleanly within the exact footer height */}
+                {/*
                 <div className="flex -space-x-1.5 items-center">
                   {[
                     { id: "liloch", src: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=80&fit=crop&q=80" },
@@ -1009,6 +1169,7 @@ export default function App() {
                     </button>
                   ))}
                 </div>
+                */}
               </div>
             </motion.div>
 
@@ -1027,7 +1188,7 @@ export default function App() {
 
               <div className="flex items-center justify-between relative z-10">
                 <span className="font-mono text-[9px] font-semibold tracking-[0.2em] text-white/50 uppercase">
-                  ENGINEERING
+                  Engineering Focus
                 </span>
                 <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border border-emerald-400/20 bg-emerald-400/10 text-emerald-400 text-[9px] font-mono font-medium">
                   <ShieldCheck size={10} className="text-emerald-400" />
@@ -1040,7 +1201,7 @@ export default function App() {
                   A+
                 </span>
                 <p className="font-sans text-xs text-white/50 tracking-wide mt-1.5 truncate">
-                  Defense Grade &amp; Precision UI
+                  Software & Web Development
                 </p>
               </div>
 
@@ -1066,6 +1227,7 @@ export default function App() {
 
       {/* CLASSES SECTION */}
       <section
+        ref={classesSectionRef}
         id="classes"
         className="w-full max-w-7xl mx-auto px-6 sm:px-8 lg:px-12 py-10 sm:py-14 md:py-18 relative text-white scroll-mt-24 border-t border-white/[0.04] overflow-hidden"
       >
@@ -1074,7 +1236,7 @@ export default function App() {
         <div className="absolute bottom-1/3 left-1/3 -translate-x-1/2 w-[350px] h-[220px] pointer-events-none blur-[120px] bg-gradient-to-tr from-emerald-600/[0.02] to-emerald-400/[0.03] rounded-full z-0" />
 
         {/* Header Block (Unified Header) */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start mb-12 md:mb-16 relative z-10 w-full">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start mb-8 md:mb-10 relative z-10 w-full">
           {/* Badge Column (Left) */}
           <div className="lg:col-span-3 flex items-center">
             <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-white/10 bg-white/[0.03] backdrop-blur-md shadow-sm">
@@ -1096,6 +1258,14 @@ export default function App() {
           </div>
         </div>
 
+        {/* Dynamic Scroll Progress Line - Unified to Emerald Glow */}
+        <div className="relative w-full h-[2px] bg-white/[0.06] rounded-full mb-8 overflow-hidden z-10">
+          <motion.div
+            style={{ width: classesProgressBarWidth }}
+            className="absolute top-0 left-0 h-full bg-gradient-to-r from-emerald-500 via-emerald-400 to-emerald-300 shadow-[0_0_14px_rgba(16,185,129,0.8)]"
+          />
+        </div>
+
         {/* Classes Content wrapped in our specified container */}
         <div className="w-full p-6 sm:p-8 md:p-10 rounded-3xl border border-white/10 bg-white/[0.02] backdrop-blur-md shadow-2xl relative z-10">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-10">
@@ -1103,7 +1273,7 @@ export default function App() {
             {homepageClasses
               .filter((cls) => cls.status === "Published")
               .map((cls) => {
-                const syllabusItems = cls.syllabus || [];
+                const syllabusItems = getCourseSyllabus(cls);
                 const tagsList = Array.isArray(cls.tags) ? cls.tags : [];
                 const isOpen = !!openSyllabus[cls.id];
 
@@ -1255,6 +1425,59 @@ export default function App() {
 
                           </div>
                         </div>
+                      ) : cls.id === "apex" ? (
+                        <div className="relative aspect-[16/10] w-full rounded-2xl bg-[#07070b] border border-white/[0.08] overflow-hidden p-4 flex flex-col justify-between shadow-inner mb-5 shrink-0 group/apex">
+                          {/* Ambient Emerald nebula backdrop */}
+                          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(16,185,129,0.14)_0%,transparent_60%)] pointer-events-none" />
+                          <div className="absolute -bottom-6 -left-6 w-32 h-32 rounded-full bg-emerald-500/[0.08] blur-2xl pointer-events-none" />
+
+                          {/* Terminal / Code Editor Header */}
+                          <div className="flex justify-between items-center text-[8px] text-white/40 tracking-widest relative z-10 border-b border-white/[0.06] pb-2">
+                            <div className="flex items-center gap-1.5">
+                              <div className="w-2.5 h-2.5 rounded-full bg-red-500/80" />
+                              <div className="w-2.5 h-2.5 rounded-full bg-amber-500/80" />
+                              <div className="w-2.5 h-2.5 rounded-full bg-emerald-500/80" />
+                              <span className="ml-1.5 text-[8px] text-white/60 font-mono">AppRouter.tsx · Next.js 19</span>
+                            </div>
+                            <div className="flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-[7px] font-mono text-emerald-400 font-bold">
+                              <span>WASM Ready</span>
+                            </div>
+                          </div>
+
+                          {/* Code Lines & Architecture Stage */}
+                          <div className="my-auto py-2 relative z-10 font-mono text-[7.5px] sm:text-[8px] space-y-1">
+                            <div className="flex items-center gap-2 text-white/30">
+                              <span className="w-3 text-right text-white/20">01</span>
+                              <span><span className="text-emerald-400 font-bold">export async function</span> <span className="text-white font-bold">generateStreamingPipeline</span>() &#123;</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-white/30">
+                              <span className="w-3 text-right text-white/20">02</span>
+                              <span className="pl-2 text-white/70">const gateway = await initZeroTrustGateway(&#123; region: "edge" &#125;);</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-white/30">
+                              <span className="w-3 text-right text-white/20">03</span>
+                              <span className="pl-2 text-emerald-300 font-medium">return orchestrateState(gateway.stream, &#123; latency: "0.8ms" &#125;);</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-white/30">
+                              <span className="w-3 text-right text-white/20">04</span>
+                              <span>&#125;</span>
+                            </div>
+                          </div>
+
+                          {/* Bottom Telemetry Chip Row */}
+                          <div className="flex justify-between items-center text-[7.5px] text-white/40 pt-2 border-t border-white/[0.06] relative z-10 font-mono">
+                            <div className="flex items-center gap-2">
+                              <span className="flex items-center gap-1 text-emerald-400 font-bold">
+                                <CheckCircle2 size={10} /> 100% Type-Safe
+                              </span>
+                              <span>•</span>
+                              <span>12ms Cold Start</span>
+                            </div>
+                            <span className="px-2 py-0.5 rounded bg-white/[0.04] border border-white/10 text-white/70">
+                              Cloudflare Edge
+                            </span>
+                          </div>
+                        </div>
                       ) : (
                         /* GORGEOUS DYNAMIC BANNER VIEW FOR NEW CUSTOM COURSES */
                         <div className="relative aspect-[16/10] w-full rounded-2xl border border-white/[0.06] overflow-hidden shadow-inner mb-5 shrink-0 bg-zinc-900 flex items-center justify-center group/custom">
@@ -1285,18 +1508,37 @@ export default function App() {
                         </div>
                       )}
 
-                      {/* Title & Description */}
-                      <div className="space-y-2 text-left mb-6">
+                      {/* Title & Short Description under course title as requested */}
+                      <div className="space-y-2 text-left mb-5">
                         <h3 className="font-sans text-xl sm:text-2xl font-bold tracking-tight text-white group-hover:text-[#10b981] transition-colors duration-300">
                           {cls.courseName}
                         </h3>
-                        <p className="font-sans text-sm text-white/50 leading-relaxed min-h-[48px] text-justify">
-                          {cls.description}
+
+                        {/* Short Description */}
+                        <p className="font-sans text-xs sm:text-sm text-white/70 leading-relaxed min-h-[38px]">
+                          {cls.shortDescription || cls.description}
                         </p>
+
+                        {/* Quick Course Info Row */}
+                        <div className="flex flex-wrap items-center gap-2 pt-1 text-[11px] font-mono text-white/40">
+                          <span className="flex items-center gap-1 text-white/60">
+                            <Clock size={12} className="text-emerald-400" />
+                            <span>{cls.sessions || 12} Interactive Sessions</span>
+                          </span>
+                          <span>•</span>
+                          <span className="flex items-center gap-1 text-white/60">
+                            <Award size={12} className="text-emerald-400" />
+                            <span>Verified Certificate</span>
+                          </span>
+                          <span>•</span>
+                          <span className="text-emerald-400/90 font-mono">
+                            Instructor: {cls.instructor || "Roozbeh"}
+                          </span>
+                        </div>
                       </div>
 
                       {/* Tech Badges / Tags */}
-                      <div className="flex flex-wrap gap-2 mb-6 border-b border-white/[0.04] pb-5">
+                      <div className="flex flex-wrap gap-2 mb-5 border-b border-white/[0.04] pb-4">
                         {tagsList.slice(0, 3).map((tag: string) => (
                           <span
                             key={tag}
@@ -1308,57 +1550,69 @@ export default function App() {
                       </div>
                     </div>
 
-                    {/* EXPANDABLE SYLLABUS SECTION */}
-                    <div className="bg-white/[0.01] border border-white/[0.03] rounded-2xl overflow-hidden transition-all duration-300">
+                    {/* COLLAPSIBLE SYLLABUS DROPDOWN MENU */}
+                    <div className="bg-white/[0.015] border border-white/[0.05] rounded-2xl overflow-hidden transition-all duration-300">
                       <button
+                        type="button"
+                        id={`syllabus-btn-${cls.id}`}
+                        aria-expanded={isOpen}
                         onClick={() => setOpenSyllabus((prev) => ({ ...prev, [cls.id]: !prev[cls.id] }))}
-                        className="w-full flex items-center justify-between p-4 text-left text-sm font-semibold hover:bg-white/[0.02] transition-colors"
+                        className="w-full flex items-center justify-between p-3.5 sm:p-4 text-left hover:bg-white/[0.03] transition-colors cursor-pointer group/btn"
                       >
-                        <div className="flex items-center gap-1.5 xs:gap-2 sm:gap-2.5 text-white/80 min-w-0 flex-nowrap">
-                          <BookOpen size={15} className="text-[#10b981] shrink-0" />
-                          <span className="tracking-wide text-[10px] xs:text-xs sm:text-sm whitespace-nowrap truncate">Explore Course Syllabus</span>
-                          <span className="text-[8px] xs:text-[9px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-1.5 xs:px-2 py-0.5 rounded-full font-bold uppercase shrink-0 whitespace-nowrap">
+                        <div className="flex items-center gap-2 text-white/90 min-w-0">
+                          <BookOpen size={15} className="text-[#10b981] group-hover/btn:scale-110 transition-transform shrink-0" />
+                          <span className="font-bold text-xs sm:text-sm tracking-wide truncate">
+                            Course Curriculum & Syllabus
+                          </span>
+                          <span className="text-[9px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-full font-mono font-bold shrink-0">
                             {syllabusItems.length} Modules
                           </span>
                         </div>
-                        {isOpen ? (
-                          <ChevronUp size={16} className="text-white/60 shrink-0" />
-                        ) : (
-                          <ChevronDown size={16} className="text-white/60 shrink-0" />
-                        )}
+                        <div className="flex items-center gap-1.5 text-xs text-white/50 group-hover/btn:text-white shrink-0">
+                          <span className="text-[10px] hidden sm:inline font-mono">
+                            {isOpen ? "Hide Syllabus" : "View Syllabus"}
+                          </span>
+                          {isOpen ? (
+                            <ChevronUp size={16} className="text-emerald-400 transition-transform" />
+                          ) : (
+                            <ChevronDown size={16} className="text-white/60 group-hover/btn:text-emerald-400 transition-transform" />
+                          )}
+                        </div>
                       </button>
 
-                      <motion.div
-                        initial={false}
-                        animate={{ height: isOpen ? "auto" : 0 }}
-                        transition={{ duration: 0.3, ease: "easeInOut" }}
-                        className="overflow-hidden bg-black/20"
-                      >
-                        <div className="p-4 border-t border-white/[0.03] space-y-4 text-left text-xs text-white/60">
-                          
-                          {syllabusItems.map((syl: any, sIdx: number) => (
-                            <div key={syl.id || sIdx} className={`flex items-start gap-3 ${sIdx > 0 ? "border-t border-white/[0.02] pt-3" : ""}`}>
-                              <div className="w-5 h-5 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-[10px] font-bold text-emerald-400 mt-0.5 shrink-0">
-                                {sIdx + 1}
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <p className="font-semibold text-white/95 text-[12px] truncate">{syl.title}</p>
-                                <p className="text-[11px] text-white/40 mt-0.5 leading-relaxed">{syl.description}</p>
-                              </div>
-                              <span className="text-[10px] font-mono text-white/30 shrink-0">{syl.duration}</span>
+                      <AnimatePresence initial={false}>
+                        {isOpen && (
+                          <motion.div
+                            key={`syllabus-content-${cls.id}`}
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: "auto", opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+                            className="overflow-hidden bg-black/40 border-t border-white/[0.04]"
+                          >
+                            <div className="p-4 space-y-3.5 text-left text-xs text-white/60">
+                              {syllabusItems.map((syl: any, sIdx: number) => (
+                                <div key={syl.id || sIdx} className={`flex items-start gap-3 ${sIdx > 0 ? "border-t border-white/[0.02] pt-3" : ""}`}>
+                                  <div className="w-5 h-5 rounded-full bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-[10px] font-mono font-bold text-emerald-400 mt-0.5 shrink-0">
+                                    {sIdx + 1}
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center justify-between gap-2">
+                                      <p className="font-bold text-white text-[12px] truncate">{syl.title}</p>
+                                      {syl.duration && (
+                                        <span className="text-[9px] font-mono px-2 py-0.5 rounded bg-white/[0.03] border border-white/5 text-white/40 shrink-0">
+                                          {syl.duration}
+                                        </span>
+                                      )}
+                                    </div>
+                                    <p className="text-[11px] text-white/50 mt-1 leading-relaxed">{syl.description}</p>
+                                  </div>
+                                </div>
+                              ))}
                             </div>
-                          ))}
-
-                          {/* CTA Button inside expander */}
-                          <div className="pt-3 border-t border-white/[0.02]">
-                            <button className="w-full py-2.5 rounded-xl bg-emerald-500 text-black font-sans font-bold text-xs uppercase tracking-widest hover:bg-emerald-400 transition-colors flex items-center justify-center gap-1.5 shadow-[0_4px_15px_rgba(16,185,129,0.25)]">
-                              <Award size={13} />
-                              Enroll In Course
-                            </button>
-                          </div>
-
-                        </div>
-                      </motion.div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
                     </div>
 
                   </div>
@@ -1384,6 +1638,36 @@ export default function App() {
 
       {/* BACK TO TOP BUTTON */}
       <BackToTop />
+
+      {/* FLOATING ENROLLMENT NOTIFICATION TOAST */}
+      {courseToast && (
+        <div className="fixed bottom-6 left-6 z-50 px-4 py-3 rounded-2xl bg-[#0e1017] border border-emerald-500/40 text-white shadow-[0_10px_35px_rgba(0,0,0,0.8)] flex items-center gap-3 animate-in fade-in slide-in-from-bottom-5 duration-300">
+          <div className="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
+            <CheckCircle2 size={15} />
+          </div>
+          <span className="text-xs font-sans text-white/90">{courseToast}</span>
+          <button
+            onClick={() => setCourseToast(null)}
+            className="text-white/40 hover:text-white ml-1 p-1"
+          >
+            <X size={13} />
+          </button>
+        </div>
+      )}
+
+      {/* COURSE REGISTRATION MODAL */}
+      <CourseRegistrationModal
+        isOpen={isCourseRegModalOpen}
+        course={selectedCourseForRegistration}
+        onClose={() => {
+          setIsCourseRegModalOpen(false);
+          setSelectedCourseForRegistration(null);
+        }}
+        onEnrollSuccess={(registration) => {
+          setRegisteredCourseIds((prev) => [...prev, registration.courseId]);
+          showCourseToast(`Successfully enrolled in ${registration.courseName}!`);
+        }}
+      />
 
       {/* PREMIUM CENTRAL LOGIN MODAL OVERLAY */}
       <LoginModal 

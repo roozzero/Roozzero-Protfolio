@@ -1,10 +1,20 @@
-import React, { useState } from "react";
-import { motion, AnimatePresence } from "motion/react";
+import React, { useState, useRef } from "react";
+import { motion, AnimatePresence, useScroll, useSpring, useTransform } from "motion/react";
 import { Mail, Send, Instagram, Github, Linkedin, Check, Sparkles } from "lucide-react";
 
 export default function ContactSection() {
+  const sectionRef = useRef<HTMLElement>(null);
   const [email, setEmail] = useState("");
   const [submitted, setSubmitted] = useState(false);
+
+  // Scroll Progress and Parallax setup
+  const { scrollYProgress } = useScroll({
+    target: sectionRef,
+    offset: ["start end", "end start"],
+  });
+
+  const smoothProgress = useSpring(scrollYProgress, { stiffness: 85, damping: 22, restDelta: 0.001 });
+  const scrollBarWidth = useTransform(smoothProgress, [0.1, 0.9], ["0%", "100%"]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -21,30 +31,27 @@ export default function ContactSection() {
       name: "Telegram",
       icon: Send,
       url: "https://t.me/roozzero",
-      color: "hover:text-white hover:border-white/20 hover:bg-white/[0.03] hover:shadow-[0_0_20px_rgba(255,255,255,0.1)] md:hover:text-[#229ED9] md:hover:border-[#229ED9]/40 md:hover:bg-[#229ED9]/[0.03] md:hover:shadow-[0_0_20px_rgba(34,158,217,0.15)]",
     },
     {
       name: "Instagram",
       icon: Instagram,
       url: "https://instagram.com/roozzero",
-      color: "hover:text-white hover:border-white/20 hover:bg-white/[0.03] hover:shadow-[0_0_20px_rgba(255,255,255,0.1)] md:hover:border-transparent md:hover:bg-gradient-to-tr md:hover:from-[#F58529] md:hover:via-[#D62976] md:hover:to-[#962FBF] md:hover:shadow-[0_0_20px_rgba(214,41,118,0.3)]",
     },
     {
       name: "GitHub",
       icon: Github,
       url: "https://github.com/roozzero",
-      color: "hover:text-white hover:border-white/20 hover:bg-white/[0.03] hover:shadow-[0_0_20px_rgba(255,255,255,0.1)]",
     },
     {
       name: "LinkedIn",
       icon: Linkedin,
       url: "https://linkedin.com/in/roozzero",
-      color: "hover:text-white hover:border-white/20 hover:bg-white/[0.03] hover:shadow-[0_0_20px_rgba(255,255,255,0.1)] md:hover:text-[#0077B5] md:hover:border-[#0077B5]/40 md:hover:bg-[#0077B5]/[0.03] md:hover:shadow-[0_0_20px_rgba(0,119,181,0.15)]",
     },
   ];
 
   return (
     <section
+      ref={sectionRef}
       id="contact-me"
       className="w-full max-w-7xl mx-auto px-6 sm:px-8 lg:px-12 py-12 sm:py-16 md:py-20 relative text-white border-t border-white/[0.04] scroll-mt-24 overflow-hidden"
     >
@@ -52,7 +59,7 @@ export default function ContactSection() {
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[300px] pointer-events-none blur-[160px] bg-gradient-to-tr from-emerald-500/[0.03] via-teal-500/[0.02] to-transparent rounded-full z-0" />
       
       {/* Unified Section Header */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start mb-12 md:mb-16 relative z-10 w-full">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start mb-8 md:mb-10 relative z-10 w-full">
         {/* Badge Column (Left) */}
         <div className="lg:col-span-3 flex items-center">
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-white/10 bg-white/[0.03] backdrop-blur-md shadow-sm">
@@ -72,6 +79,14 @@ export default function ContactSection() {
             Want to start a project, learn React, or just chat? Feel free to connect or subscribe below.
           </p>
         </div>
+      </div>
+
+      {/* Dynamic Scroll Progress Line - Unified to Emerald Glow */}
+      <div className="relative w-full h-[2px] bg-white/[0.06] rounded-full mb-10 overflow-hidden z-10">
+        <motion.div
+          style={{ width: scrollBarWidth }}
+          className="absolute top-0 left-0 h-full bg-gradient-to-r from-emerald-500 via-emerald-400 to-emerald-300 shadow-[0_0_14px_rgba(16,185,129,0.8)]"
+        />
       </div>
 
       {/* Contact Content wrapped in our specified container */}
@@ -128,7 +143,7 @@ export default function ContactSection() {
           </AnimatePresence>
         </motion.div>
 
-        {/* Elegant Social Media Buttons Row */}
+        {/* Elegant Social Media Buttons Row - Green border & text on hover, NO background */}
         <motion.div
           initial={{ opacity: 0, y: 15 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -147,10 +162,10 @@ export default function ContactSection() {
                   rel="noopener noreferrer"
                   whileHover={{ scale: 1.02, y: -2 }}
                   whileTap={{ scale: 0.98 }}
-                  className={`flex items-center gap-2.5 px-5 py-3 rounded-xl border border-white/[0.05] bg-white/[0.01] text-white/60 transition-all duration-300 font-sans text-xs font-semibold tracking-wider ${social.color}`}
+                  className="group flex items-center gap-2.5 px-5 py-3 rounded-xl border border-white/10 bg-transparent text-white/60 hover:text-[#10b981] hover:border-[#10b981] hover:bg-transparent transition-colors duration-300 font-sans text-xs font-semibold tracking-wider cursor-pointer"
                 >
-                  <IconComponent size={14} className="shrink-0" />
-                  <span>{social.name}</span>
+                  <IconComponent size={14} className="shrink-0 transition-colors duration-300 text-white/60 group-hover:text-[#10b981]" />
+                  <span className="transition-colors duration-300 text-white/60 group-hover:text-[#10b981]">{social.name}</span>
                 </motion.a>
               );
             })}

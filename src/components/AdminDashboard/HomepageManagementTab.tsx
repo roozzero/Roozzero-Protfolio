@@ -15,6 +15,7 @@ export const DEFAULT_HOMEPAGE_CLASSES: CMSClass[] = [
     courseName: "Techzo: Creative Agency System",
     instructor: "Roozbeh",
     price: "$149",
+    shortDescription: "Comprehensive masterclass on crafting interactive web architectures, frontend spring animations, and micro-studio systems.",
     description: "Techzo is a cutting-edge design agency template built to showcase innovation, digital expertise, and a bold creative presence online.",
     sessions: 12,
     status: "Published",
@@ -33,6 +34,7 @@ export const DEFAULT_HOMEPAGE_CLASSES: CMSClass[] = [
     courseName: "Lumin Studio: Design Aesthetics",
     instructor: "Roozbeh",
     price: "$199",
+    shortDescription: "Engineering scalable design systems, modern styling with Tailwind CSS, and Swiss typography in React.",
     description: "LuminStudio blends elegance and clarity — a modern design agency template crafted to highlight creative work and impress potential clients.",
     sessions: 16,
     status: "Published",
@@ -43,6 +45,25 @@ export const DEFAULT_HOMEPAGE_CLASSES: CMSClass[] = [
       { id: "s2", title: "Responsive Styling with Tailwind CSS", description: "Using responsive flex/grids, customized font utilities, and pixel-perfect sizing.", duration: "45 mins" },
       { id: "s3", title: "Typography Reflections & Vector Styling", description: "Recreating high-end reflection aesthetics, blur mechanics, and responsive device shells.", duration: "40 mins" },
       { id: "s4", title: "Sleek Showcase & Portfolio SEO", description: "Optimizing load times, search engine configurations, meta tags, and premium client pitch decks.", duration: "35 mins" }
+    ]
+  } as any,
+  {
+    id: "apex",
+    courseImage: "https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop",
+    courseName: "Apex: Full-Stack React & Next.js Architecture",
+    instructor: "Roozbeh",
+    price: "$179",
+    shortDescription: "Architecting enterprise web systems with React 19, Next.js App Router, real-time WebSocket orchestration, and cloud deployments.",
+    description: "A comprehensive deep-dive program into architecting resilient full-stack systems with modern React, server actions, zero-trust security pipelines, and high-performance caching.",
+    sessions: 14,
+    status: "Published",
+    displayOrder: 3,
+    tags: ["Next.js & React 19", "TypeScript", "Tailwind CSS", "Cloudflare"] as any,
+    syllabus: [
+      { id: "s1", title: "Module 1: Next.js App Router & Server Actions", description: "Mastering server actions, route handlers, streaming suspense, and nested layout architecture.", duration: "50 mins" },
+      { id: "s2", title: "Module 2: State Orchestration & WebSocket Gateways", description: "Architecting low-latency real-time states, optimistic updates, and resilient socket reconnects.", duration: "55 mins" },
+      { id: "s3", title: "Module 3: Zero-Trust Security & API Hardening", description: "Implementing JWT cryptographic rotation, OWASP guardrails, rate limiters, and edge middleware.", duration: "45 mins" },
+      { id: "s4", title: "Module 4: Edge Deployments & Telemetry", description: "Deploying to globally distributed edge networks, bundle profiling, and real-time observability.", duration: "40 mins" }
     ]
   } as any
 ];
