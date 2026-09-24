@@ -14,6 +14,12 @@ import {
   Clapperboard,
   Film,
   Ticket,
+  GraduationCap,
+  School,
+  Bell,
+  BookOpen,
+  UserCheck,
+  Settings2,
   ShieldCheck,
   Terminal,
   Activity,
@@ -150,7 +156,7 @@ export default function ProjectsSection() {
           {/* Project Switcher Navigation - Unified Emerald Theme */}
           <div className="flex items-center gap-1.5 p-1 rounded-xl bg-white/[0.02] border border-white/[0.07] backdrop-blur-md self-start md:self-auto shrink-0">
             {[
-              { id: "cinema", label: "Voo's Cinema", icon: Film },
+              { id: "cinema", label: "TeacherShow", icon: GraduationCap },
               { id: "security", label: "Aegis Sentinel", icon: ShieldCheck },
               { id: "cloud", label: "Nexus Engine", icon: Terminal },
             ].map((p) => {
@@ -189,7 +195,7 @@ export default function ProjectsSection() {
         className="w-full p-6 sm:p-8 md:p-10 rounded-3xl border border-white/10 bg-white/[0.02] backdrop-blur-md shadow-2xl relative z-10"
       >
         {/* =========================================================================
-            VIEW 1: VOO'S CINEMA INTERACTIVE PRODUCTION (Unified Emerald Luxury)
+            VIEW 1: TEACHERSHOW SCHOOL MANAGEMENT PLATFORM (Unified Emerald Luxury)
            ========================================================================= */}
         {activeProject === "cinema" && (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-start">
@@ -199,7 +205,7 @@ export default function ProjectsSection() {
               style={{ y: yParallaxLeft }}
               className="lg:col-span-4 space-y-7 lg:sticky lg:top-28"
             >
-              {/* Brand Logo & Rotating Film Reel Graphic (Scroll-linked & Continuous) */}
+              {/* Brand Logo & Status */}
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 select-none">
                   <span className="font-sans text-2xl sm:text-3xl font-black tracking-tight text-white uppercase">TeacherShow</span>
@@ -208,7 +214,7 @@ export default function ProjectsSection() {
                 {/* Status indicator */}
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-emerald-400/20 bg-emerald-400/10 text-emerald-400 font-mono text-[9px] font-bold uppercase">
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-ping" />
-                  Live Deck
+                  School System
                 </span>
               </div>
 
@@ -222,35 +228,52 @@ export default function ProjectsSection() {
                 </p>
               </div>
 
-              {/* MOTION GRAPHIC: Audio Equalizer Waveform & Cinema Acoustics in Emerald */}
+              {/* MOTION GRAPHIC: School Campus PA & Automated Bell Sound Motion Graphic */}
               <div className="p-4 rounded-2xl border border-white/[0.07] bg-black/40 backdrop-blur-sm relative overflow-hidden group">
                 <div className="absolute top-0 right-0 w-32 h-16 bg-gradient-to-l from-emerald-500/10 to-transparent pointer-events-none" />
                 
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
-                    <Volume2 size={13} className="text-emerald-400" />
-                    <span className="font-mono text-[10px] text-white/70 uppercase tracking-wider">Dolby Atmos Spatial Audio</span>
+                    <motion.div
+                      animate={{ rotate: [0, -12, 12, -8, 8, 0] }}
+                      transition={{ duration: 2.5, repeat: Infinity, repeatDelay: 3 }}
+                    >
+                      <Bell size={13} className="text-emerald-400" />
+                    </motion.div>
+                    <span className="font-mono text-[10px] text-white/70 uppercase tracking-wider">Campus PA &amp; School Bell</span>
                   </div>
-                  <span className="font-mono text-[9px] text-emerald-400 font-bold">48kHz · Lossless</span>
+                  <span className="font-mono text-[9px] text-emerald-400 font-bold flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    PA Broadcast Active
+                  </span>
                 </div>
 
-                {/* Dynamic Equalizer Motion Spectrum in Emerald */}
-                <div className="flex items-end justify-between gap-1 h-10 px-1">
-                  {[45, 80, 60, 95, 35, 70, 85, 40, 90, 65, 50, 100, 75, 45, 85, 60, 95, 55, 30].map((height, i) => (
+                {/* Dynamic School Audio Waveform & Bell Acoustics in Emerald */}
+                <div className="flex items-end justify-between gap-1 h-10 px-1 relative">
+                  {[35, 75, 50, 95, 40, 85, 65, 30, 90, 70, 45, 100, 80, 55, 90, 65, 80, 50, 25].map((height, i) => (
                     <motion.div
                       key={i}
                       animate={{
-                        height: [`${height * 0.3}%`, `${height}%`, `${height * 0.4}%`],
+                        height: [`${height * 0.25}%`, `${height}%`, `${height * 0.35}%`],
                       }}
                       transition={{
-                        duration: 1.2 + (i % 5) * 0.2,
+                        duration: 1.1 + (i % 4) * 0.25,
                         repeat: Infinity,
                         ease: "easeInOut",
-                        delay: i * 0.05,
+                        delay: i * 0.04,
                       }}
                       className="flex-1 rounded-full bg-gradient-to-t from-emerald-600 via-emerald-400 to-emerald-200 opacity-80 group-hover:opacity-100 shadow-[0_0_8px_rgba(16,185,129,0.3)]"
                     />
                   ))}
+                </div>
+
+                {/* School Bell & Intercom Schedule Telemetry */}
+                <div className="mt-2.5 pt-2 border-t border-white/[0.05] flex items-center justify-between text-[9px] font-mono text-white/40">
+                  <span className="flex items-center gap-1">
+                    <Radio size={9} className="text-emerald-400" />
+                    <span>Next Bell: Recess (10:15)</span>
+                  </span>
+                  <span className="text-emerald-400">Classrooms 1-12 Connected</span>
                 </div>
               </div>
 
@@ -272,15 +295,22 @@ export default function ProjectsSection() {
                 </div>
               </div>
 
-              {/* Action Buttons & Ticket Dialog Trigger */}
+              {/* Action Buttons: View Project is currently disabled as requested */}
               <div className="flex flex-wrap items-center gap-3 pt-1">
-                <button
-                  onClick={() => setShowTicketModal(true)}
-                  className="inline-flex items-center gap-2 px-4 py-2 font-sans text-[10px] font-bold tracking-[0.18em] uppercase transition-all duration-300 rounded-xl bg-emerald-500 text-black shadow-lg shadow-emerald-500/25 hover:bg-emerald-400 hover:shadow-emerald-500/40 cursor-pointer"
-                >
-                  <Ticket size={13} />
-                  <span>View Project</span>
-                </button>
+                <div className="relative group/viewbtn">
+                  <button
+                    disabled
+                    type="button"
+                    aria-disabled="true"
+                    className="inline-flex items-center gap-2 px-4 py-2 font-sans text-[10px] font-bold tracking-[0.18em] uppercase rounded-xl bg-white/[0.06] text-white/40 border border-white/10 cursor-not-allowed select-none transition-all duration-300"
+                  >
+                    <Lock size={12} className="text-white/40" />
+                    <span>View Project (Disabled)</span>
+                  </button>
+                  <div className="opacity-0 group-hover/viewbtn:opacity-100 transition-opacity duration-200 pointer-events-none absolute -top-8 left-0 px-2.5 py-1 bg-black/90 border border-emerald-500/30 text-emerald-300 text-[9px] font-mono rounded shadow-xl whitespace-nowrap z-30">
+                    Project preview is temporarily disabled
+                  </div>
+                </div>
               </div>
             </motion.div>
 
@@ -297,13 +327,13 @@ export default function ProjectsSection() {
                 />
               </div>
 
-              {/* Screen Switcher Tabs */}
+              {/* Screen Switcher Tabs - Styled specifically with school management icons */}
               <div className="flex flex-wrap items-center justify-center gap-1.5 p-1 bg-white/[0.02] border border-white/[0.06] rounded-2xl mb-4 self-center backdrop-blur-md">
                 {[
-                  { id: 1, label: "manage", icon: CalendarIcon },
-                  { id: 2, label: "Platform", icon: Film },
-                  { id: 3, label: "Teacher", icon: Clapperboard },
-                  { id: 4, label: "Student", icon: Ticket },
+                  { id: 1, label: "Manage", icon: CalendarIcon },
+                  { id: 2, label: "Platform", icon: School },
+                  { id: 3, label: "Teacher", icon: UserCheck },
+                  { id: 4, label: "Student", icon: GraduationCap },
                 ].map((tab) => {
                   const Icon = tab.icon;
                   const isActive = activeScreen === tab.id;
@@ -1904,9 +1934,9 @@ export default function ProjectsSection() {
             <div className="flex justify-between items-start mb-4">
               <div className="flex items-center gap-2">
                 <div className="w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center">
-                  <Film size={11} className="text-black" />
+                  <GraduationCap size={11} className="text-black" />
                 </div>
-                <span className="font-sans text-xs font-bold uppercase tracking-wider text-white">Voo's Cinema Pass</span>
+                <span className="font-sans text-xs font-bold uppercase tracking-wider text-white">TeacherShow Campus Access</span>
               </div>
               <button
                 onClick={() => setShowTicketModal(false)}

@@ -7,63 +7,134 @@ import {
 } from "lucide-react";
 import { CMSFullConfig, CMSClass } from "../../types/cms";
 
-// Initial default classes matching the Techzo & Lumin Studio content from public Home Page
+// Initial default classes matching the public Home Page courses
 export const DEFAULT_HOMEPAGE_CLASSES: CMSClass[] = [
   {
-    id: "techzo",
-    courseImage: "https://images.unsplash.com/photo-1550751827-4bd374c3f58b?q=80&w=800&auto=format&fit=crop",
-    courseName: "Techzo: Creative Agency System",
-    instructor: "Roozbeh",
-    price: "$149",
-    shortDescription: "Comprehensive masterclass on crafting interactive web architectures, frontend spring animations, and micro-studio systems.",
-    description: "Techzo is a cutting-edge design agency template built to showcase innovation, digital expertise, and a bold creative presence online.",
-    sessions: 12,
-    status: "Published",
-    displayOrder: 1,
-    tags: ["HTML5 & CSS", "Framer Motion", "Vite"] as any,
-    syllabus: [
-      { id: "s1", title: "Advanced Grid & Immersive Layout Layouts", description: "Mastering multi-column modern alignment, viewport control, and custom margins.", duration: "45 mins" },
-      { id: "s2", title: "Framer Motion Micro-Animations", description: "Designing spring physics, hover interactions, page reveals, and viewport triggering.", duration: "60 mins" },
-      { id: "s3", title: "Dark Theme Colors & Ambient Shadows", description: "Defining professional color palettes, blur ratios, gradients, and custom overlays.", duration: "30 mins" },
-      { id: "s4", title: "Deploying High-Fidelity Apps with Vite", description: "Packaging final static web assets, bundle size checks, and hosting on lightning-fast CDNs.", duration: "40 mins" }
-    ]
-  } as any,
-  {
     id: "lumin",
-    courseImage: "https://images.unsplash.com/photo-1518770660439-4636190af475?q=80&w=800&auto=format&fit=crop",
-    courseName: "Lumin Studio: Design Aesthetics",
+    courseImage: "https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop",
+    courseName: "Modern Next.js Development",
     instructor: "Roozbeh",
     price: "$199",
-    shortDescription: "Engineering scalable design systems, modern styling with Tailwind CSS, and Swiss typography in React.",
-    description: "LuminStudio blends elegance and clarity — a modern design agency template crafted to highlight creative work and impress potential clients.",
+    shortDescription: "Explore modern Next.js application development, routing, rendering strategies, project structure, and scalable web architectures.",
+    description: "Explore modern Next.js application development, routing, rendering strategies, project structure, and scalable web architectures.",
     sessions: 16,
     status: "Published",
-    displayOrder: 2,
-    tags: ["HTML5 & Tailwind CSS", "React", "Vite"] as any,
+    displayOrder: 1,
+    tags: ["Next.js", "React", "Web"] as any,
     syllabus: [
-      { id: "s1", title: "React Design System Architecture", description: "Creating modular UI tokens, layouts, buttons, and fully dynamic state structures.", duration: "50 mins" },
-      { id: "s2", title: "Responsive Styling with Tailwind CSS", description: "Using responsive flex/grids, customized font utilities, and pixel-perfect sizing.", duration: "45 mins" },
-      { id: "s3", title: "Typography Reflections & Vector Styling", description: "Recreating high-end reflection aesthetics, blur mechanics, and responsive device shells.", duration: "40 mins" },
-      { id: "s4", title: "Sleek Showcase & Portfolio SEO", description: "Optimizing load times, search engine configurations, meta tags, and premium client pitch decks.", duration: "35 mins" }
+      { id: "next-1", title: "Next.js Fundamentals & Project Setup", description: "Next.js core concepts, directory configuration, TypeScript setup, and configuration files.", duration: "Session 1" },
+      { id: "next-2", title: "App Router Architecture", description: "Deep dive into App Router, file-system based conventions, and route segments.", duration: "Session 2" },
+      { id: "next-3", title: "Server Components & Client Components", description: "RSC mental model, client component boundary rules, and seamless data passing.", duration: "Session 3" },
+      { id: "next-4", title: "Layouts, Templates & Nested Routes", description: "Root and nested layouts, templates vs layouts, parallel routes, and intercepted routes.", duration: "Session 4" },
+      { id: "next-5", title: "Dynamic & Catch-All Routes", description: "Dynamic segment matching, optional catch-all parameters, and generateStaticParams.", duration: "Session 5" },
+      { id: "next-6", title: "Data Fetching & Caching", description: "Fetch API cache configurations, on-demand revalidation, and request deduplication.", duration: "Session 6" },
+      { id: "next-7", title: "Server Actions", description: "Mutations with Server Actions, form progressive enhancement, and optimistic UI updates.", duration: "Session 7" },
+      { id: "next-8", title: "Loading & Error UI", description: "Instant loading states with loading.js, Suspense streams, error.js, and global-error.js.", duration: "Session 8" },
+      { id: "next-9", title: "Middleware & Route Protection", description: "Edge runtime middleware, cookie inspection, bot protection, and route rewrites.", duration: "Session 9" },
+      { id: "next-10", title: "Authentication & Authorization", description: "Session management, JWT verification, role-based protection, and secure Auth flows.", duration: "Session 10" },
+      { id: "next-11", title: "API Routes & Backend Integration", description: "Route Handlers (GET, POST, etc.), streaming responses, and backend proxy integrations.", duration: "Session 11" },
+      { id: "next-12", title: "Image & Font Optimization", description: "Next.js Image component, responsive image sizes, and zero-layout-shift web fonts.", duration: "Session 12" },
+      { id: "next-13", title: "SEO & Metadata Management", description: "Dynamic metadata generation, OpenGraph tags, sitemap.xml, and robots.txt generation.", duration: "Session 13" },
+      { id: "next-14", title: "Performance Optimization", description: "Core Web Vitals tuning, bundle analyzer inspection, and server-side streaming.", duration: "Session 14" },
+      { id: "next-15", title: "Deployment & Production Configuration", description: "Vercel and self-hosted Node/Docker builds, environment secrets, and edge caching.", duration: "Session 15" },
+      { id: "next-16", title: "Building Production-Ready Next.js Applications", description: "End-to-end full-stack capstone project featuring real-time state, DB integration, and CI/CD.", duration: "Session 16" }
     ]
   } as any,
   {
     id: "apex",
     courseImage: "https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop",
-    courseName: "Apex: Full-Stack React & Next.js Architecture",
+    courseName: "Frontend Development with TypeScript",
     instructor: "Roozbeh",
     price: "$179",
-    shortDescription: "Architecting enterprise web systems with React 19, Next.js App Router, real-time WebSocket orchestration, and cloud deployments.",
-    description: "A comprehensive deep-dive program into architecting resilient full-stack systems with modern React, server actions, zero-trust security pipelines, and high-performance caching.",
-    sessions: 14,
+    shortDescription: "Learn how TypeScript improves code quality, maintainability, and scalability in modern frontend applications.",
+    description: "Learn how TypeScript improves code quality, maintainability, and scalability in modern frontend applications.",
+    sessions: 16,
     status: "Published",
     displayOrder: 3,
-    tags: ["Next.js & React 19", "TypeScript", "Tailwind CSS", "Cloudflare"] as any,
+    tags: ["TypeScript", "React", "JavaScript"] as any,
     syllabus: [
-      { id: "s1", title: "Module 1: Next.js App Router & Server Actions", description: "Mastering server actions, route handlers, streaming suspense, and nested layout architecture.", duration: "50 mins" },
-      { id: "s2", title: "Module 2: State Orchestration & WebSocket Gateways", description: "Architecting low-latency real-time states, optimistic updates, and resilient socket reconnects.", duration: "55 mins" },
-      { id: "s3", title: "Module 3: Zero-Trust Security & API Hardening", description: "Implementing JWT cryptographic rotation, OWASP guardrails, rate limiters, and edge middleware.", duration: "45 mins" },
-      { id: "s4", title: "Module 4: Edge Deployments & Telemetry", description: "Deploying to globally distributed edge networks, bundle profiling, and real-time observability.", duration: "40 mins" }
+      { id: "ts-1", title: "TypeScript Fundamentals", description: "JavaScript superset syntax, compiler configuration (tsconfig), and runtime behavior.", duration: "Session 1" },
+      { id: "ts-2", title: "Type Annotations & Type Inference", description: "Primitive types, inferred types, contextual typing, and strict mode flags.", duration: "Session 2" },
+      { id: "ts-3", title: "Interfaces & Type Aliases", description: "Declaring object shapes, extending interfaces, intersections, and architectural differences.", duration: "Session 3" },
+      { id: "ts-4", title: "Union & Intersection Types", description: "Discriminated unions, exhaustiveness checks, and composing complex composite types.", duration: "Session 4" },
+      { id: "ts-5", title: "Functions & Generics", description: "Generic functions, constraints, defaults, function overloading, and higher-order typing.", duration: "Session 5" },
+      { id: "ts-6", title: "Enums & Literal Types", description: "Numeric and string enums, const assertions, string literal types, and template literals.", duration: "Session 6" },
+      { id: "ts-7", title: "Advanced Type Manipulation", description: "Keyof, typeof, indexed access types, conditional types, and distributive conditionals.", duration: "Session 7" },
+      { id: "ts-8", title: "Utility Types", description: "Partial, Required, Readonly, Pick, Omit, Record, Exclude, Extract, and ReturnType.", duration: "Session 8" },
+      { id: "ts-9", title: "Type-Safe React Components", description: "Typing functional components, children, polymorphic components, and forwardRef.", duration: "Session 9" },
+      { id: "ts-10", title: "Props, State & Event Typing", description: "Strict typing for mouse, keyboard, and form events, component props, and complex state.", duration: "Session 10" },
+      { id: "ts-11", title: "Custom Hooks with TypeScript", description: "Strict return tuple and object typing, generic hooks, and hook dependency typing.", duration: "Session 11" },
+      { id: "ts-12", title: "API Response & Data Modeling", description: "DTO contracts, schema validation with Zod/io-ts, and type-safe HTTP client wrappers.", duration: "Session 12" },
+      { id: "ts-13", title: "Type-Safe Forms & Validation", description: "Integrating react-hook-form with Zod schemas for end-to-end form type safety.", duration: "Session 13" },
+      { id: "ts-14", title: "Error Handling & Type Guards", description: "User-defined type guards (is), assertion signatures (asserts), and safe error narrowing.", duration: "Session 14" },
+      { id: "ts-15", title: "TypeScript with React & Next.js", description: "Typing Server Components, Route Handlers, Server Actions, and Next.js dynamic params.", duration: "Session 15" },
+      { id: "ts-16", title: "Building Scalable Type-Safe Applications", description: "Large-scale monorepo configurations, strict linting, shared types, and architectural testing.", duration: "Session 16" }
+    ]
+  } as any,
+  {
+    id: "bgbunty",
+    courseImage: "https://images.unsplash.com/photo-1563986768609-322da13575f3?q=80&w=800&auto=format&fit=crop",
+    courseName: "Web Security & Bug Bounty",
+    instructor: "Roozbeh",
+    price: "$189",
+    shortDescription: "An introduction to web application security, vulnerability discovery, OWASP methodologies, and practical bug bounty research.",
+    description: "An introduction to web application security, vulnerability discovery, OWASP methodologies, and practical bug bounty research.",
+    sessions: 18,
+    status: "Published",
+    displayOrder: 4,
+    tags: ["Cybersecurity", "OWASP", "Bug Bounty"] as any,
+    syllabus: [
+      { id: "sec-1", title: "Web Security Fundamentals", description: "Core cybersecurity principles, threat modeling, confidentiality, integrity, and availability.", duration: "Session 1" },
+      { id: "sec-2", title: "HTTP/HTTPS & Web Architecture", description: "HTTP request/response lifecycle, headers, cookies, TLS/SSL encryption, and proxying.", duration: "Session 2" },
+      { id: "sec-3", title: "Authentication & Session Security", description: "Session fixation, JWT vulnerabilities, brute-force defenses, and credential stuffing.", duration: "Session 3" },
+      { id: "sec-4", title: "Access Control & Authorization", description: "Privilege levels, vertical and horizontal authorization flaws, and permission matrices.", duration: "Session 4" },
+      { id: "sec-5", title: "OWASP Top 10", description: "Detailed taxonomy of the OWASP Top 10 web vulnerabilities and real-world attack vectors.", duration: "Session 5" },
+      { id: "sec-6", title: "Information Disclosure", description: "Finding sensitive file leaks, debug endpoints, exposed credentials, and stack trace risks.", duration: "Session 6" },
+      { id: "sec-7", title: "Security Misconfigurations", description: "Default credentials, directory indexing, overly permissive CORS, and cloud misconfigs.", duration: "Session 7" },
+      { id: "sec-8", title: "Cross-Site Scripting (XSS)", description: "Reflected, Stored, and DOM-based XSS, bypass techniques, and CSP defense mechanics.", duration: "Session 8" },
+      { id: "sec-9", title: "SQL Injection", description: "Classic, blind (boolean & time-based), union-based SQLi, and parameterized defense.", duration: "Session 9" },
+      { id: "sec-10", title: "Cross-Site Request Forgery (CSRF)", description: "SameSite cookie policies, anti-CSRF token verification, and defense-in-depth mitigations.", duration: "Session 10" },
+      { id: "sec-11", title: "Server-Side Request Forgery (SSRF)", description: "Blind and out-of-band SSRF, cloud metadata exfiltration (AWS/GCP), and allowlist parsing.", duration: "Session 11" },
+      { id: "sec-12", title: "File Upload Vulnerabilities", description: "Web shells, MIME bypass, extension blacklisting flaws, and secure cloud storage.", duration: "Session 12" },
+      { id: "sec-13", title: "IDOR & Broken Access Control", description: "Insecure Direct Object References, parameter tampering, and API endpoint enumeration.", duration: "Session 13" },
+      { id: "sec-14", title: "API Security Testing", description: "Testing REST and GraphQL APIs, mass assignment, rate-limit bypassing, and schema leaks.", duration: "Session 14" },
+      { id: "sec-15", title: "Reconnaissance & Attack Surface Discovery", description: "Target scoping, passive/active intelligence gathering, technology fingerprinting, and ASN mapping.", duration: "Session 15" },
+      { id: "sec-16", title: "Vulnerability Validation & Impact Assessment", description: "Creating reliable proof-of-concepts (PoC), calculating CVSS scores, and impact demonstration.", duration: "Session 16" },
+      { id: "sec-17", title: "Bug Bounty Methodology", description: "Platforms (HackerOne, Bugcrowd), reading program scopes, triage etiquette, and triage workflows.", duration: "Session 17" },
+      { id: "sec-18", title: "Writing Professional Bug Reports", description: "Drafting high-payout vulnerability disclosures, clear reproduction steps, and remediation advice.", duration: "Session 18" }
+    ]
+  } as any,
+  {
+    id: "hunt",
+    courseImage: "https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?q=80&w=800&auto=format&fit=crop",
+    courseName: "Ethical Hacking & Hunting",
+    instructor: "Roozbeh",
+    price: "$199",
+    shortDescription: "Practical learning focused on security testing, reconnaissance, vulnerability research, and threat hunting fundamentals.",
+    description: "Practical learning focused on security testing, reconnaissance, vulnerability research, and threat hunting fundamentals.",
+    sessions: 18,
+    status: "Published",
+    displayOrder: 5,
+    tags: ["Ethical Hacking", "Hunting", "Security"] as any,
+    syllabus: [
+      { id: "hunt-1", title: "Ethical Hacking Fundamentals", description: "Legal frameworks, ethics, rules of engagement, and red team vs blue team dynamics.", duration: "Session 1" },
+      { id: "hunt-2", title: "Cybersecurity & Attack Lifecycle", description: "Cyber Kill Chain, MITRE ATT&CK framework, and understanding threat actor tactics.", duration: "Session 2" },
+      { id: "hunt-3", title: "Linux for Security Professionals", description: "Command line mastery, file permissions, bash scripting, network utilities, and system logs.", duration: "Session 3" },
+      { id: "hunt-4", title: "Networking & Network Reconnaissance", description: "TCP/IP, subnetting, DNS, packet analysis with Wireshark, and network protocol fundamentals.", duration: "Session 4" },
+      { id: "hunt-5", title: "Information Gathering & OSINT", description: "Open-source intelligence, corporate domain profiling, public registries, and social recon.", duration: "Session 5" },
+      { id: "hunt-6", title: "Passive & Active Reconnaissance", description: "Stealthy discovery techniques, DNS querying, CDN identification, and surface footprinting.", duration: "Session 6" },
+      { id: "hunt-7", title: "Subdomain Enumeration", description: "Certificate transparency logs, brute forcing, wordlists, and permutation engines.", duration: "Session 7" },
+      { id: "hunt-8", title: "Port & Service Enumeration", description: "Nmap scanning strategies, service banner grabbing, NSE scripts, and firewall evasion.", duration: "Session 8" },
+      { id: "hunt-9", title: "Vulnerability Assessment", description: "Vulnerability scanners (Nessus, OpenVAS, Nuclei), false positive filtering, and CVE analysis.", duration: "Session 9" },
+      { id: "hunt-10", title: "Web Application Security Testing", description: "Burp Suite professional workflows, proxy interception, repeater, intruder, and match & replace.", duration: "Session 10" },
+      { id: "hunt-11", title: "API & Authentication Testing", description: "JWT manipulation, OAuth flaw auditing, GraphQL introspection, and session replay.", duration: "Session 11" },
+      { id: "hunt-12", title: "Exploitation Fundamentals", description: "Metasploit framework, payload generation with msfvenom, and understanding memory safeguards.", duration: "Session 12" },
+      { id: "hunt-13", title: "Privilege Escalation Concepts", description: "Linux and Windows local enumeration, SUID binaries, misconfigured sudo, and unquoted service paths.", duration: "Session 13" },
+      { id: "hunt-14", title: "Post-Exploitation Fundamentals", description: "Maintaining access, pivoting through internal subnets, credential dumping, and artifact cleanup.", duration: "Session 14" },
+      { id: "hunt-15", title: "Security Tools & Automation", description: "Automating workflows with Python, Go tools (ffuf, httpx, subfinder), and bash pipelines.", duration: "Session 15" },
+      { id: "hunt-16", title: "Vulnerability Hunting Methodology", description: "Systematic hunting strategies, asset tracking, continuous monitoring, and diffing new features.", duration: "Session 16" },
+      { id: "hunt-17", title: "Responsible Disclosure", description: "Coordinated disclosure timelines, communicating with enterprise security teams, and hall of fame.", duration: "Session 17" },
+      { id: "hunt-18", title: "Hands-on Security Labs & Real-World Scenarios", description: "Practicing on simulated targets, CTF challenges, lab walk-throughs, and real-world attack simulations.", duration: "Session 18" }
     ]
   } as any
 ];
@@ -90,7 +161,20 @@ export default function HomepageManagementTab({ showCustomToast }: HomepageManag
       try {
         const parsed = JSON.parse(saved);
         if (parsed && Array.isArray(parsed.classes)) {
-          return parsed;
+          const nonTechzo = parsed.classes.filter((c: any) => c.id !== "techzo");
+          const updatedClasses = nonTechzo.map((c: any) => {
+            const def = DEFAULT_HOMEPAGE_CLASSES.find((d) => d.id === c.id);
+            if (def && (!c.syllabus || c.syllabus.length < 10 || !c.courseImage || c.courseImage.includes("photo-1550751827-4bd374c3f58b"))) {
+              return { ...c, syllabus: def.syllabus, sessions: def.sessions, courseName: def.courseName, courseImage: def.courseImage };
+            }
+            return c;
+          });
+          const existingIds = new Set(updatedClasses.map((c: any) => c.id));
+          const missingDefaults = DEFAULT_HOMEPAGE_CLASSES.filter((c) => !existingIds.has(c.id));
+          const merged = [...updatedClasses, ...missingDefaults];
+          const newConfig = { ...parsed, classes: merged };
+          localStorage.setItem("cms_current_config", JSON.stringify(newConfig));
+          return newConfig;
         }
       } catch (e) {
         console.error("Failed to parse config from storage", e);

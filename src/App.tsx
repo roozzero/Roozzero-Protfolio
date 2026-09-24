@@ -76,27 +76,8 @@ interface Ripple {
 
 const DEFAULT_HOMEPAGE_CLASSES = [
   {
-    id: "techzo",
-    courseImage: "https://images.unsplash.com/photo-1550751827-4bd374c3f58b?q=80&w=800&auto=format&fit=crop",
-    courseName: "Advanced React & Frontend Architecture",
-    instructor: "Roozbeh",
-    price: "$149",
-    shortDescription: "Learn how to build scalable React applications using component architecture, reusable patterns, modern JavaScript, and practical frontend engineering principles.",
-    description: "Learn how to build scalable React applications using component architecture, reusable patterns, modern JavaScript, and practical frontend engineering principles.",
-    sessions: 12,
-    status: "Published",
-    displayOrder: 1,
-    tags: ["React", "JavaScript", "Frontend"],
-    syllabus: [
-      { id: "s1", title: "Module 1: Advanced Grid & Immersive Layouts", description: "Mastering multi-column modern alignment, viewport control, and custom margins.", duration: "45 mins" },
-      { id: "s2", title: "Module 2: Framer Motion Micro-Animations", description: "Designing spring physics, hover interactions, page reveals, and viewport triggering.", duration: "60 mins" },
-      { id: "s3", title: "Module 3: Dark Theme Colors & Ambient Shadows", description: "Defining professional color palettes, blur ratios, gradients, and custom overlays.", duration: "30 mins" },
-      { id: "s4", title: "Module 4: Deploying High-Fidelity Apps with Vite", description: "Packaging final static web assets, bundle size checks, and hosting on lightning-fast CDNs.", duration: "40 mins" }
-    ]
-  },
-  {
     id: "lumin",
-    courseImage: "https://images.unsplash.com/photo-1518770660439-4636190af475?q=80&w=800&auto=format&fit=crop",
+    courseImage: "https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop",
     courseName: "Modern Next.js Development",
     instructor: "Roozbeh",
     price: "$199",
@@ -104,96 +85,139 @@ const DEFAULT_HOMEPAGE_CLASSES = [
     description: "Explore modern Next.js application development, routing, rendering strategies, project structure, and scalable web architectures.",
     sessions: 16,
     status: "Published",
-    displayOrder: 2,
+    displayOrder: 1,
     tags: ["Next.js", "React", "Web"],
     syllabus: [
-      { id: "s1", title: "Module 1: React Design System Architecture", description: "Creating modular UI tokens, layouts, buttons, and fully dynamic state structures.", duration: "50 mins" },
-      { id: "s2", title: "Module 2: Responsive Styling with Tailwind CSS", description: "Using responsive flex/grids, customized font utilities, and pixel-perfect sizing.", duration: "45 mins" },
-      { id: "s3", title: "Module 3: Typography Reflections & Vector Styling", description: "Recreating high-end reflection aesthetics, blur mechanics, and responsive device shells.", duration: "40 mins" },
-      { id: "s4", title: "Module 4: Sleek Showcase & Portfolio SEO", description: "Optimizing load times, search engine configurations, meta tags, and premium client pitch decks.", duration: "35 mins" }
+      { id: "next-1", title: "Next.js Fundamentals & Project Setup", description: "Next.js core concepts, directory configuration, TypeScript setup, and configuration files.", duration: "Session 1" },
+      { id: "next-2", title: "App Router Architecture", description: "Deep dive into App Router, file-system based conventions, and route segments.", duration: "Session 2" },
+      { id: "next-3", title: "Server Components & Client Components", description: "RSC mental model, client component boundary rules, and seamless data passing.", duration: "Session 3" },
+      { id: "next-4", title: "Layouts, Templates & Nested Routes", description: "Root and nested layouts, templates vs layouts, parallel routes, and intercepted routes.", duration: "Session 4" },
+      { id: "next-5", title: "Dynamic & Catch-All Routes", description: "Dynamic segment matching, optional catch-all parameters, and generateStaticParams.", duration: "Session 5" },
+      { id: "next-6", title: "Data Fetching & Caching", description: "Fetch API cache configurations, on-demand revalidation, and request deduplication.", duration: "Session 6" },
+      { id: "next-7", title: "Server Actions", description: "Mutations with Server Actions, form progressive enhancement, and optimistic UI updates.", duration: "Session 7" },
+      { id: "next-8", title: "Loading & Error UI", description: "Instant loading states with loading.js, Suspense streams, error.js, and global-error.js.", duration: "Session 8" },
+      { id: "next-9", title: "Middleware & Route Protection", description: "Edge runtime middleware, cookie inspection, bot protection, and route rewrites.", duration: "Session 9" },
+      { id: "next-10", title: "Authentication & Authorization", description: "Session management, JWT verification, role-based protection, and secure Auth flows.", duration: "Session 10" },
+      { id: "next-11", title: "API Routes & Backend Integration", description: "Route Handlers (GET, POST, etc.), streaming responses, and backend proxy integrations.", duration: "Session 11" },
+      { id: "next-12", title: "Image & Font Optimization", description: "Next.js Image component, responsive image sizes, and zero-layout-shift web fonts.", duration: "Session 12" },
+      { id: "next-13", title: "SEO & Metadata Management", description: "Dynamic metadata generation, OpenGraph tags, sitemap.xml, and robots.txt generation.", duration: "Session 13" },
+      { id: "next-14", title: "Performance Optimization", description: "Core Web Vitals tuning, bundle analyzer inspection, and server-side streaming.", duration: "Session 14" },
+      { id: "next-15", title: "Deployment & Production Configuration", description: "Vercel and self-hosted Node/Docker builds, environment secrets, and edge caching.", duration: "Session 15" },
+      { id: "next-16", title: "Building Production-Ready Next.js Applications", description: "End-to-end full-stack capstone project featuring real-time state, DB integration, and CI/CD.", duration: "Session 16" }
     ]
   },
   {
     id: "apex",
-    courseImage: "https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop",
+    courseImage: "https://images.unsplash.com/photo-1516116211223-5c359a36298a?q=80&w=800&auto=format&fit=crop",
     courseName: "Frontend Development with TypeScript",
     instructor: "Roozbeh",
     price: "$179",
     shortDescription: "Learn how TypeScript improves code quality, maintainability, and scalability in modern frontend applications.",
     description: "Learn how TypeScript improves code quality, maintainability, and scalability in modern frontend applications.",
-    sessions: 14,
+    sessions: 16,
     status: "Published",
-    displayOrder: 3,
-    tags: ["TypeScript", "React", "Javascript"],
+    displayOrder: 2,
+    tags: ["TypeScript", "React", "JavaScript"],
     syllabus: [
-      { id: "s1", title: "Module 1: Next.js App Router & Server Actions", description: "Mastering server actions, route handlers, streaming suspense, and nested layout architecture.", duration: "50 mins" },
-      { id: "s2", title: "Module 2: State Orchestration & WebSocket Gateways", description: "Architecting low-latency real-time states, optimistic updates, and resilient socket reconnects.", duration: "55 mins" },
-      { id: "s3", title: "Module 3: Zero-Trust Security & API Hardening", description: "Implementing JWT cryptographic rotation, OWASP guardrails, rate limiters, and edge middleware.", duration: "45 mins" },
-      { id: "s4", title: "Module 4: Edge Deployments & Telemetry", description: "Deploying to globally distributed edge networks, bundle profiling, and real-time observability.", duration: "40 mins" }
+      { id: "ts-1", title: "TypeScript Fundamentals", description: "JavaScript superset syntax, compiler configuration (tsconfig), and runtime behavior.", duration: "Session 1" },
+      { id: "ts-2", title: "Type Annotations & Type Inference", description: "Primitive types, inferred types, contextual typing, and strict mode flags.", duration: "Session 2" },
+      { id: "ts-3", title: "Interfaces & Type Aliases", description: "Declaring object shapes, extending interfaces, intersections, and architectural differences.", duration: "Session 3" },
+      { id: "ts-4", title: "Union & Intersection Types", description: "Discriminated unions, exhaustiveness checks, and composing complex composite types.", duration: "Session 4" },
+      { id: "ts-5", title: "Functions & Generics", description: "Generic functions, constraints, defaults, function overloading, and higher-order typing.", duration: "Session 5" },
+      { id: "ts-6", title: "Enums & Literal Types", description: "Numeric and string enums, const assertions, string literal types, and template literals.", duration: "Session 6" },
+      { id: "ts-7", title: "Advanced Type Manipulation", description: "Keyof, typeof, indexed access types, conditional types, and distributive conditionals.", duration: "Session 7" },
+      { id: "ts-8", title: "Utility Types", description: "Partial, Required, Readonly, Pick, Omit, Record, Exclude, Extract, and ReturnType.", duration: "Session 8" },
+      { id: "ts-9", title: "Type-Safe React Components", description: "Typing functional components, children, polymorphic components, and forwardRef.", duration: "Session 9" },
+      { id: "ts-10", title: "Props, State & Event Typing", description: "Strict typing for mouse, keyboard, and form events, component props, and complex state.", duration: "Session 10" },
+      { id: "ts-11", title: "Custom Hooks with TypeScript", description: "Strict return tuple and object typing, generic hooks, and hook dependency typing.", duration: "Session 11" },
+      { id: "ts-12", title: "API Response & Data Modeling", description: "DTO contracts, schema validation with Zod/io-ts, and type-safe HTTP client wrappers.", duration: "Session 12" },
+      { id: "ts-13", title: "Type-Safe Forms & Validation", description: "Integrating react-hook-form with Zod schemas for end-to-end form type safety.", duration: "Session 13" },
+      { id: "ts-14", title: "Error Handling & Type Guards", description: "User-defined type guards (is), assertion signatures (asserts), and safe error narrowing.", duration: "Session 14" },
+      { id: "ts-15", title: "TypeScript with React & Next.js", description: "Typing Server Components, Route Handlers, Server Actions, and Next.js dynamic params.", duration: "Session 15" },
+      { id: "ts-16", title: "Building Scalable Type-Safe Applications", description: "Large-scale monorepo configurations, strict linting, shared types, and architectural testing.", duration: "Session 16" }
     ]
   },
   {
     id: "bgbunty",
-    courseImage: "https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop",
+    courseImage: "https://images.unsplash.com/photo-1563986768609-322da13575f3?q=80&w=800&auto=format&fit=crop",
     courseName: "Web Security & Bug Bounty",
     instructor: "Roozbeh",
-    price: "$179",
+    price: "$189",
     shortDescription: "An introduction to web application security, vulnerability discovery, OWASP methodologies, and practical bug bounty research.",
     description: "An introduction to web application security, vulnerability discovery, OWASP methodologies, and practical bug bounty research.",
-    sessions: 14,
+    sessions: 18,
     status: "Published",
     displayOrder: 3,
     tags: ["Cybersecurity", "OWASP", "Bug Bounty"],
     syllabus: [
-      { id: "s1", title: "Module 1: Next.js App Router & Server Actions", description: "Mastering server actions, route handlers, streaming suspense, and nested layout architecture.", duration: "50 mins" },
-      { id: "s2", title: "Module 2: State Orchestration & WebSocket Gateways", description: "Architecting low-latency real-time states, optimistic updates, and resilient socket reconnects.", duration: "55 mins" },
-      { id: "s3", title: "Module 3: Zero-Trust Security & API Hardening", description: "Implementing JWT cryptographic rotation, OWASP guardrails, rate limiters, and edge middleware.", duration: "45 mins" },
-      { id: "s4", title: "Module 4: Edge Deployments & Telemetry", description: "Deploying to globally distributed edge networks, bundle profiling, and real-time observability.", duration: "40 mins" }
+      { id: "sec-1", title: "Web Security Fundamentals", description: "Core cybersecurity principles, threat modeling, confidentiality, integrity, and availability.", duration: "Session 1" },
+      { id: "sec-2", title: "HTTP/HTTPS & Web Architecture", description: "HTTP request/response lifecycle, headers, cookies, TLS/SSL encryption, and proxying.", duration: "Session 2" },
+      { id: "sec-3", title: "Authentication & Session Security", description: "Session fixation, JWT vulnerabilities, brute-force defenses, and credential stuffing.", duration: "Session 3" },
+      { id: "sec-4", title: "Access Control & Authorization", description: "Privilege levels, vertical and horizontal authorization flaws, and permission matrices.", duration: "Session 4" },
+      { id: "sec-5", title: "OWASP Top 10", description: "Detailed taxonomy of the OWASP Top 10 web vulnerabilities and real-world attack vectors.", duration: "Session 5" },
+      { id: "sec-6", title: "Information Disclosure", description: "Finding sensitive file leaks, debug endpoints, exposed credentials, and stack trace risks.", duration: "Session 6" },
+      { id: "sec-7", title: "Security Misconfigurations", description: "Default credentials, directory indexing, overly permissive CORS, and cloud misconfigs.", duration: "Session 7" },
+      { id: "sec-8", title: "Cross-Site Scripting (XSS)", description: "Reflected, Stored, and DOM-based XSS, bypass techniques, and CSP defense mechanics.", duration: "Session 8" },
+      { id: "sec-9", title: "SQL Injection", description: "Classic, blind (boolean & time-based), union-based SQLi, and parameterized defense.", duration: "Session 9" },
+      { id: "sec-10", title: "Cross-Site Request Forgery (CSRF)", description: "SameSite cookie policies, anti-CSRF token verification, and defense-in-depth mitigations.", duration: "Session 10" },
+      { id: "sec-11", title: "Server-Side Request Forgery (SSRF)", description: "Blind and out-of-band SSRF, cloud metadata exfiltration (AWS/GCP), and allowlist parsing.", duration: "Session 11" },
+      { id: "sec-12", title: "File Upload Vulnerabilities", description: "Web shells, MIME bypass, extension blacklisting flaws, and secure cloud storage.", duration: "Session 12" },
+      { id: "sec-13", title: "IDOR & Broken Access Control", description: "Insecure Direct Object References, parameter tampering, and API endpoint enumeration.", duration: "Session 13" },
+      { id: "sec-14", title: "API Security Testing", description: "Testing REST and GraphQL APIs, mass assignment, rate-limit bypassing, and schema leaks.", duration: "Session 14" },
+      { id: "sec-15", title: "Reconnaissance & Attack Surface Discovery", description: "Target scoping, passive/active intelligence gathering, technology fingerprinting, and ASN mapping.", duration: "Session 15" },
+      { id: "sec-16", title: "Vulnerability Validation & Impact Assessment", description: "Creating reliable proof-of-concepts (PoC), calculating CVSS scores, and impact demonstration.", duration: "Session 16" },
+      { id: "sec-17", title: "Bug Bounty Methodology", description: "Platforms (HackerOne, Bugcrowd), reading program scopes, triage etiquette, and triage workflows.", duration: "Session 17" },
+      { id: "sec-18", title: "Writing Professional Bug Reports", description: "Drafting high-payout vulnerability disclosures, clear reproduction steps, and remediation advice.", duration: "Session 18" }
     ]
   },
   {
     id: "hunt",
-    courseImage: "https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop",
+    courseImage: "https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?q=80&w=800&auto=format&fit=crop",
     courseName: "Ethical Hacking & Hunting",
     instructor: "Roozbeh",
-    price: "$179",
+    price: "$199",
     shortDescription: "Practical learning focused on security testing, reconnaissance, vulnerability research, and threat hunting fundamentals.",
     description: "Practical learning focused on security testing, reconnaissance, vulnerability research, and threat hunting fundamentals.",
-    sessions: 14,
+    sessions: 18,
     status: "Published",
-    displayOrder: 3,
+    displayOrder: 4,
     tags: ["Ethical Hacking", "Hunting", "Security"],
     syllabus: [
-      { id: "s1", title: "Module 1: Next.js App Router & Server Actions", description: "Mastering server actions, route handlers, streaming suspense, and nested layout architecture.", duration: "50 mins" },
-      { id: "s2", title: "Module 2: State Orchestration & WebSocket Gateways", description: "Architecting low-latency real-time states, optimistic updates, and resilient socket reconnects.", duration: "55 mins" },
-      { id: "s3", title: "Module 3: Zero-Trust Security & API Hardening", description: "Implementing JWT cryptographic rotation, OWASP guardrails, rate limiters, and edge middleware.", duration: "45 mins" },
-      { id: "s4", title: "Module 4: Edge Deployments & Telemetry", description: "Deploying to globally distributed edge networks, bundle profiling, and real-time observability.", duration: "40 mins" }
+      { id: "hunt-1", title: "Ethical Hacking Fundamentals", description: "Legal frameworks, ethics, rules of engagement, and red team vs blue team dynamics.", duration: "Session 1" },
+      { id: "hunt-2", title: "Cybersecurity & Attack Lifecycle", description: "Cyber Kill Chain, MITRE ATT&CK framework, and understanding threat actor tactics.", duration: "Session 2" },
+      { id: "hunt-3", title: "Linux for Security Professionals", description: "Command line mastery, file permissions, bash scripting, network utilities, and system logs.", duration: "Session 3" },
+      { id: "hunt-4", title: "Networking & Network Reconnaissance", description: "TCP/IP, subnetting, DNS, packet analysis with Wireshark, and network protocol fundamentals.", duration: "Session 4" },
+      { id: "hunt-5", title: "Information Gathering & OSINT", description: "Open-source intelligence, corporate domain profiling, public registries, and social recon.", duration: "Session 5" },
+      { id: "hunt-6", title: "Passive & Active Reconnaissance", description: "Stealthy discovery techniques, DNS querying, CDN identification, and surface footprinting.", duration: "Session 6" },
+      { id: "hunt-7", title: "Subdomain Enumeration", description: "Certificate transparency logs, brute forcing, wordlists, and permutation engines.", duration: "Session 7" },
+      { id: "hunt-8", title: "Port & Service Enumeration", description: "Nmap scanning strategies, service banner grabbing, NSE scripts, and firewall evasion.", duration: "Session 8" },
+      { id: "hunt-9", title: "Vulnerability Assessment", description: "Vulnerability scanners (Nessus, OpenVAS, Nuclei), false positive filtering, and CVE analysis.", duration: "Session 9" },
+      { id: "hunt-10", title: "Web Application Security Testing", description: "Burp Suite professional workflows, proxy interception, repeater, intruder, and match & replace.", duration: "Session 10" },
+      { id: "hunt-11", title: "API & Authentication Testing", description: "JWT manipulation, OAuth flaw auditing, GraphQL introspection, and session replay.", duration: "Session 11" },
+      { id: "hunt-12", title: "Exploitation Fundamentals", description: "Metasploit framework, payload generation with msfvenom, and understanding memory safeguards.", duration: "Session 12" },
+      { id: "hunt-13", title: "Privilege Escalation Concepts", description: "Linux and Windows local enumeration, SUID binaries, misconfigured sudo, and unquoted service paths.", duration: "Session 13" },
+      { id: "hunt-14", title: "Post-Exploitation Fundamentals", description: "Maintaining access, pivoting through internal subnets, credential dumping, and artifact cleanup.", duration: "Session 14" },
+      { id: "hunt-15", title: "Security Tools & Automation", description: "Automating workflows with Python, Go tools (ffuf, httpx, subfinder), and bash pipelines.", duration: "Session 15" },
+      { id: "hunt-16", title: "Vulnerability Hunting Methodology", description: "Systematic hunting strategies, asset tracking, continuous monitoring, and diffing new features.", duration: "Session 16" },
+      { id: "hunt-17", title: "Responsible Disclosure", description: "Coordinated disclosure timelines, communicating with enterprise security teams, and hall of fame.", duration: "Session 17" },
+      { id: "hunt-18", title: "Hands-on Security Labs & Real-World Scenarios", description: "Practicing on simulated targets, CTF challenges, lab walk-throughs, and real-world attack simulations.", duration: "Session 18" }
     ]
   }
 ];
 
 const FALLBACK_COURSE_SYLLABUS: Record<string, Array<{ id: string; title: string; description: string; duration: string }>> = {
-  techzo: [
-    { id: "s1", title: "Module 1: Advanced Grid & Immersive Layouts", description: "Mastering multi-column modern alignment, viewport control, and custom architectural margins.", duration: "45 mins" },
-    { id: "s2", title: "Module 2: Framer Motion Micro-Animations", description: "Designing spring physics, hover interactions, page reveals, and viewport triggering.", duration: "60 mins" },
-    { id: "s3", title: "Module 3: Dark Theme Colors & Ambient Shadows", description: "Defining professional color palettes, blur ratios, gradients, and custom overlays.", duration: "30 mins" },
-    { id: "s4", title: "Module 4: Deploying High-Fidelity Apps with Vite", description: "Packaging final static web assets, bundle size checks, and hosting on lightning-fast CDNs.", duration: "40 mins" }
-  ],
-  lumin: [
-    { id: "s1", title: "Module 1: React Design System Architecture", description: "Creating modular UI tokens, layouts, buttons, and fully dynamic state structures.", duration: "50 mins" },
-    { id: "s2", title: "Module 2: Responsive Styling with Tailwind CSS", description: "Using responsive flex/grids, customized font utilities, and pixel-perfect sizing.", duration: "45 mins" },
-    { id: "s3", title: "Module 3: Typography Reflections & Vector Styling", description: "Recreating high-end reflection aesthetics, blur mechanics, and responsive device shells.", duration: "40 mins" },
-    { id: "s4", title: "Module 4: Sleek Showcase & Portfolio SEO", description: "Optimizing load times, search engine configurations, meta tags, and premium client pitch decks.", duration: "35 mins" }
-  ],
-  apex: [
-    { id: "s1", title: "Module 1: Next.js App Router & Server Actions", description: "Mastering server actions, route handlers, streaming suspense, and nested layout architecture.", duration: "50 mins" },
-    { id: "s2", title: "Module 2: State Orchestration & WebSocket Gateways", description: "Architecting low-latency real-time states, optimistic updates, and resilient socket reconnects.", duration: "55 mins" },
-    { id: "s3", title: "Module 3: Zero-Trust Security & API Hardening", description: "Implementing JWT cryptographic rotation, OWASP guardrails, rate limiters, and edge middleware.", duration: "45 mins" },
-    { id: "s4", title: "Module 4: Edge Deployments & Telemetry", description: "Deploying to globally distributed edge networks, bundle profiling, and real-time observability.", duration: "40 mins" }
-  ]
+  lumin: DEFAULT_HOMEPAGE_CLASSES[0].syllabus,
+  apex: DEFAULT_HOMEPAGE_CLASSES[1].syllabus,
+  bgbunty: DEFAULT_HOMEPAGE_CLASSES[2].syllabus,
+  hunt: DEFAULT_HOMEPAGE_CLASSES[3].syllabus
 };
 
 function getCourseSyllabus(cls: any): Array<{ id: string; title: string; description: string; duration: string }> {
+  if (cls?.id && FALLBACK_COURSE_SYLLABUS[cls.id]) {
+    if (!Array.isArray(cls?.syllabus) || cls.syllabus.length < 10) {
+      return FALLBACK_COURSE_SYLLABUS[cls.id];
+    }
+  }
   if (Array.isArray(cls?.syllabus) && cls.syllabus.length > 0) {
     return cls.syllabus;
   }
@@ -341,9 +365,19 @@ export default function App() {
       try {
         const config = JSON.parse(saved);
         if (config && Array.isArray(config.classes)) {
-          const existingIds = new Set(config.classes.map((c: any) => c.id));
+          const nonTechzo = config.classes.filter((c: any) => c.id !== "techzo");
+          const updated = nonTechzo.map((c: any) => {
+            const def = DEFAULT_HOMEPAGE_CLASSES.find((d) => d.id === c.id);
+            if (def && (!c.syllabus || c.syllabus.length < 10 || !c.courseImage || c.courseImage.includes("photo-1550751827-4bd374c3f58b"))) {
+              return { ...c, syllabus: def.syllabus, sessions: def.sessions, courseName: def.courseName, courseImage: def.courseImage };
+            }
+            return c;
+          });
+          const existingIds = new Set(updated.map((c: any) => c.id));
           const missingDefaults = DEFAULT_HOMEPAGE_CLASSES.filter((c) => !existingIds.has(c.id));
-          return [...config.classes, ...missingDefaults];
+          const merged = [...updated, ...missingDefaults];
+          localStorage.setItem("cms_current_config", JSON.stringify({ ...config, classes: merged }));
+          return merged;
         }
       } catch (e) {
         console.error("Failed to parse homepage classes", e);
@@ -385,7 +419,17 @@ export default function App() {
         try {
           const config = JSON.parse(saved);
           if (config && Array.isArray(config.classes)) {
-            setHomepageClasses(config.classes);
+            const nonTechzo = config.classes.filter((c: any) => c.id !== "techzo");
+            const updated = nonTechzo.map((c: any) => {
+              const def = DEFAULT_HOMEPAGE_CLASSES.find((d) => d.id === c.id);
+              if (def && (!c.syllabus || c.syllabus.length < 10 || !c.courseImage || c.courseImage.includes("photo-1550751827-4bd374c3f58b"))) {
+                return { ...c, syllabus: def.syllabus, sessions: def.sessions, courseName: def.courseName, courseImage: def.courseImage };
+              }
+              return c;
+            });
+            const existingIds = new Set(updated.map((c: any) => c.id));
+            const missingDefaults = DEFAULT_HOMEPAGE_CLASSES.filter((c) => !existingIds.has(c.id));
+            setHomepageClasses([...updated, ...missingDefaults]);
           }
         } catch (e) {
           console.error(e);
@@ -1024,7 +1068,7 @@ export default function App() {
           {/* Right Side: Bento Grid of Stats Cards with Unified Equal Sizes */}
           <div className="lg:col-span-7 grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-6 items-stretch">
             
-            {/* Card 1: Years Crafting */}
+            {/* Card 1: Experience */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -1041,8 +1085,8 @@ export default function App() {
                   EXPERIENCE
                 </span>
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border border-emerald-400/20 bg-emerald-400/10 text-[9px] font-mono text-emerald-400">
-                  <Award size={10} className="text-emerald-400" />
-                  <span>Senior Lead</span>
+                  <Clock size={10} className="text-emerald-400" />
+                  <span>7+ Years Exp</span>
                 </span>
               </div>
 
@@ -1064,7 +1108,7 @@ export default function App() {
               </div>
             </motion.div>
 
-            {/* Card 2: Client Partnerships */}
+            {/* Card 2: Main Fields */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -1081,8 +1125,8 @@ export default function App() {
                   Main Fields
                 </span>
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border border-emerald-400/20 bg-emerald-400/10 text-[9px] font-mono text-emerald-400">
-                  <CheckCircle2 size={10} className="text-emerald-400" />
-                  <span>Global Reach</span>
+                  <ShieldCheck size={10} className="text-emerald-400" />
+                  <span>Dev &amp; Security</span>
                 </span>
               </div>
 
@@ -1096,15 +1140,15 @@ export default function App() {
               </div>
 
               <div className="h-8 flex items-center justify-between pt-2.5 border-t border-white/[0.06] text-[10px] font-mono text-white/40 relative z-10">
-                <span>Delivery</span>
+                <span>Primary Disciplines</span>
                 <span className="text-emerald-400 flex items-center gap-1">
                   <CheckCircle2 size={11} className="text-emerald-400" />
-                  100% On-Time
+                  Dual Expertise
                 </span>
               </div>
             </motion.div>
 
-            {/* Card 3: Client Satisfaction Score */}
+            {/* Card 3: Development Tools */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -1120,9 +1164,9 @@ export default function App() {
                 <span className="font-mono text-[9px] font-semibold tracking-[0.2em] text-white/50 uppercase">
                   Development Tools
                 </span>
-                <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border border-emerald-400/20 bg-emerald-400/10 text-emerald-400 text-[10px] font-mono font-semibold">
-                  <Star size={10} fill="currentColor" />
-                  <span>4.9 / 5.0</span>
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border border-emerald-400/20 bg-emerald-400/10 text-emerald-400 text-[9px] font-mono font-medium">
+                  <Terminal size={10} className="text-emerald-400" />
+                  <span>Frontend Stack</span>
                 </div>
               </div>
 
@@ -1136,44 +1180,15 @@ export default function App() {
               </div>
 
               <div className="h-8 flex items-center justify-between pt-2.5 border-t border-white/[0.06] text-[10px] font-mono text-white/40 relative z-10">
-                <span>Reviews</span>
-                
-                {/* Micro Avatars overlapping cleanly within the exact footer height */}
-                {/*
-                <div className="flex -space-x-1.5 items-center">
-                  {[
-                    { id: "liloch", src: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=80&fit=crop&q=80" },
-                    { id: "will", src: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80&fit=crop&q=80" },
-                    { id: "diane", src: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=80&fit=crop&q=80" },
-                    { id: "ikta", src: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=80&fit=crop&q=80" }
-                  ].map((avatar) => (
-                    <button
-                      key={avatar.id}
-                      onClick={(e) => {
-                        e.preventDefault();
-                        const element = document.getElementById(`testimonial-${avatar.id}`);
-                        if (element) {
-                          const navbarHeight = 84;
-                          const elementPosition = element.getBoundingClientRect().top;
-                          const offsetPosition = elementPosition + window.scrollY - navbarHeight;
-                          window.scrollTo({ top: offsetPosition, behavior: "smooth" });
-                        }
-                      }}
-                      className="relative block h-5 w-5 rounded-full ring-1 ring-black overflow-hidden bg-neutral-900 shadow transition-transform duration-200 hover:scale-125 hover:z-20 cursor-pointer focus:outline-none"
-                    >
-                      <img
-                        className="w-full h-full object-cover"
-                        src={avatar.src}
-                        alt="Client Portrait"
-                      />
-                    </button>
-                  ))}
-                </div>
-                */}
+                <span>Toolkit</span>
+                <span className="text-emerald-400 flex items-center gap-1">
+                  <CheckCircle2 size={11} className="text-emerald-400" />
+                  Production Ready
+                </span>
               </div>
             </motion.div>
 
-            {/* Card 4: Security & High-Fidelity Engineering */}
+            {/* Card 4: Engineering Focus */}
             <motion.div
               id="who-s-me-card-security-design"
               initial={{ opacity: 0, y: 20 }}
@@ -1191,8 +1206,8 @@ export default function App() {
                   Engineering Focus
                 </span>
                 <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border border-emerald-400/20 bg-emerald-400/10 text-emerald-400 text-[9px] font-mono font-medium">
-                  <ShieldCheck size={10} className="text-emerald-400" />
-                  <span>Zero-Trust</span>
+                  <Award size={10} className="text-emerald-400" />
+                  <span>Architecture Quality</span>
                 </div>
               </div>
 
@@ -1201,14 +1216,14 @@ export default function App() {
                   A+
                 </span>
                 <p className="font-sans text-xs text-white/50 tracking-wide mt-1.5 truncate">
-                  Software & Web Development
+                  Software &amp; Web Development
                 </p>
               </div>
 
               <div className="h-8 flex items-center justify-between pt-2.5 border-t border-white/[0.06] text-[10px] font-mono text-white/40 relative z-10">
                 <span className="flex items-center gap-1 text-white/60">
-                  <ShieldCheck size={11} className="text-emerald-400" />
-                  <span>Full-Stack</span>
+                  <Sparkles size={11} className="text-emerald-400" />
+                  <span>Full-Stack Standards</span>
                 </span>
                 <span className="text-emerald-400/90 font-semibold">ROOZZERO™</span>
               </div>
@@ -1300,213 +1315,34 @@ export default function App() {
                         </div>
                       </div>
 
-                      {/* Course visual template mockup area */}
-                      {cls.id === "techzo" ? (
-                        <div className="relative aspect-[16/10] w-full rounded-2xl bg-[#08080c] border border-white/[0.06] overflow-hidden p-4 flex flex-col justify-between shadow-inner mb-5 shrink-0">
-                          {/* Techzo Background stars & grid */}
-                          <div className="absolute inset-0 bg-[radial-gradient(#ffffff03_1px,transparent_1px)] [background-size:16px_16px] opacity-70 pointer-events-none" />
-                          <div className="absolute top-0 right-0 w-[180px] h-[180px] rounded-full bg-emerald-500/[0.03] blur-[40px] pointer-events-none" />
-
-                          {/* Techzo Inner Top bar */}
-                          <div className="flex justify-between items-center text-[7px] text-white/30 tracking-widest relative z-10 border-b border-white/[0.03] pb-2">
-                            <span>LIGHT VERSION AVAILABLE</span>
-                            <div className="flex items-center gap-2">
-                              <span>MENU</span>
-                              <span className="w-2.5 h-[1.5px] bg-white/40" />
-                            </div>
-                          </div>
-
-                          {/* Techzo Center Stage */}
-                          <div className="my-auto text-center relative z-10 py-2">
-                            {/* Glowing floating wireframe sphere */}
-                            <div className="relative w-16 h-16 mx-auto mb-2 flex items-center justify-center">
-                              <div className="absolute inset-0 rounded-full border border-emerald-500/25 animate-[spin_8s_linear_infinite] [border-style:dashed]" />
-                              <div className="absolute w-12 h-12 rounded-full border border-teal-400/30 animate-[spin_12s_linear_infinite]" />
-                              <div className="absolute w-8 h-8 rounded-full bg-gradient-to-tr from-emerald-500/20 via-transparent to-teal-400/20 blur-[6px]" />
-                              <div className="w-5 h-5 rounded-full border-[1.5px] border-emerald-400/50 flex items-center justify-center">
-                                <div className="w-2 h-2 rounded-full bg-emerald-400" />
-                              </div>
-                            </div>
-
-                            <h3 className="font-sans text-xl sm:text-2xl font-black tracking-[0.2em] text-white uppercase leading-none drop-shadow-[0_0_15px_rgba(255,255,255,0.15)]">
-                              TECHZO
-                            </h3>
-                            <p className="text-[6px] tracking-[0.4em] text-white/40 uppercase mt-1 font-mono">CREATIVE STUDIO</p>
-                          </div>
-
-                          {/* Techzo Bottom cards overlay */}
-                          <div className="flex justify-between items-end gap-2 relative z-10">
-                            {/* Left overlay: About Techzo with placeholder avatar */}
-                            <div className="bg-white/[0.02] border border-white/[0.05] p-1.5 rounded-lg text-left max-w-[45%]">
-                              <p className="text-[5px] text-white/30 uppercase tracking-widest">ABOUT TECHZO</p>
-                              <p className="text-[6.5px] text-white/70 font-semibold mt-0.5 truncate">Innovative Design</p>
-                              <div className="flex items-center gap-1 mt-1">
-                                <div className="w-3.5 h-3.5 rounded-full bg-zinc-800 border border-white/10 flex items-center justify-center">
-                                  <User size={8} className="text-white/40" />
-                                </div>
-                                <span className="text-[4.5px] text-white/40">Est. 2024</span>
-                              </div>
-                            </div>
-
-                            {/* Right overlay: Services list */}
-                            <div className="bg-white/[0.02] border border-white/[0.05] p-1.5 rounded-lg text-left max-w-[48%]">
-                              <p className="text-[5px] text-[#10b981] font-bold tracking-widest uppercase">TOP-NOTCH SERVICES</p>
-                              <div className="space-y-[2px] mt-1 text-[4.5px] text-white/50">
-                                <p className="flex items-center gap-0.5"><span className="text-[#10b981]">•</span> BRANDING & IDENTITY</p>
-                                <p className="flex items-center gap-0.5"><span className="text-[#10b981]">•</span> MOBILE & WEB UX</p>
-                                <p className="flex items-center gap-0.5"><span className="text-[#10b981]">•</span> FULL-STACK DEPLOYMENT</p>
-                              </div>
-                            </div>
-                          </div>
+                      {/* Course visual banner area matching course title */}
+                      <div className="relative aspect-[16/10] w-full rounded-2xl border border-white/[0.08] overflow-hidden shadow-2xl mb-5 shrink-0 bg-zinc-950 flex items-center justify-center group/custom">
+                        <img
+                          src={cls.courseImage}
+                          className="absolute inset-0 h-full w-full object-cover group-hover/custom:scale-105 transition-transform duration-700 ease-out"
+                          alt={cls.courseName}
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/40 to-black/15" />
+                        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(16,185,129,0.15),transparent_65%)] pointer-events-none" />
+                        
+                        {/* Top Tag & Stats Overlay */}
+                        <div className="absolute top-3 left-3 right-3 flex justify-between items-center z-10">
+                          <span className="px-2.5 py-0.5 bg-black/70 backdrop-blur-md border border-white/10 text-white/90 rounded-full font-mono text-[9px] tracking-wide font-black uppercase">
+                            {cls.sessions || 16} Sessions
+                          </span>
+                          <span className="px-2.5 py-0.5 bg-emerald-500/90 text-black font-extrabold rounded-md text-[8px] tracking-widest uppercase shadow-md shadow-emerald-500/30">
+                            {cls.id === "lumin" ? "Featured" : cls.id === "apex" ? "Architecture" : "Security"}
+                          </span>
                         </div>
-                      ) : cls.id === "lumin" ? (
-                        <div className="relative aspect-[16/10] w-full rounded-2xl bg-gradient-to-tr from-cyan-950/20 via-[#0a0a10] to-[#040406] border border-white/[0.06] overflow-hidden p-4 flex items-center justify-center shadow-inner mb-5 shrink-0">
-                          {/* Beautiful blue nebula radial backdrop */}
-                          <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(6,182,212,0.12)_0%,transparent_60%)] pointer-events-none" />
-                          <div className="absolute -bottom-10 w-[220px] h-[100px] rounded-full bg-cyan-500/[0.05] blur-[40px] pointer-events-none" />
 
-                          {/* MacBook Air Device Wrapper */}
-                          <div className="w-[85%] max-w-[340px] relative z-10 flex flex-col items-center">
-                            
-                            {/* Laptop Display frame */}
-                            <div className="w-full aspect-[16/10] bg-[#0d0d14] rounded-t-lg border-t border-l border-r border-white/20 p-1 shadow-2xl relative overflow-hidden flex flex-col justify-between">
-                              
-                              {/* Screen reflection effect */}
-                              <div className="absolute inset-0 bg-gradient-to-tr from-white/[0.01] via-white/[0.05] to-transparent pointer-events-none" />
-                              
-                              {/* In-Screen navigation header */}
-                              <div className="flex justify-between items-center text-[5px] text-white/30 tracking-widest border-b border-white/[0.03] pb-1 w-full">
-                                <span className="font-bold text-[6px] text-white/80">Lumin Studio.</span>
-                                <div className="flex items-center gap-1 text-[4px] text-white/40">
-                                  <span>HOME</span>
-                                  <span>ABOUT</span>
-                                  <span>WORK</span>
-                                  <span>SERVICES</span>
-                                  <span>CONTACT</span>
-                                </div>
-                              </div>
-
-                              {/* Inside Screen Center */}
-                              <div className="my-auto text-center relative py-1 flex flex-col items-center">
-                                <h4 className="font-sans text-[15px] font-black tracking-tight text-white leading-none">
-                                  LUMIN STUDIO
-                                </h4>
-                                {/* Reflection of heading */}
-                                <h4 className="font-sans text-[15px] font-black tracking-tight text-white/5 leading-none select-none scale-y-[-0.3] translate-y-[-1px] blur-[0.5px]">
-                                  LUMIN STUDIO
-                                </h4>
-                                
-                                <p className="text-[3.5px] text-white/40 max-w-[70%] mt-1 leading-relaxed">
-                                  Lumin Studio is a dynamic agency committed to outstanding experiences.
-                                </p>
-                              </div>
-
-                              {/* Display bottom bezel */}
-                              <div className="w-full bg-black flex justify-center items-center py-0.5 mt-auto border-t border-white/[0.04]">
-                                <span className="text-[3px] font-medium text-white/30 tracking-wider">Macbook Air</span>
-                              </div>
-
-                            </div>
-
-                            {/* Keyboard chassis base */}
-                            <div className="w-[110%] h-2 bg-gradient-to-b from-[#1c1c28] to-[#0a0a0f] rounded-b-md border-t border-white/30 shadow-lg relative flex justify-center">
-                              {/* Screen trackpad notch */}
-                              <div className="w-8 h-[1px] bg-black/40" />
-                            </div>
-
-                            {/* Mobile mockup glowing on the side */}
-                            <div className="absolute right-0 bottom-3 w-[50px] aspect-[1/2] rounded-lg border border-white/15 bg-black p-[2px] shadow-[0_10px_20px_rgba(0,0,0,0.8)] overflow-hidden flex flex-col">
-                              <div className="w-full h-full rounded-[6px] bg-gradient-to-tr from-teal-900 to-emerald-500/20 p-1 flex flex-col justify-between">
-                                <div className="text-[3px] text-white/30">PRO 15</div>
-                                <div className="text-[4px] font-black text-emerald-400 text-center">LUMIN</div>
-                                <div className="text-[3px] text-white/20 mt-auto text-right">Mockup</div>
-                              </div>
-                            </div>
-
+                        {/* Instructor name overlay */}
+                        <div className="absolute bottom-3 left-3 flex items-center gap-1.5 z-10">
+                          <div className="w-5 h-5 rounded-full bg-emerald-500/20 border border-emerald-400/40 flex items-center justify-center">
+                            <User size={10} className="text-emerald-400" />
                           </div>
+                          <span className="text-[9px] text-white/90 font-mono font-bold tracking-wide uppercase">Instructor: {cls.instructor || "Roozbeh"}</span>
                         </div>
-                      ) : cls.id === "apex" ? (
-                        <div className="relative aspect-[16/10] w-full rounded-2xl bg-[#07070b] border border-white/[0.08] overflow-hidden p-4 flex flex-col justify-between shadow-inner mb-5 shrink-0 group/apex">
-                          {/* Ambient Emerald nebula backdrop */}
-                          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(16,185,129,0.14)_0%,transparent_60%)] pointer-events-none" />
-                          <div className="absolute -bottom-6 -left-6 w-32 h-32 rounded-full bg-emerald-500/[0.08] blur-2xl pointer-events-none" />
-
-                          {/* Terminal / Code Editor Header */}
-                          <div className="flex justify-between items-center text-[8px] text-white/40 tracking-widest relative z-10 border-b border-white/[0.06] pb-2">
-                            <div className="flex items-center gap-1.5">
-                              <div className="w-2.5 h-2.5 rounded-full bg-red-500/80" />
-                              <div className="w-2.5 h-2.5 rounded-full bg-amber-500/80" />
-                              <div className="w-2.5 h-2.5 rounded-full bg-emerald-500/80" />
-                              <span className="ml-1.5 text-[8px] text-white/60 font-mono">AppRouter.tsx · Next.js 19</span>
-                            </div>
-                            <div className="flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-[7px] font-mono text-emerald-400 font-bold">
-                              <span>WASM Ready</span>
-                            </div>
-                          </div>
-
-                          {/* Code Lines & Architecture Stage */}
-                          <div className="my-auto py-2 relative z-10 font-mono text-[7.5px] sm:text-[8px] space-y-1">
-                            <div className="flex items-center gap-2 text-white/30">
-                              <span className="w-3 text-right text-white/20">01</span>
-                              <span><span className="text-emerald-400 font-bold">export async function</span> <span className="text-white font-bold">generateStreamingPipeline</span>() &#123;</span>
-                            </div>
-                            <div className="flex items-center gap-2 text-white/30">
-                              <span className="w-3 text-right text-white/20">02</span>
-                              <span className="pl-2 text-white/70">const gateway = await initZeroTrustGateway(&#123; region: "edge" &#125;);</span>
-                            </div>
-                            <div className="flex items-center gap-2 text-white/30">
-                              <span className="w-3 text-right text-white/20">03</span>
-                              <span className="pl-2 text-emerald-300 font-medium">return orchestrateState(gateway.stream, &#123; latency: "0.8ms" &#125;);</span>
-                            </div>
-                            <div className="flex items-center gap-2 text-white/30">
-                              <span className="w-3 text-right text-white/20">04</span>
-                              <span>&#125;</span>
-                            </div>
-                          </div>
-
-                          {/* Bottom Telemetry Chip Row */}
-                          <div className="flex justify-between items-center text-[7.5px] text-white/40 pt-2 border-t border-white/[0.06] relative z-10 font-mono">
-                            <div className="flex items-center gap-2">
-                              <span className="flex items-center gap-1 text-emerald-400 font-bold">
-                                <CheckCircle2 size={10} /> 100% Type-Safe
-                              </span>
-                              <span>•</span>
-                              <span>12ms Cold Start</span>
-                            </div>
-                            <span className="px-2 py-0.5 rounded bg-white/[0.04] border border-white/10 text-white/70">
-                              Cloudflare Edge
-                            </span>
-                          </div>
-                        </div>
-                      ) : (
-                        /* GORGEOUS DYNAMIC BANNER VIEW FOR NEW CUSTOM COURSES */
-                        <div className="relative aspect-[16/10] w-full rounded-2xl border border-white/[0.06] overflow-hidden shadow-inner mb-5 shrink-0 bg-zinc-900 flex items-center justify-center group/custom">
-                          <img
-                            src={cls.courseImage}
-                            className="absolute inset-0 h-full w-full object-cover group-hover/custom:scale-105 transition-transform duration-700 ease-out"
-                            alt=""
-                          />
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-black/10" />
-                          
-                          {/* Top Tag & Stats Overlay */}
-                          <div className="absolute top-3 left-3 right-3 flex justify-between items-center">
-                            <span className="px-2.5 py-0.5 bg-black/60 border border-white/10 text-white/90 rounded-full font-mono text-[9px] tracking-wide font-black uppercase">
-                              {cls.sessions || 12} Sessions
-                            </span>
-                            <span className="px-2 py-0.5 bg-emerald-600/90 text-white rounded-md text-[8px] font-bold tracking-widest uppercase">
-                              Mastery
-                            </span>
-                          </div>
-
-                          {/* Instructor name overlay */}
-                          <div className="absolute bottom-3 left-3 flex items-center gap-1.5">
-                            <div className="w-5 h-5 rounded-full bg-emerald-600/20 border border-emerald-500/30 flex items-center justify-center">
-                              <User size={10} className="text-emerald-400" />
-                            </div>
-                            <span className="text-[9px] text-white/80 font-black tracking-wide uppercase">Instructor: {cls.instructor || "Roozbeh"}</span>
-                          </div>
-                        </div>
-                      )}
+                      </div>
 
                       {/* Title & Short Description under course title as requested */}
                       <div className="space-y-2 text-left mb-5">
@@ -1590,7 +1426,7 @@ export default function App() {
                             transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
                             className="overflow-hidden bg-black/40 border-t border-white/[0.04]"
                           >
-                            <div className="p-4 space-y-3.5 text-left text-xs text-white/60">
+                            <div className="p-4 space-y-3.5 text-left text-xs text-white/60 max-h-[460px] overflow-y-auto pr-1">
                               {syllabusItems.map((syl: any, sIdx: number) => (
                                 <div key={syl.id || sIdx} className={`flex items-start gap-3 ${sIdx > 0 ? "border-t border-white/[0.02] pt-3" : ""}`}>
                                   <div className="w-5 h-5 rounded-full bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-[10px] font-mono font-bold text-emerald-400 mt-0.5 shrink-0">
@@ -1598,7 +1434,7 @@ export default function App() {
                                   </div>
                                   <div className="flex-1 min-w-0">
                                     <div className="flex items-center justify-between gap-2">
-                                      <p className="font-bold text-white text-[12px] truncate">{syl.title}</p>
+                                      <p className="font-bold text-white text-[12px] leading-snug">{syl.title}</p>
                                       {syl.duration && (
                                         <span className="text-[9px] font-mono px-2 py-0.5 rounded bg-white/[0.03] border border-white/5 text-white/40 shrink-0">
                                           {syl.duration}
