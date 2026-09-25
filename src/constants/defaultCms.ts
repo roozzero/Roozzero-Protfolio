@@ -128,6 +128,37 @@ export const DEFAULT_HOMEPAGE_CLASSES: CMSClass[] = [
       { id: "hunt-17", title: "Responsible Disclosure", description: "Coordinated disclosure timelines, communicating with enterprise security teams, and hall of fame.", duration: "Session 17" },
       { id: "hunt-18", title: "Hands-on Security Labs & Real-World Scenarios", description: "Practicing on simulated targets, CTF challenges, lab walk-throughs, and real-world attack simulations.", duration: "Session 18" }
     ]
+  },
+  {
+    id: "wordpress",
+    courseImage: "https://images.unsplash.com/photo-1507238691740-187a5b1d37b8?q=80&w=800&auto=format&fit=crop",
+    courseName: "WordPress Development & Design",
+    instructor: "Roozbeh",
+    price: "$169",
+    shortDescription: "Master modern WordPress website development, Elementor page building, WooCommerce online stores, SEO, and performance optimization.",
+    description: "Comprehensive, hands-on WordPress course covering site setup, responsive design with Elementor, e-commerce with WooCommerce, custom themes, plugin architecture, security hardening, and production deployment.",
+    sessions: 16,
+    status: "Published",
+    displayOrder: 5,
+    tags: ["WordPress", "Elementor", "WooCommerce", "Web Design"],
+    syllabus: [
+      { id: "wp-1", title: "WordPress Fundamentals & Localhost Setup", description: "CMS architecture, domain & hosting concepts, and local development environments (LocalWP / XAMPP).", duration: "Session 1" },
+      { id: "wp-2", title: "Dashboard Configuration & Core Settings", description: "General settings, reading, writing, permalink structure, and media library management.", duration: "Session 2" },
+      { id: "wp-3", title: "Pages, Posts & Block Editor", description: "Post vs Page architecture, Gutenberg block editor mastery, content structure, and categories.", duration: "Session 3" },
+      { id: "wp-4", title: "Themes & Visual Customizer", description: "Selecting modern themes (Astra, Hello Elementor), child themes, and visual customizer options.", duration: "Session 4" },
+      { id: "wp-5", title: "Essential Plugins & Extensibility", description: "Searching, installing, and configuring essential plugins, compatibility checks, and updates.", duration: "Session 5" },
+      { id: "wp-6", title: "Visual Building with Elementor", description: "Elementor canvas, sections, columns, widgets, design tokens, and mobile responsiveness.", duration: "Session 6" },
+      { id: "wp-7", title: "Headers, Footers & Landing Pages", description: "Theme Builder architecture, dynamic templates, global headers, footers, and popups.", duration: "Session 7" },
+      { id: "wp-8", title: "E-Commerce with WooCommerce", description: "Store setup, currency and tax configurations, product variations, inventory, and digital downloads.", duration: "Session 8" },
+      { id: "wp-9", title: "Payment Gateways & Checkout Flow", description: "Payment gateway integration, shipping methods, coupons, and checkout customization.", duration: "Session 9" },
+      { id: "wp-10", title: "Forms, Lead Generation & Users", description: "Interactive form builders (WPForms, Gravity Forms), user roles, and membership management.", duration: "Session 10" },
+      { id: "wp-11", title: "Search Engine Optimization (SEO)", description: "On-page SEO, Rank Math / Yoast setup, XML sitemaps, open graph tags, and metadata.", duration: "Session 11" },
+      { id: "wp-12", title: "Performance Tuning & Speed Optimization", description: "Caching plugins (WP Rocket / LiteSpeed), image compression, WebP formats, and CDN integration.", duration: "Session 12" },
+      { id: "wp-13", title: "Security Hardening & Protection", description: "Login protection, Wordfence firewall, two-factor authentication, and hardening wp-config.", duration: "Session 13" },
+      { id: "wp-14", title: "Automated Backups & Disaster Recovery", description: "Scheduled backups with UpdraftPlus, cloud storage sync, and rollback procedures.", duration: "Session 14" },
+      { id: "wp-15", title: "Database Migration & Production Deployment", description: "Full database & file migration using All-in-One WP Migration, SSL configuration, and domain go-live.", duration: "Session 15" },
+      { id: "wp-16", title: "Capstone Project & Client Delivery", description: "Complete full-featured client website delivery, handoff documentation, and freelance workflows.", duration: "Session 16" }
+    ]
   }
 ];
 
@@ -475,7 +506,13 @@ export function loadCmsConfig(): CMSFullConfig {
             : DEFAULT_CMS_CONFIG.projects.projects
         },
         classes: Array.isArray(parsed.classes) && parsed.classes.length > 0
-          ? parsed.classes.filter((c: any) => c.id !== "techzo")
+          ? parsed.classes.filter((c: any) => c.id !== "techzo").map((c: any) => {
+              if (c.id === "wordpress" || c.courseName?.includes("وردپرس")) {
+                const wpDef = DEFAULT_HOMEPAGE_CLASSES.find((d) => d.id === "wordpress");
+                return wpDef || c;
+              }
+              return c;
+            })
           : DEFAULT_CMS_CONFIG.classes,
         classesHeader: {
           ...DEFAULT_CMS_CONFIG.classesHeader,

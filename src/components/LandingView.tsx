@@ -94,13 +94,17 @@ interface Ripple {
 }
 
 const FALLBACK_COURSE_SYLLABUS: Record<string, Array<{ id: string; title: string; description: string; duration?: string }>> = {
-  lumin: DEFAULT_HOMEPAGE_CLASSES[0]?.syllabus || [],
-  apex: DEFAULT_HOMEPAGE_CLASSES[1]?.syllabus || [],
-  bgbunty: DEFAULT_HOMEPAGE_CLASSES[2]?.syllabus || [],
-  hunt: DEFAULT_HOMEPAGE_CLASSES[3]?.syllabus || [],
+  lumin: DEFAULT_HOMEPAGE_CLASSES.find((c) => c.id === "lumin")?.syllabus || [],
+  apex: DEFAULT_HOMEPAGE_CLASSES.find((c) => c.id === "apex")?.syllabus || [],
+  bgbunty: DEFAULT_HOMEPAGE_CLASSES.find((c) => c.id === "bgbunty")?.syllabus || [],
+  hunt: DEFAULT_HOMEPAGE_CLASSES.find((c) => c.id === "hunt")?.syllabus || [],
+  wordpress: DEFAULT_HOMEPAGE_CLASSES.find((c) => c.id === "wordpress")?.syllabus || [],
 };
 
 function getCourseSyllabus(cls: any): Array<{ id: string; title: string; description: string; duration?: string }> {
+  if (cls?.id === "wordpress") {
+    return FALLBACK_COURSE_SYLLABUS.wordpress;
+  }
   if (cls?.id && FALLBACK_COURSE_SYLLABUS[cls.id]) {
     if (!Array.isArray(cls?.syllabus) || cls.syllabus.length < 10) {
       return FALLBACK_COURSE_SYLLABUS[cls.id];
@@ -875,8 +879,23 @@ export default function LandingView({
               .map((cls, idx) => {
                 const isOpen = openSyllabus[cls.id] || false;
                 const isEnrolled = registeredCourseIds.includes(cls.id);
-                const syllabusItems = getCourseSyllabus(cls);
-                const tagsList = Array.isArray(cls.tags) ? cls.tags : ["Engineering", "Frontend", "TypeScript"];
+                const isWp = cls.id === "wordpress" || cls.courseName?.toLowerCase().includes("wordpress") || cls.courseName?.includes("وردپرس");
+                const syllabusItems = isWp ? FALLBACK_COURSE_SYLLABUS.wordpress : getCourseSyllabus(cls);
+                const tagsList = isWp
+                  ? ["WordPress", "Elementor", "WooCommerce", "Web Design"]
+                  : (Array.isArray(cls.tags) ? cls.tags : ["Engineering", "Frontend", "TypeScript"]);
+
+                const courseTitle = isWp
+                  ? "WordPress Development & Design"
+                  : cls.courseName;
+
+                const courseDescription = isWp
+                  ? "Master modern WordPress website development, Elementor page building, WooCommerce online stores, SEO, and performance optimization."
+                  : (cls.shortDescription || cls.description);
+
+                const coursePrice = isWp ? "$169" : (cls.price || "Free");
+                const courseInstructor = isWp ? "Roozbeh" : (cls.instructor || "Roozbeh");
+                const courseSessions = isWp ? 16 : (cls.sessions || 12);
 
                 return (
                   <div
@@ -888,7 +907,7 @@ export default function LandingView({
                       <div className="relative aspect-[16/9] w-full rounded-2xl overflow-hidden mb-6 border border-white/[0.04] bg-neutral-900 shadow-md">
                         <img
                           src={cls.courseImage}
-                          alt={cls.courseName}
+                          alt={courseTitle}
                           referrerPolicy="no-referrer"
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 brightness-90 contrast-[1.05]"
                         />
@@ -904,7 +923,7 @@ export default function LandingView({
                         {/* Price Badge */}
                         <div className="absolute top-3 right-3">
                           <span className="px-3 py-1 rounded-full bg-emerald-500/90 text-black font-sans font-bold text-xs tracking-tight shadow-lg">
-                            {cls.price || "Free"}
+                            {coursePrice}
                           </span>
                         </div>
 
@@ -919,7 +938,19 @@ export default function LandingView({
                             <button
                               type="button"
                               onClick={() => {
-                                setSelectedCourseForRegistration(cls);
+                                if (isWp) {
+                                  setSelectedCourseForRegistration({
+                                    ...cls,
+                                    courseName: "WordPress Development & Design",
+                                    instructor: "Roozbeh",
+                                    price: "$169",
+                                    sessions: 16,
+                                    shortDescription: "Master modern WordPress website development, Elementor page building, WooCommerce online stores, SEO, and performance optimization.",
+                                    description: "Comprehensive, hands-on WordPress course covering site setup, responsive design with Elementor, e-commerce with WooCommerce, custom themes, plugin architecture, security hardening, and production deployment."
+                                  });
+                                } else {
+                                  setSelectedCourseForRegistration(cls);
+                                }
                                 setIsCourseRegModalOpen(true);
                               }}
                               className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-white text-black hover:bg-emerald-400 transition-colors text-xs font-sans font-semibold shadow-xl active:scale-95 cursor-pointer"
@@ -934,19 +965,19 @@ export default function LandingView({
                       {/* Title & Short Description under course title as requested */}
                       <div className="space-y-2 text-left mb-5">
                         <h3 className="font-sans text-xl sm:text-2xl font-bold tracking-tight text-white group-hover:text-[#10b981] transition-colors duration-300">
-                          {cls.courseName}
+                          {courseTitle}
                         </h3>
 
                         {/* Short Description */}
                         <p className="font-sans text-xs sm:text-sm text-white/70 leading-relaxed min-h-[38px]">
-                          {cls.shortDescription || cls.description}
+                          {courseDescription}
                         </p>
 
                         {/* Quick Course Info Row */}
                         <div className="flex flex-wrap items-center gap-2 pt-1 text-[11px] font-mono text-white/40">
                           <span className="flex items-center gap-1 text-white/60">
                             <Clock size={12} className="text-emerald-400" />
-                            <span>{cls.sessions || 12} Interactive Sessions</span>
+                            <span>{courseSessions} Interactive Sessions</span>
                           </span>
                           <span>•</span>
                           <span className="flex items-center gap-1 text-white/60">
@@ -955,7 +986,7 @@ export default function LandingView({
                           </span>
                           <span>•</span>
                           <span className="text-emerald-400/90 font-mono">
-                            Instructor: {cls.instructor || "Roozbeh"}
+                            Instructor: {courseInstructor}
                           </span>
                         </div>
                       </div>

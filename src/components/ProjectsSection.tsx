@@ -43,7 +43,9 @@ import {
   ShieldAlert,
   Gauge,
   RefreshCw,
-  Smartphone
+  Smartphone,
+  Video,
+  Users
 } from "lucide-react";
 
 export default function ProjectsSection() {
@@ -255,29 +257,31 @@ export default function ProjectsSection() {
                 </p>
               </div>
 
-              {/* MOTION GRAPHIC: School Campus PA & Automated Bell Sound Motion Graphic */}
+              {/* MOTION GRAPHIC: TeacherSho Online Learning & Live Classroom Hub */}
               <div className="p-4 rounded-2xl border border-white/[0.07] bg-black/40 backdrop-blur-sm relative overflow-hidden group">
                 <div className="absolute top-0 right-0 w-32 h-16 bg-gradient-to-l from-emerald-500/10 to-transparent pointer-events-none" />
                 
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
                     <motion.div
-                      animate={{ rotate: [0, -12, 12, -8, 8, 0] }}
-                      transition={{ duration: 2.5, repeat: Infinity, repeatDelay: 3 }}
+                      animate={{ scale: [1, 1.15, 1], rotate: [0, 4, -4, 0] }}
+                      transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
                     >
-                      <Bell size={13} className="text-emerald-400" />
+                      <Video size={13} className="text-emerald-400" />
                     </motion.div>
-                    <span className="font-mono text-[10px] text-white/70 uppercase tracking-wider">Campus PA &amp; School Bell</span>
+                    <span className="font-mono text-[10px] text-white/80 uppercase tracking-wider font-semibold">
+                      Live Classroom &amp; Interactive Stream
+                    </span>
                   </div>
-                  <span className="font-mono text-[9px] text-emerald-400 font-bold flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                    PA Broadcast Active
+                  <span className="font-mono text-[9px] text-emerald-400 font-bold flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+                    Active Online Session
                   </span>
                 </div>
 
-                {/* Dynamic School Audio Waveform & Bell Acoustics in Emerald */}
+                {/* Dynamic Live Audio/Video Stream Waveform in Emerald */}
                 <div className="flex items-end justify-between gap-1 h-10 px-1 relative">
-                  {[35, 75, 50, 95, 40, 85, 65, 30, 90, 70, 45, 100, 80, 55, 90, 65, 80, 50, 25].map((height, i) => (
+                  {[45, 80, 55, 95, 60, 90, 75, 40, 100, 70, 50, 95, 85, 65, 90, 70, 85, 60, 35].map((height, i) => (
                     <motion.div
                       key={i}
                       animate={{
@@ -294,30 +298,36 @@ export default function ProjectsSection() {
                   ))}
                 </div>
 
-                {/* School Bell & Intercom Schedule Telemetry */}
-                <div className="mt-2.5 pt-2 border-t border-white/[0.05] flex items-center justify-between text-[9px] font-mono text-white/40">
-                  <span className="flex items-center gap-1">
-                    <Radio size={9} className="text-emerald-400" />
-                    <span>Next Bell: Recess (10:15)</span>
+                {/* Live Telemetry & Learning Analytics */}
+                <div className="mt-2.5 pt-2 border-t border-white/[0.05] flex items-center justify-between text-[9px] font-mono text-white/50">
+                  <span className="flex items-center gap-1.5">
+                    <Users size={11} className="text-emerald-400" />
+                    <span className="text-white/80 font-medium">148 Students Connected</span>
                   </span>
-                  <span className="text-emerald-400">Classrooms 1-12 Connected</span>
+                  <span className="text-emerald-400 font-mono font-medium flex items-center gap-1">
+                    <Sparkles size={10} />
+                    <span>HD 1080p • Low Latency</span>
+                  </span>
                 </div>
               </div>
 
-              {/* Technical Specifications Grid */}
+              {/* Technical Specifications Grid - Tailored to TeacherSho EdTech Platform */}
               <div className="border-t border-dashed border-white/10 pt-5">
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="p-2.5 rounded-xl bg-white/[0.015] border border-white/[0.04]">
-                    <p className="font-sans text-[9px] text-white/40 uppercase tracking-widest mb-1">Architecture</p>
-                    <p className="font-sans text-xs font-bold text-white">React</p>
+                <div className="grid grid-cols-3 gap-3 sm:gap-4">
+                  <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.06] hover:border-emerald-500/30 transition-colors">
+                    <p className="font-mono text-[9px] text-white/40 uppercase tracking-widest mb-1">Architecture</p>
+                    <p className="font-sans text-xs font-bold text-white">Full-Stack LMS</p>
+                    <p className="font-mono text-[8px] text-emerald-400/80 mt-0.5">React &amp; Node.js</p>
                   </div>
-                  <div className="p-2.5 rounded-xl bg-white/[0.015] border border-white/[0.04]">
-                    <p className="font-sans text-[9px] text-white/40 uppercase tracking-widest mb-1">Motion Engine</p>
-                    <p className="font-sans text-xs font-bold text-emerald-400">PHP</p>
+                  <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.06] hover:border-emerald-500/30 transition-colors">
+                    <p className="font-mono text-[9px] text-white/40 uppercase tracking-widest mb-1">Live Engine</p>
+                    <p className="font-sans text-xs font-bold text-emerald-400">WebRTC Stream</p>
+                    <p className="font-mono text-[8px] text-white/40 mt-0.5">Real-time Socket</p>
                   </div>
-                  <div className="p-2.5 rounded-xl bg-white/[0.015] border border-white/[0.04]">
-                    <p className="font-sans text-[9px] text-white/40 uppercase tracking-widest mb-1">Target Markets</p>
-                    <p className="font-sans text-xs font-bold text-white">SCHOOL</p>
+                  <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.06] hover:border-emerald-500/30 transition-colors">
+                    <p className="font-mono text-[9px] text-white/40 uppercase tracking-widest mb-1">User Roles</p>
+                    <p className="font-sans text-xs font-bold text-white">Teachers &amp; Pupils</p>
+                    <p className="font-mono text-[8px] text-emerald-400/80 mt-0.5">Role-Based RBAC</p>
                   </div>
                 </div>
               </div>

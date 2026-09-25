@@ -31,8 +31,12 @@ export default function App() {
           const nonTechzo = config.classes.filter((c: any) => c.id !== "techzo");
           const updated = nonTechzo.map((c: any) => {
             const def = DEFAULT_HOMEPAGE_CLASSES.find((d) => d.id === c.id);
+            if (c.id === "wordpress") {
+              const wpDef = DEFAULT_HOMEPAGE_CLASSES.find((d) => d.id === "wordpress");
+              return wpDef || c;
+            }
             if (def && (!c.syllabus || c.syllabus.length < 10 || !c.courseImage || c.courseImage.includes("photo-1550751827-4bd374c3f58b"))) {
-              return { ...c, syllabus: def.syllabus, sessions: def.sessions, courseName: def.courseName, courseImage: def.courseImage };
+              return { ...c, syllabus: def.syllabus, sessions: def.sessions, courseName: def.courseName, courseImage: def.courseImage, shortDescription: def.shortDescription, description: def.description, tags: def.tags, instructor: def.instructor, price: def.price };
             }
             return c;
           });
@@ -132,8 +136,8 @@ export default function App() {
             const nonTechzo = config.classes.filter((c: any) => c.id !== "techzo");
             const updated = nonTechzo.map((c: any) => {
               const def = DEFAULT_HOMEPAGE_CLASSES.find((d) => d.id === c.id);
-              if (def && (!c.syllabus || c.syllabus.length < 10 || !c.courseImage || c.courseImage.includes("photo-1550751827-4bd374c3f58b"))) {
-                return { ...c, syllabus: def.syllabus, sessions: def.sessions, courseName: def.courseName, courseImage: def.courseImage };
+              if (def && (!c.syllabus || c.syllabus.length < 10 || !c.courseImage || c.courseImage.includes("photo-1550751827-4bd374c3f58b") || (c.id === "wordpress" && c.courseName !== "WordPress Development & Design"))) {
+                return { ...c, syllabus: def.syllabus, sessions: def.sessions, courseName: def.courseName, courseImage: def.courseImage, shortDescription: def.shortDescription, description: def.description, tags: def.tags };
               }
               return c;
             });

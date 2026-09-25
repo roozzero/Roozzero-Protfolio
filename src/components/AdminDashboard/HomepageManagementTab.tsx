@@ -5,7 +5,8 @@ import {
   AlertTriangle, Sparkles, Check, CheckCircle2, RotateCcw, Image as ImageIcon, Clock,
   Sliders, Play, ArrowUp, ArrowDown, ExternalLink, Layers, Terminal, ShieldCheck,
   Zap, Cpu, Code2, MessageSquare, Send, Star, GraduationCap, Eye, Link2, FolderOpen,
-  Globe, Layout, Award, Radar, Lock, Unlock, CheckSquare, RefreshCw, Smartphone
+  Globe, Layout, Award, Radar, Lock, Unlock, CheckSquare, RefreshCw, Smartphone,
+  Upload, FileUp, FileText
 } from "lucide-react";
 import {
   CMSFullConfig, CMSClass, CMSAboutCard, CMSSkillItem, CMSProjectItem,
@@ -156,6 +157,40 @@ export default function HomepageManagementTab({ showCustomToast }: HomepageManag
 
     setImagePickerTarget(null);
     showCustomToast("Image selected & updated!", "success");
+  };
+
+  // Direct file and image upload helper from user's local computer via FileReader (base64)
+  const handleDirectFileUpload = (
+    fieldPath: string,
+    file: File,
+    successMsg = "File uploaded from computer successfully!"
+  ) => {
+    if (!file) return;
+    if (file.size > 15 * 1024 * 1024) {
+      showCustomToast("حجم فایل بیشتر از ۱۵ مگابایت است. لطفاً فایل کوچک‌تری انتخاب کنید.", "warning");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const dataUrl = e.target?.result as string;
+      if (dataUrl) {
+        updateDraft((prev) => {
+          const copy = JSON.parse(JSON.stringify(prev));
+          const parts = fieldPath.split(".");
+          let curr: any = copy;
+          for (let i = 0; i < parts.length - 1; i++) {
+            curr = curr[parts[i]];
+          }
+          curr[parts[parts.length - 1]] = dataUrl;
+          return copy;
+        });
+        showCustomToast(successMsg, "success");
+      }
+    };
+    reader.onerror = () => {
+      showCustomToast("خطا در بارگذاری فایل از سیستم.", "warning");
+    };
+    reader.readAsDataURL(file);
   };
 
   // Delete modal executor
@@ -405,6 +440,19 @@ export default function HomepageManagementTab({ showCustomToast }: HomepageManag
                     className="flex-1 px-3.5 py-2.5 rounded-xl bg-zinc-900/90 border border-white/10 text-white text-xs font-mono focus:border-emerald-500 focus:outline-none"
                     placeholder="/path or https://image-url"
                   />
+                  <label className="px-3 py-2.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-xs font-semibold text-emerald-300 flex items-center gap-1.5 cursor-pointer transition-colors shrink-0">
+                    <Upload size={14} />
+                    <span>Upload</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleDirectFileUpload("hero.heroImage", file, "تصویر بنر هدر با موفقیت از سیستم بارگذاری شد!");
+                      }}
+                    />
+                  </label>
                   <button
                     onClick={() =>
                       setImagePickerTarget({
@@ -601,19 +649,35 @@ export default function HomepageManagementTab({ showCustomToast }: HomepageManag
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[11px] font-mono uppercase tracking-wider text-white/50 mb-1.5">
-                    CV Download Link
+                    CV Download Link / File (رزومه یا فایل دانلودی)
                   </label>
-                  <input
-                    type="text"
-                    value={draftConfig.aboutMe.cvUrl}
-                    onChange={(e) =>
-                      updateDraft((prev) => ({
-                        ...prev,
-                        aboutMe: { ...prev.aboutMe, cvUrl: e.target.value }
-                      }))
-                    }
-                    className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-white/10 text-white text-xs font-mono focus:border-blue-500 focus:outline-none"
-                  />
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={draftConfig.aboutMe.cvUrl}
+                      onChange={(e) =>
+                        updateDraft((prev) => ({
+                          ...prev,
+                          aboutMe: { ...prev.aboutMe, cvUrl: e.target.value }
+                        }))
+                      }
+                      className="flex-1 px-3 py-2 rounded-xl bg-zinc-900 border border-white/10 text-white text-xs font-mono focus:border-blue-500 focus:outline-none"
+                      placeholder="URL or Uploaded File"
+                    />
+                    <label className="px-3 py-2 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 text-xs font-semibold text-blue-300 flex items-center gap-1.5 cursor-pointer transition-colors shrink-0">
+                      <FileUp size={13} />
+                      <span>Upload CV</span>
+                      <input
+                        type="file"
+                        accept=".pdf,.doc,.docx,image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) handleDirectFileUpload("aboutMe.cvUrl", file, "فایل رزومه با موفقیت از سیستم بارگذاری شد!");
+                        }}
+                      />
+                    </label>
+                  </div>
                 </div>
                 <div>
                   <label className="block text-[11px] font-mono uppercase tracking-wider text-white/50 mb-1.5">
@@ -649,6 +713,19 @@ export default function HomepageManagementTab({ showCustomToast }: HomepageManag
                     }
                     className="flex-1 px-3 py-2 rounded-xl bg-zinc-900 border border-white/10 text-white text-xs font-mono focus:border-blue-500 focus:outline-none"
                   />
+                  <label className="px-3 py-2 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 text-xs font-semibold text-blue-300 flex items-center gap-1.5 cursor-pointer transition-colors shrink-0">
+                    <Upload size={13} />
+                    <span>Upload</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleDirectFileUpload("aboutMe.portraitImage", file, "تصویر پروفایل با موفقیت از سیستم بارگذاری شد!");
+                      }}
+                    />
+                  </label>
                   <button
                     onClick={() =>
                       setImagePickerTarget({
@@ -1328,6 +1405,19 @@ export default function HomepageManagementTab({ showCustomToast }: HomepageManag
                         }}
                         className="flex-1 px-3 py-2 rounded-xl bg-zinc-900 border border-white/10 text-white text-xs font-mono"
                       />
+                      <label className="px-3 py-2 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 text-xs font-semibold text-purple-300 flex items-center gap-1 cursor-pointer transition-colors shrink-0">
+                        <Upload size={13} />
+                        <span>Upload</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) handleDirectFileUpload(`projects.projects.${idx}.coverImage`, file, "تصویر کاور پروژه با موفقیت بارگذاری شد!");
+                          }}
+                        />
+                      </label>
                       <button
                         onClick={() =>
                           setImagePickerTarget({
@@ -1673,6 +1763,19 @@ export default function HomepageManagementTab({ showCustomToast }: HomepageManag
                               }}
                               className="flex-1 px-3 py-2 rounded-xl bg-zinc-900 border border-white/10 text-white text-xs font-mono"
                             />
+                            <label className="px-3 py-2 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-xs font-semibold text-emerald-300 flex items-center gap-1 cursor-pointer transition-colors shrink-0">
+                              <Upload size={13} />
+                              <span>Upload</span>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) handleDirectFileUpload(`classes.${idx}.courseImage`, file, "تصویر دوره با موفقیت بارگذاری شد!");
+                                }}
+                              />
+                            </label>
                             <button
                               onClick={() =>
                                 setImagePickerTarget({
@@ -2018,6 +2121,19 @@ export default function HomepageManagementTab({ showCustomToast }: HomepageManag
                     className="flex-1 px-2.5 py-1 rounded-lg bg-zinc-900 border border-white/10 text-white text-[11px] font-mono"
                     placeholder="Avatar image URL"
                   />
+                  <label className="px-2.5 py-1 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-[11px] text-cyan-300 flex items-center gap-1 cursor-pointer transition-colors shrink-0">
+                    <Upload size={11} />
+                    <span>Upload</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleDirectFileUpload(`testimonials.testimonials.${idx}.avatar`, file, "تصویر کاربر با موفقیت بارگذاری شد!");
+                      }}
+                    />
+                  </label>
                   <button
                     onClick={() =>
                       setImagePickerTarget({
@@ -2424,9 +2540,43 @@ export default function HomepageManagementTab({ showCustomToast }: HomepageManag
                 </button>
               </div>
 
+              {/* Upload Directly from Local System */}
+              <div className="space-y-2 p-4 rounded-2xl bg-zinc-900/60 border border-dashed border-emerald-500/30 hover:border-emerald-500/60 transition-colors">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="p-1.5 rounded-lg bg-emerald-500/15 text-emerald-400">
+                      <Upload size={14} />
+                    </span>
+                    <span className="text-xs font-bold text-white">آپلود از کامپیوتر (Upload from Computer)</span>
+                  </div>
+                  <span className="text-[10px] font-mono text-emerald-400">PNG, JPG, WEBP, SVG, PDF</span>
+                </div>
+                <label className="flex flex-col items-center justify-center p-4 border border-dashed border-white/15 hover:border-emerald-400 rounded-xl bg-black/50 hover:bg-emerald-500/[0.04] cursor-pointer transition-all group">
+                  <Upload size={22} className="text-white/40 group-hover:text-emerald-400 group-hover:scale-110 transition-all mb-1.5" />
+                  <span className="text-xs font-semibold text-white/90 group-hover:text-emerald-300">
+                    انتخاب فایل از سیستم (Browse Local File)
+                  </span>
+                  <span className="text-[10px] font-mono text-white/40 mt-0.5">
+                    فایل‌های تصویر و اسناد تا حداکثر ۱۵ مگابایت
+                  </span>
+                  <input
+                    type="file"
+                    accept="image/*,.pdf,.doc,.docx"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file && imagePickerTarget) {
+                        handleDirectFileUpload(imagePickerTarget.fieldPath, file, "فایل با موفقیت از سیستم انتخاب و بارگذاری شد!");
+                        setImagePickerTarget(null);
+                      }
+                    }}
+                  />
+                </label>
+              </div>
+
               {/* Current URL Input */}
               <div className="space-y-1.5">
-                <label className="text-[10px] font-mono uppercase text-white/50">Custom URL</label>
+                <label className="text-[10px] font-mono uppercase text-white/50">Custom URL (یا لینک مستقیم)</label>
                 <div className="flex gap-2">
                   <input
                     type="text"

@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Mail, Lock, Eye, EyeOff, Sparkles, Check, User, Phone, AlertCircle, X } from "lucide-react";
+import { authApi } from "../lib/api";
 
 interface LoginModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onLoginSuccess?: (role: "user" | "admin" | "teacher") => void;
+  onLoginSuccess?: (role: "user" | "admin" | "teacher", user?: any) => void;
 }
 
 export default function LoginModal({ isOpen, onClose, onLoginSuccess }: LoginModalProps) {
@@ -64,81 +65,77 @@ export default function LoginModal({ isOpen, onClose, onLoginSuccess }: LoginMod
     }
   };
 
-  const handleLoginSubmit = (e: React.FormEvent) => {
+  const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage("");
-    if (loginEmail && loginPassword) {
-      setIsLoading(true);
-      // Simulate realistic login experience with 1-2 seconds loading
-      setTimeout(() => {
-        const trimmedEmail = loginEmail.trim().toLowerCase();
-        if (trimmedEmail === "user@roozzero.dev" && loginPassword === "Roozzero@123") {
-          setIsLoading(false);
-          setSuccessMessage("Successfully Authenticated");
-          setIsSuccess(true);
-          if (onLoginSuccess) {
-            onLoginSuccess("user");
-          }
-        } else if (trimmedEmail === "teacher@academy.local" && loginPassword === "Teacher@123") {
-          setIsLoading(false);
-          setSuccessMessage("Teacher Workspace Authorized");
-          setIsSuccess(true);
-          if (onLoginSuccess) {
-            onLoginSuccess("teacher");
-          }
-        } else if (trimmedEmail === "admin@roozzero.dev" && loginPassword === "Admin123!") {
-          setIsLoading(false);
-          setSuccessMessage("Admin Access Granted");
-          setIsSuccess(true);
-          if (onLoginSuccess) {
-            onLoginSuccess("admin");
-          }
-        } else {
-          setIsLoading(false);
-          setErrorMessage("Invalid email or password. Please use the development demo credentials.");
-        }
-      }, 1200);
+    if (!loginEmail || !loginPassword) {
+      setErrorMessage("Please enter both email and password.");
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const res = await authApi.login({
+        email: loginEmail,
+        password: loginPassword,
+        rememberMe
+      });
+
+      setIsLoading(false);
+      setIsSuccess(true);
+      const user = res.data.user;
+      const role = user.roleName.toLowerCase() === "administrator" ? "admin" : user.roleName.toLowerCase();
+      setSuccessMessage(`Welcome back, ${user.name}!`);
+
+      if (onLoginSuccess) {
+        onLoginSuccess(role as any, user);
+      }
+    } catch (err: any) {
+      setIsLoading(false);
+      setErrorMessage(err.message || "Invalid credentials. Please verify your email and password.");
     }
   };
 
-  const handleSignUpSubmit = (e: React.FormEvent) => {
+  const handleSignUpSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (
-      signupName &&
-      signupFamily &&
-      signupPhone &&
-      signupEmail &&
-      signupPassword &&
-      signupConfirmPassword
-    ) {
-      if (signupPassword !== signupConfirmPassword) {
-        alert("Passwords do not match!");
-        return;
+    setErrorMessage("");
+
+    if (!signupName || !signupEmail || !signupPassword) {
+      setErrorMessage("Please fill out all required fields.");
+      return;
+    }
+
+    if (signupPassword !== signupConfirmPassword) {
+      setErrorMessage("Passwords do not match!");
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const fullName = `${signupName} ${signupFamily}`.trim();
+      const res = await authApi.register({
+        name: fullName,
+        email: signupEmail,
+        password: signupPassword,
+        confirmPassword: signupConfirmPassword,
+        phone: signupPhone
+      });
+
+      setIsLoading(false);
+      setIsSuccess(true);
+      setSuccessMessage("Account created successfully!");
+      if (onLoginSuccess) {
+        onLoginSuccess("user", res.data.user);
       }
-      setIsLoading(true);
-      // Simulate premium sign up transition
-      setTimeout(() => {
-        setIsLoading(false);
-        setSuccessMessage("Account Created Successfully");
-        setIsSuccess(true);
-        if (onLoginSuccess) {
-          onLoginSuccess("user");
-        }
-      }, 1200);
+    } catch (err: any) {
+      setIsLoading(false);
+      setErrorMessage(err.message || "Registration failed. Please check your details.");
     }
   };
 
   const handleGoogleLogin = () => {
-    setIsLoading(true);
-    setErrorMessage("");
-    setTimeout(() => {
-      setIsLoading(false);
-      setSuccessMessage("Google Authentication Successful");
-      setIsSuccess(true);
-      if (onLoginSuccess) {
-        onLoginSuccess("user");
-      }
-    }, 1200);
+    // Real OAuth redirection
+    window.location.href = "/api/auth/google";
   };
 
   if (!isOpen) return null;
@@ -257,70 +254,6 @@ export default function LoginModal({ isOpen, onClose, onLoginSuccess }: LoginMod
                         exit={{ opacity: 0, y: -10 }}
                         transition={{ duration: 0.3 }}
                       >
-                        {/* Demo User Info Helper Badge */}
-                        <div className="p-3.5 rounded-2xl border border-white/[0.04] bg-white/[0.01] hover:border-white/[0.08] transition-all duration-300 text-left space-y-2">
-                          <div className="flex items-center gap-1.5 border-b border-white/[0.03] pb-1.5">
-                            <Sparkles size={11} className="text-emerald-400 animate-pulse" />
-                            <span className="font-sans text-[9px] font-bold tracking-wider text-emerald-400 uppercase">
-                              Development Demo Accounts
-                            </span>
-                          </div>
-                          
-                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
-                            <div className="flex flex-col">
-                              <span className="text-[9px] text-white/60 font-semibold">User Account</span>
-                              <span className="text-[8px] text-white/30 font-mono mt-0.5">user@roozzero.dev / Roozzero@123</span>
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setLoginEmail("user@roozzero.dev");
-                                setLoginPassword("Roozzero@123");
-                                setErrorMessage("");
-                              }}
-                              className="text-[9px] font-bold text-emerald-400 hover:text-emerald-300 transition-all underline decoration-dotted self-start sm:self-center cursor-pointer"
-                            >
-                              Auto-fill User
-                            </button>
-                          </div>
-
-                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 border-t border-white/[0.03] pt-1.5">
-                            <div className="flex flex-col">
-                              <span className="text-[9px] text-emerald-400 font-semibold">Teacher Account</span>
-                              <span className="text-[8px] text-white/30 font-mono mt-0.5">teacher@academy.local / Teacher@123</span>
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setLoginEmail("teacher@academy.local");
-                                setLoginPassword("Teacher@123");
-                                setErrorMessage("");
-                              }}
-                              className="text-[9px] font-bold text-emerald-400 hover:text-emerald-300 transition-all underline decoration-dotted self-start sm:self-center cursor-pointer"
-                            >
-                              Auto-fill Teacher
-                            </button>
-                          </div>
-
-                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 border-t border-white/[0.03] pt-1.5">
-                            <div className="flex flex-col">
-                              <span className="text-[9px] text-emerald-400 font-semibold">Admin Account</span>
-                              <span className="text-[8px] text-white/30 font-mono mt-0.5">admin@roozzero.dev / Admin123!</span>
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setLoginEmail("admin@roozzero.dev");
-                                setLoginPassword("Admin123!");
-                                setErrorMessage("");
-                              }}
-                              className="text-[9px] font-bold text-emerald-400 hover:text-emerald-300 transition-all underline decoration-dotted self-start sm:self-center cursor-pointer"
-                            >
-                              Auto-fill Admin
-                            </button>
-                          </div>
-                        </div>
-
                         {/* Error Alert Display */}
                         <AnimatePresence>
                           {errorMessage && (
