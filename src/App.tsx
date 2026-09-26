@@ -11,13 +11,46 @@ import AdminDashboard from "./components/AdminDashboard";
 import TeacherDashboard from "./components/TeacherDashboard";
 import { loadCmsConfig, DEFAULT_HOMEPAGE_CLASSES } from "./constants/defaultCms";
 import { CMSFullConfig } from "./types/cms";
+import { authApi } from "./lib/api";
 
 export default function App() {
-  const [isLoggedIn, setIsLoggedIn] = useState(() => localStorage.getItem("isLoggedIn") === "true");
-  const [userRole, setUserRole] = useState(() => localStorage.getItem("userRole") || "user");
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [userRole, setUserRole] = useState<"user" | "admin" | "teacher">("user");
+  const [currentUser, setCurrentUser] = useState<any>(null);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isDashboardPage, setIsDashboardPage] = useState(window.location.hash === "#dashboard");
   const [isAdminPage, setIsAdminPage] = useState(window.location.hash === "#admin");
+
+  // On application startup, verify authoritative server-side session
+  useEffect(() => {
+    let isMounted = true;
+    authApi.getMe()
+      .then((res) => {
+        if (!isMounted) return;
+        if (res.success && res.data?.user) {
+          const u = res.data.user;
+          const rawRole = (u.roleName || "").toLowerCase();
+          const role = rawRole === "administrator" ? "admin" : (rawRole === "teacher" ? "teacher" : "user");
+          setIsLoggedIn(true);
+          setUserRole(role);
+          setCurrentUser(u);
+        } else {
+          setIsLoggedIn(false);
+          setUserRole("user");
+          setCurrentUser(null);
+        }
+      })
+      .catch(() => {
+        if (!isMounted) return;
+        setIsLoggedIn(false);
+        setUserRole("user");
+        setCurrentUser(null);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const [cmsConfig, setCmsConfig] = useState<CMSFullConfig>(() => loadCmsConfig());
 
@@ -195,16 +228,23 @@ export default function App() {
     }
   }, [isDashboardPage, isAdminPage]);
 
+  const handleLogout = async () => {
+    try {
+      await authApi.logout();
+    } catch (e) {
+      console.error("Logout error", e);
+    }
+    setIsLoggedIn(false);
+    setUserRole("user");
+    setCurrentUser(null);
+    window.location.hash = "#login";
+  };
+
   if (isDashboardPage && isLoggedIn) {
     if (userRole === "teacher") {
       return (
         <TeacherDashboard 
-          onLogout={() => {
-            setIsLoggedIn(false);
-            localStorage.removeItem("isLoggedIn");
-            localStorage.removeItem("userRole");
-            window.location.hash = "#login";
-          }}
+          onLogout={handleLogout}
           onGoHome={() => {
             window.location.hash = "#";
           }}
@@ -213,12 +253,7 @@ export default function App() {
     }
     return (
       <UserDashboard 
-        onLogout={() => {
-          setIsLoggedIn(false);
-          localStorage.removeItem("isLoggedIn");
-          localStorage.removeItem("userRole");
-          window.location.hash = "#login";
-        }}
+        onLogout={handleLogout}
         onGoHome={() => {
           window.location.hash = "#";
         }}
@@ -229,12 +264,7 @@ export default function App() {
   if (isAdminPage && isLoggedIn && userRole === "admin") {
     return (
       <AdminDashboard 
-        onLogout={() => {
-          setIsLoggedIn(false);
-          localStorage.removeItem("isLoggedIn");
-          localStorage.removeItem("userRole");
-          window.location.hash = "#login";
-        }}
+        onLogout={handleLogout}
         onGoHome={() => {
           window.location.hash = "#";
         }}
@@ -257,11 +287,12 @@ export default function App() {
       <LoginModal 
         isOpen={isLoginModalOpen} 
         onClose={() => setIsLoginModalOpen(false)}
-        onLoginSuccess={(role) => {
+        onLoginSuccess={(role, user) => {
           setIsLoggedIn(true);
           setUserRole(role);
-          localStorage.setItem("isLoggedIn", "true");
-          localStorage.setItem("userRole", role);
+          if (user) {
+            setCurrentUser(user);
+          }
           setTimeout(() => {
             setIsLoginModalOpen(false);
             if (role === "admin") {

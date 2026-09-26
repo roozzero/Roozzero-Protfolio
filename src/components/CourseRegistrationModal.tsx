@@ -4,6 +4,7 @@ import {
   X, Check, Sparkles, User, Mail, Phone, BookOpen,
   Calendar, Award, ShieldCheck, ArrowRight, CheckCircle2
 } from "lucide-react";
+import { coursesApi, authApi } from "../lib/api";
 
 export interface CourseRegistrationData {
   id: string;
@@ -49,18 +50,23 @@ export default function CourseRegistrationModal({
   const [isSuccess, setIsSuccess] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
-  // Auto-fill from localStorage if logged in
+  // Pre-fill student info if user is already authenticated
   useEffect(() => {
     if (isOpen && course) {
       setIsSuccess(false);
       setErrorMsg("");
-      const storedEmail = localStorage.getItem("userEmail") || "";
-      const storedName = localStorage.getItem("userName") || "";
-      const storedPhone = localStorage.getItem("userPhone") || "";
-
-      if (storedName) setName(storedName);
-      if (storedEmail) setEmail(storedEmail);
-      if (storedPhone) setPhone(storedPhone);
+      authApi.getMe()
+        .then((res) => {
+          if (res.success && res.data?.user) {
+            const u = res.data.user;
+            if (u.name) setName(u.name);
+            if (u.email) setEmail(u.email);
+            if (u.phone) setPhone(u.phone);
+          }
+        })
+        .catch(() => {
+          // Unauthenticated visitor
+        });
     }
   }, [isOpen, course]);
 
@@ -78,7 +84,7 @@ export default function CourseRegistrationModal({
 
   if (!isOpen || !course) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim() || !email.trim() || !phone.trim()) {
       setErrorMsg("Please fill in all required fields (Name, Email, and Phone).");
@@ -88,9 +94,17 @@ export default function CourseRegistrationModal({
     setIsSubmitting(true);
     setErrorMsg("");
 
-    setTimeout(() => {
+    try {
+      const res = await coursesApi.registerCourse(course.id, {
+        studentName: name.trim(),
+        studentEmail: email.trim(),
+        studentPhone: phone.trim(),
+        experienceLevel,
+        notes: notes.trim()
+      });
+
       const registration: CourseRegistrationData = {
-        id: `reg-${Date.now()}`,
+        id: res.data?.registrationId || `reg-${Date.now()}`,
         courseId: course.id,
         courseName: course.courseName,
         price: course.price || "$149",
@@ -103,41 +117,16 @@ export default function CourseRegistrationModal({
         status: "Confirmed",
       };
 
-      // Save to localStorage enrollments
-      try {
-        const existing = localStorage.getItem("user_registered_courses");
-        const list: CourseRegistrationData[] = existing ? JSON.parse(existing) : [];
-        list.push(registration);
-        localStorage.setItem("user_registered_courses", JSON.stringify(list));
-
-        // Also add student to teacher_students so it reflects in teacher dashboard
-        const storedStudents = localStorage.getItem("teacher_students");
-        const studentList = storedStudents ? JSON.parse(storedStudents) : [];
-        studentList.push({
-          id: `stu-${Date.now()}`,
-          name: name.trim(),
-          email: email.trim(),
-          phone: phone.trim(),
-          courseId: course.id,
-          courseTitle: course.courseName,
-          progress: 0,
-          attendance: 100,
-          avgGrade: 100,
-          status: "Active",
-          joinedDate: new Date().toISOString().split("T")[0],
-        });
-        localStorage.setItem("teacher_students", JSON.stringify(studentList));
-      } catch (err) {
-        console.error("Storage error:", err);
-      }
-
       setIsSubmitting(false);
       setIsSuccess(true);
 
       if (onEnrollSuccess) {
         onEnrollSuccess(registration);
       }
-    }, 900);
+    } catch (err: any) {
+      setIsSubmitting(false);
+      setErrorMsg(err.message || "Failed to submit course registration. Please try again.");
+    }
   };
 
   return (

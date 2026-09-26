@@ -42,19 +42,26 @@ router.get("/submissions/:id", requireAuth, async (req: Request, res: Response) 
       });
     }
 
-    if (!sub.submitted_file_path) {
-      return res.status(404).json({ success: false, error: { code: "NO_FILE", message: "No file was attached to this submission." } });
+    const isCorrected = req.query.type === "corrected";
+    const targetFilePath = isCorrected ? sub.corrected_file_path : sub.submitted_file_path;
+    const targetFileName = isCorrected ? sub.corrected_file_name : sub.submitted_file_name;
+
+    if (!targetFilePath) {
+      return res.status(404).json({
+        success: false,
+        error: { code: "NO_FILE", message: isCorrected ? "No corrected file was attached to this submission." : "No file was attached to this submission." }
+      });
     }
 
     // Secure path resolution to prevent path traversal
-    const safeRelPath = sub.submitted_file_path.replace(/^\/uploads\//, "");
+    const safeRelPath = targetFilePath.replace(/^\/uploads\//, "");
     const absolutePath = path.resolve(UPLOAD_ROOT, safeRelPath);
 
     if (!absolutePath.startsWith(UPLOAD_ROOT) || !fs.existsSync(absolutePath)) {
       return res.status(404).json({ success: false, error: { code: "FILE_MISSING", message: "Physical file could not be found." } });
     }
 
-    return res.download(absolutePath, sub.submitted_file_name || path.basename(absolutePath));
+    return res.download(absolutePath, targetFileName || path.basename(absolutePath));
   } catch (err: any) {
     console.error("[Download Submission Error]:", err);
     return res.status(500).json({ success: false, error: { code: "SERVER_ERROR", message: err.message } });

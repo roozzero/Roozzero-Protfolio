@@ -204,8 +204,34 @@ export const teacherApi = {
     return request<{ success: boolean; data: any[] }>("/teacher/courses");
   },
 
-  async getStudents(courseId: string) {
-    return request<{ success: boolean; data: any[] }>(`/teacher/courses/${courseId}/students`);
+  async getStudents(courseId?: string) {
+    if (courseId) {
+      return request<{ success: boolean; data: any[] }>(`/teacher/courses/${courseId}/students`);
+    }
+    return request<{ success: boolean; data: any[] }>("/teacher/students");
+  },
+
+  async getSessions() {
+    return request<{ success: boolean; data: any[] }>("/teacher/sessions");
+  },
+
+  async getAssignments() {
+    return request<{ success: boolean; data: any[] }>("/teacher/assignments");
+  },
+
+  async getDiscussions() {
+    return request<{ success: boolean; data: any[] }>("/teacher/discussions");
+  },
+
+  async replyDiscussion(threadId: string, text: string) {
+    return request<{ success: boolean; data: any }>(`/teacher/discussions/${threadId}/replies`, {
+      method: "POST",
+      body: JSON.stringify({ text })
+    });
+  },
+
+  async getResources() {
+    return request<{ success: boolean; data: any[] }>("/teacher/resources");
   },
 
   async createSession(courseId: string, data: any) {

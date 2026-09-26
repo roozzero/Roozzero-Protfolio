@@ -194,3 +194,56 @@ export function requireRole(...allowedRoles: string[]) {
     next();
   };
 }
+
+export async function optionalAuth(req: Request, res: Response, next: NextFunction) {
+  let token = req.cookies?.[SESSION_COOKIE_NAME];
+
+  if (!token && req.headers.authorization) {
+    const parts = req.headers.authorization.split(" ");
+    if (parts.length === 2 && parts[0] === "Bearer") {
+      token = parts[1];
+    }
+  }
+
+  if (!token) {
+    return next();
+  }
+
+  try {
+    const [rows]: [any[], any] = await query(
+      `SELECT s.session_token, s.expires_at,
+              u.id, u.username, u.email, u.name, u.avatar_url, u.phone, u.department,
+              u.title_prefix, u.specialization, u.bio, u.status, u.role_id,
+              r.name as role_name
+       FROM sessions_tokens s
+       INNER JOIN users u ON s.user_id = u.id
+       INNER JOIN roles r ON u.role_id = r.id
+       WHERE s.session_token = ? AND s.expires_at > NOW() AND u.deleted_at IS NULL`,
+      [token]
+    );
+
+    if (rows && rows.length > 0 && rows[0].status !== "Suspended") {
+      const row = rows[0];
+      req.sessionToken = token;
+      req.user = {
+        id: row.id,
+        username: row.username,
+        email: row.email,
+        name: row.name,
+        roleId: row.role_id,
+        roleName: row.role_name,
+        status: row.status,
+        avatarUrl: row.avatar_url,
+        phone: row.phone,
+        department: row.department,
+        titlePrefix: row.title_prefix,
+        specialization: row.specialization,
+        bio: row.bio
+      };
+    }
+  } catch (err: any) {
+    // Ignore error for optional auth
+  }
+
+  next();
+}

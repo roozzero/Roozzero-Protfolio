@@ -163,28 +163,68 @@ router.get("/assignments", async (req: Request, res: Response) => {
 // -------------------------------------------------------------
 // POST /api/student/assignments/:id/submit
 // -------------------------------------------------------------
-router.post("/assignments/:id/submit", uploadSubmission.single("file"), async (req: Request, res: Response) => {
+async function verifyStudentSubmissionEligibility(req: Request, res: Response, next: (err?: any) => void) {
   try {
+    const userRole = (req.user?.roleName || "").toLowerCase();
+    if (userRole !== "student" && userRole !== "administrator" && userRole !== "admin") {
+      return res.status(403).json({ success: false, error: { code: "FORBIDDEN", message: "Only enrolled students can submit coursework." } });
+    }
+
     const assignmentId = req.params.id;
     const studentId = req.user!.id;
-    const { githubUrl, notes } = req.body;
 
-    // Validate enrollment & assignment existence
+    // Verify assignment exists and not deleted
     const [assignments]: [any[], any] = await query(`
-      SELECT a.*, e.status as enrollment_status
+      SELECT a.*, c.id as course_exists
       FROM assignments a
-      INNER JOIN enrollments e ON a.course_id = e.course_id AND e.student_id = ?
+      LEFT JOIN courses c ON a.course_id = c.id AND c.deleted_at IS NULL
       WHERE a.id = ? AND a.deleted_at IS NULL
-    `, [studentId, assignmentId]);
+    `, [assignmentId]);
 
     if (assignments.length === 0) {
-      return res.status(403).json({
-        success: false,
-        error: { code: "FORBIDDEN", message: "You are not enrolled in the course for this assignment." }
-      });
+      return res.status(404).json({ success: false, error: { code: "NOT_FOUND", message: "Assignment not found." } });
     }
 
     const assignment = assignments[0];
+    if (!assignment.course_id || !assignment.course_exists) {
+      return res.status(400).json({ success: false, error: { code: "INVALID_COURSE", message: "Assignment does not belong to an active course." } });
+    }
+
+    // Verify assignment is available for submission
+    if (assignment.status !== "Published") {
+      return res.status(400).json({ success: false, error: { code: "NOT_AVAILABLE", message: "Assignment is not currently available for submissions." } });
+    }
+
+    // Verify student is actively enrolled in the course
+    if (userRole !== "administrator" && userRole !== "admin") {
+      const [enrollments]: [any[], any] = await query(
+        "SELECT id, status FROM enrollments WHERE student_id = ? AND course_id = ? AND status = 'Active'",
+        [studentId, assignment.course_id]
+      );
+
+      if (enrollments.length === 0) {
+        return res.status(403).json({
+          success: false,
+          error: { code: "NOT_ENROLLED", message: "You are not enrolled in the course for this assignment." }
+        });
+      }
+    }
+
+    (req as any).verifiedAssignment = assignment;
+    next();
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: { code: "SERVER_ERROR", message: err.message } });
+  }
+}
+
+router.post("/assignments/:id/submit", verifyStudentSubmissionEligibility, uploadSubmission.single("file"), async (req: Request, res: Response) => {
+  try {
+    const assignmentId = req.params.id;
+    const studentId = req.user!.id; // Authoritative identity from session
+    const { githubUrl, notes } = req.body;
+    const assignment = (req as any).verifiedAssignment;
+
+    // Evaluate deadline rules
     const isLate = assignment.due_date && new Date(assignment.due_date) < new Date();
     const submissionStatus = isLate ? "Late" : "Submitted";
 
@@ -202,6 +242,8 @@ router.post("/assignments/:id/submit", uploadSubmission.single("file"), async (r
         status = VALUES(status),
         submitted_file_name = COALESCE(VALUES(submitted_file_name), submitted_file_name),
         submitted_file_path = COALESCE(VALUES(submitted_file_path), submitted_file_path),
+        submitted_file_size = COALESCE(VALUES(submitted_file_size), submitted_file_size),
+        submitted_file_type = COALESCE(VALUES(submitted_file_type), submitted_file_type),
         submitted_at = NOW()
     `, [
       subId,
@@ -235,7 +277,7 @@ router.post("/assignments/:id/submit", uploadSubmission.single("file"), async (r
       data: {
         submissionId: subId,
         status: submissionStatus,
-        message: "Assignment submitted successfully!"
+        message: isLate ? "Assignment submitted (flagged as late)." : "Assignment submitted successfully!"
       }
     });
   } catch (err: any) {

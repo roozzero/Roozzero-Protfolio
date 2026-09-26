@@ -6,6 +6,7 @@ import {
   Clock, Plus, MessageSquare, Info, Shield, Users, Megaphone, User, BookOpen,
   Calendar, Award, ArrowLeft, ArrowUpRight, Copy, CheckCircle, RefreshCw, X
 } from "lucide-react";
+import { adminApi } from "../../lib/api";
 
 // Types
 export interface AdminMessage {
@@ -22,6 +23,7 @@ export interface AdminMessage {
 
 export interface Conversation {
   id: string;
+  backendId?: number;
   subject: string;
   senderId: string;
   senderName: string;
@@ -75,102 +77,150 @@ export default function InboxTab({
 }: InboxTabProps) {
   const [activeTab, setActiveTab] = useState<"inbox" | "compose" | "announcements" | "sent">("inbox");
 
-  // Persistent States in Local Storage for High Fidelity
-  const [conversations, setConversations] = useState<Conversation[]>(() => {
-    const saved = localStorage.getItem("admin_conversations");
-    if (saved) return JSON.parse(saved);
-    return [
-      {
-        id: "conv-1",
-        subject: "Medical Leave Request Extension",
-        senderId: "stu-1",
-        senderName: "Cody Fisher",
-        senderRole: "student",
-        senderAvatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=150&auto=format&fit=crop",
-        isRead: false,
-        isArchived: false,
-        status: "open",
-        courseId: "react-adv",
-        courseTitle: "Advanced React & Architecture",
-        lastUpdated: "2026-07-04T10:15:00Z",
-        messages: [
-          {
-            id: "msg-1-1",
-            senderId: "stu-1",
-            senderName: "Cody Fisher",
-            senderRole: "student",
-            senderAvatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=150&auto=format&fit=crop",
-            subject: "Medical Leave Request Extension",
-            content: "Dear Admin, I have been advised bed rest due to severe flu. I would like to request an extension of my medical leave for another 3 days until July 8. Attached is my diagnostic certificate. Thank you.",
-            timestamp: "2026-07-04T10:15:00Z",
-            attachments: [{ name: "medical_report_signed.pdf", size: "1.4 MB", type: "pdf" }]
-          }
-        ]
-      },
-      {
-        id: "conv-2",
-        subject: "Swiss Typography Reference Books Allocations",
-        senderId: "usr-3",
-        senderName: "Sarah Vance",
-        senderRole: "teacher",
-        senderAvatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=150&auto=format&fit=crop",
-        isRead: true,
-        isArchived: false,
-        status: "open",
-        courseId: "swiss-typo",
-        courseTitle: "Swiss Typography & Editorial Layout",
-        lastUpdated: "2026-07-03T14:30:00Z",
-        messages: [
-          {
-            id: "msg-2-1",
-            senderId: "usr-3",
-            senderName: "Sarah Vance",
-            senderRole: "teacher",
-            senderAvatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=150&auto=format&fit=crop",
-            subject: "Swiss Typography Reference Books Allocations",
-            content: "Hello Jaden, we have an influx of students registering for the Autumn Typography season. We need to allocate 5 more physical reference copies of Josef Müller-Brockmann's 'Grid Systems in Graphic Design' to the digital reserve archive. Let me know if we have the system licenses.",
-            timestamp: "2026-07-03T14:30:00Z"
-          },
-          {
-            id: "msg-2-2",
-            senderId: "usr-1",
-            senderName: "Jaden Smith",
-            senderRole: "super-admin",
-            senderAvatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=300&auto=format&fit=crop",
-            subject: "Re: Swiss Typography Reference Books Allocations",
-            content: "Hi Sarah, I will look into licensing codes and dispatch an approval notice to the library reserve department today.",
-            timestamp: "2026-07-03T16:00:00Z"
-          }
-        ]
-      },
-      {
-        id: "conv-3",
-        subject: "Framer Motion custom canvas engine evaluation criteria",
-        senderId: "stu-2",
-        senderName: "Esther Howard",
-        senderRole: "student",
-        senderAvatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=150&auto=format&fit=crop",
-        isRead: false,
-        isArchived: false,
-        status: "open",
-        courseId: "react-adv",
-        courseTitle: "Advanced React & Architecture",
-        lastUpdated: "2026-07-02T09:45:00Z",
-        messages: [
-          {
-            id: "msg-3-1",
-            senderId: "stu-2",
-            senderName: "Esther Howard",
-            senderRole: "student",
-            senderAvatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=150&auto=format&fit=crop",
-            subject: "Framer Motion custom canvas engine evaluation criteria",
-            content: "Hello, regarding our Framer Motion Canvas assignment, is GPU acceleration layout constraints weighted in the final marks? I want to optimize my matrix transforms beforehand. Thanks!",
-            timestamp: "2026-07-02T09:45:00Z"
-          }
-        ]
-      }
-    ];
-  });
+  // Backend-backed conversations state
+  const [conversations, setConversations] = useState<Conversation[]>(() => [
+    {
+      id: "conv-1",
+      subject: "Medical Leave Request Extension",
+      senderId: "stu-1",
+      senderName: "Cody Fisher",
+      senderRole: "student",
+      senderAvatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=150&auto=format&fit=crop",
+      isRead: false,
+      isArchived: false,
+      status: "open",
+      courseId: "react-adv",
+      courseTitle: "Advanced React & Architecture",
+      lastUpdated: "2026-07-04T10:15:00Z",
+      messages: [
+        {
+          id: "msg-1-1",
+          senderId: "stu-1",
+          senderName: "Cody Fisher",
+          senderRole: "student",
+          senderAvatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=150&auto=format&fit=crop",
+          subject: "Medical Leave Request Extension",
+          content: "Dear Admin, I have been advised bed rest due to severe flu. I would like to request an extension of my medical leave for another 3 days until July 8. Attached is my diagnostic certificate. Thank you.",
+          timestamp: "2026-07-04T10:15:00Z",
+          attachments: [{ name: "medical_report_signed.pdf", size: "1.4 MB", type: "pdf" }]
+        }
+      ]
+    },
+    {
+      id: "conv-2",
+      subject: "Swiss Typography Reference Books Allocations",
+      senderId: "usr-3",
+      senderName: "Sarah Vance",
+      senderRole: "teacher",
+      senderAvatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=150&auto=format&fit=crop",
+      isRead: true,
+      isArchived: false,
+      status: "open",
+      courseId: "swiss-typo",
+      courseTitle: "Swiss Typography & Editorial Layout",
+      lastUpdated: "2026-07-03T14:30:00Z",
+      messages: [
+        {
+          id: "msg-2-1",
+          senderId: "usr-3",
+          senderName: "Sarah Vance",
+          senderRole: "teacher",
+          senderAvatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=150&auto=format&fit=crop",
+          subject: "Swiss Typography Reference Books Allocations",
+          content: "Hello Jaden, we have an influx of students registering for the Autumn Typography season. We need to allocate 5 more physical reference copies of Josef Müller-Brockmann's 'Grid Systems in Graphic Design' to the digital reserve archive. Let me know if we have the system licenses.",
+          timestamp: "2026-07-03T14:30:00Z"
+        },
+        {
+          id: "msg-2-2",
+          senderId: "usr-1",
+          senderName: "Jaden Smith",
+          senderRole: "super-admin",
+          senderAvatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=300&auto=format&fit=crop",
+          subject: "Re: Swiss Typography Reference Books Allocations",
+          content: "Hi Sarah, I will look into licensing codes and dispatch an approval notice to the library reserve department today.",
+          timestamp: "2026-07-03T16:00:00Z"
+        }
+      ]
+    },
+    {
+      id: "conv-3",
+      subject: "Framer Motion custom canvas engine evaluation criteria",
+      senderId: "stu-2",
+      senderName: "Esther Howard",
+      senderRole: "student",
+      senderAvatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=150&auto=format&fit=crop",
+      isRead: false,
+      isArchived: false,
+      status: "open",
+      courseId: "react-adv",
+      courseTitle: "Advanced React & Architecture",
+      lastUpdated: "2026-07-02T09:45:00Z",
+      messages: [
+        {
+          id: "msg-3-1",
+          senderId: "stu-2",
+          senderName: "Esther Howard",
+          senderRole: "student",
+          senderAvatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=150&auto=format&fit=crop",
+          subject: "Framer Motion custom canvas engine evaluation criteria",
+          content: "Hello, regarding our Framer Motion Canvas assignment, is GPU acceleration layout constraints weighted in the final marks? I want to optimize my matrix transforms beforehand. Thanks!",
+          timestamp: "2026-07-02T09:45:00Z"
+        }
+      ]
+    }
+  ]);
+
+  // Load authoritative messages from backend API
+  useEffect(() => {
+    let isMounted = true;
+    adminApi.getMessages()
+      .then((res) => {
+        if (!isMounted) return;
+        if (res.success && Array.isArray(res.data) && res.data.length > 0) {
+          const loaded: Conversation[] = res.data.map((r: any) => ({
+            id: `conv-msg-${r.id}`,
+            backendId: r.id,
+            subject: r.subject || "Website Inquiry",
+            senderId: `inq-${r.id}`,
+            senderName: r.sender_name || "Website Visitor",
+            senderRole: "student" as const,
+            senderAvatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(r.sender_name || "Visitor")}&background=10b981&color=fff`,
+            messages: [
+              {
+                id: `msg-${r.id}-1`,
+                senderId: `inq-${r.id}`,
+                senderName: r.sender_name || "Website Visitor",
+                senderRole: "student" as const,
+                subject: r.subject || "Website Inquiry",
+                content: r.message,
+                timestamp: r.created_at ? (r.created_at instanceof Date ? r.created_at.toISOString() : String(r.created_at)) : new Date().toISOString()
+              },
+              ...(r.reply_text ? [{
+                id: `msg-${r.id}-rep`,
+                senderId: r.replied_by || "admin-1",
+                senderName: "Administrator",
+                senderRole: "admin" as const,
+                subject: `Re: ${r.subject || "Website Inquiry"}`,
+                content: r.reply_text,
+                timestamp: r.replied_at ? (r.replied_at instanceof Date ? r.replied_at.toISOString() : String(r.replied_at)) : new Date().toISOString()
+              }] : [])
+            ],
+            isRead: Boolean(r.is_read),
+            isArchived: false,
+            status: r.reply_text ? ("closed" as const) : ("open" as const),
+            lastUpdated: (r.replied_at || r.created_at || new Date().toISOString())
+          }));
+          setConversations(loaded);
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to load messages from backend", err);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const [sentMessages, setSentMessages] = useState<SentMessage[]>(() => {
     const saved = localStorage.getItem("admin_sent_messages");
@@ -201,15 +251,6 @@ export default function InboxTab({
     ];
   });
 
-  // Save states to local storage
-  useEffect(() => {
-    localStorage.setItem("admin_conversations", JSON.stringify(conversations));
-  }, [conversations]);
-
-  useEffect(() => {
-    localStorage.setItem("admin_sent_messages", JSON.stringify(sentMessages));
-  }, [sentMessages]);
-
   // --- INBOX SUBTAB STATE ---
   const [selectedConv, setSelectedConv] = useState<Conversation | null>(null);
   const [inboxSearch, setInboxSearch] = useState("");
@@ -231,15 +272,18 @@ export default function InboxTab({
     }
   }, [selectedConv, selectedConv?.messages.length]);
 
-  // Handle Thread Reply Action
-  const handleReply = (e: React.FormEvent) => {
+  // Handle Thread Reply Action with authoritative MySQL backend
+  const handleReply = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!replyText.trim() && replyAttachments.length === 0) return;
 
     setIsReplying(true);
 
-    // Mock network lag
-    setTimeout(() => {
+    try {
+      if (selectedConv?.backendId) {
+        await adminApi.replyMessage(selectedConv.backendId, replyText.trim());
+      }
+
       const newMsg: AdminMessage = {
         id: "msg-rep-" + Date.now(),
         senderId: "usr-1",
@@ -257,6 +301,7 @@ export default function InboxTab({
           ...selectedConv,
           messages: [...selectedConv.messages, newMsg],
           isRead: true,
+          status: "closed",
           lastUpdated: new Date().toISOString()
         };
 
@@ -264,13 +309,15 @@ export default function InboxTab({
           prev.map(c => c.id === selectedConv.id ? updatedConv : c)
         );
         setSelectedConv(updatedConv);
-        showCustomToast("Message reply dispatched successfully!", "success");
+        showCustomToast("Message reply dispatched and stored successfully!", "success");
       }
-
+    } catch (err: any) {
+      showCustomToast(err.message || "Failed to dispatch reply.", "warning");
+    } finally {
       setReplyText("");
       setReplyAttachments([]);
       setIsReplying(false);
-    }, 600);
+    }
   };
 
   const handleForwardMessage = (msg: AdminMessage) => {
@@ -282,6 +329,9 @@ export default function InboxTab({
   };
 
   const handleMarkReadStatus = (conv: Conversation, status: boolean) => {
+    if (conv.backendId && status) {
+      adminApi.markMessageRead(conv.backendId).catch(console.error);
+    }
     setConversations(prev =>
       prev.map(c => c.id === conv.id ? { ...c, isRead: status } : c)
     );
@@ -784,6 +834,9 @@ export default function InboxTab({
                         key={conv.id}
                         onClick={() => {
                           // Mark as read immediately on click
+                          if (!conv.isRead && conv.backendId) {
+                            adminApi.markMessageRead(conv.backendId).catch(console.error);
+                          }
                           const updated = { ...conv, isRead: true };
                           setConversations(prev => prev.map(c => c.id === conv.id ? updated : c));
                           setSelectedConv(updated);

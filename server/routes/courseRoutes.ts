@@ -2,7 +2,7 @@ import { Router, Request, Response } from "express";
 import crypto from "crypto";
 import { z } from "zod";
 import { query } from "../db/pool";
-import { requireAuth } from "../middleware/auth";
+import { requireAuth, optionalAuth } from "../middleware/auth";
 
 const router = Router();
 
@@ -52,6 +52,19 @@ router.get("/", async (req: Request, res: Response) => {
 });
 
 // -------------------------------------------------------------
+// Static routes registered BEFORE dynamic /:id to prevent route shadowing
+// GET /api/courses/meta/categories
+// -------------------------------------------------------------
+router.get("/meta/categories", async (req: Request, res: Response) => {
+  try {
+    const [rows]: [any[], any] = await query("SELECT * FROM course_categories WHERE status = 'Active' ORDER BY name ASC");
+    return res.json({ success: true, data: rows });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: { code: "SERVER_ERROR", message: "Failed to retrieve categories." } });
+  }
+});
+
+// -------------------------------------------------------------
 // GET /api/courses/:id
 // -------------------------------------------------------------
 router.get("/:id", async (req: Request, res: Response) => {
@@ -85,18 +98,6 @@ router.get("/:id", async (req: Request, res: Response) => {
   } catch (err: any) {
     console.error("[Get Course Detail Error]:", err);
     return res.status(500).json({ success: false, error: { code: "SERVER_ERROR", message: "Failed to retrieve course details." } });
-  }
-});
-
-// -------------------------------------------------------------
-// GET /api/categories
-// -------------------------------------------------------------
-router.get("/meta/categories", async (req: Request, res: Response) => {
-  try {
-    const [rows]: [any[], any] = await query("SELECT * FROM course_categories WHERE status = 'Active' ORDER BY name ASC");
-    return res.json({ success: true, data: rows });
-  } catch (err: any) {
-    return res.status(500).json({ success: false, error: { code: "SERVER_ERROR", message: "Failed to retrieve categories." } });
   }
 });
 
@@ -179,56 +180,89 @@ router.post("/:id/enroll", requireAuth, async (req: Request, res: Response) => {
 // -------------------------------------------------------------
 // POST /api/courses/:id/registrations (From Landing CourseRegistrationModal)
 // -------------------------------------------------------------
-router.post("/:id/registrations", async (req: Request, res: Response) => {
+router.post("/:id/registrations", optionalAuth, async (req: Request, res: Response) => {
   try {
     const courseId = req.params.id;
     const { studentName, studentEmail, studentPhone, experienceLevel, notes } = req.body;
 
-    if (!studentName || !studentEmail) {
-      return res.status(400).json({
-        success: false,
-        error: { code: "MISSING_FIELDS", message: "Name and email are required." }
-      });
-    }
-
-    const emailNorm = studentEmail.trim().toLowerCase();
-
     // Check course exists
-    const [courses]: [any[], any] = await query("SELECT * FROM courses WHERE id = ? LIMIT 1", [courseId]);
+    const [courses]: [any[], any] = await query("SELECT * FROM courses WHERE id = ? AND deleted_at IS NULL LIMIT 1", [courseId]);
     if (courses.length === 0) {
       return res.status(404).json({ success: false, error: { code: "COURSE_NOT_FOUND", message: "Course not found." } });
     }
 
-    // Check if user exists or create student record
     let studentId: string;
-    const [existingUsers]: [any[], any] = await query("SELECT id FROM users WHERE email = ? LIMIT 1", [emailNorm]);
-    if (existingUsers.length > 0) {
-      studentId = existingUsers[0].id;
-    } else {
-      studentId = `stu-${crypto.randomBytes(8).toString("hex")}`;
-      const defaultHash = await (await import("bcryptjs")).default.hash("Welcome@123", 10);
-      const username = emailNorm.split("@")[0].replace(/[^a-zA-Z0-9_]/g, "_");
+    let effectiveName: string;
+    let effectiveEmail: string;
 
-      await query(
-        `INSERT INTO users (id, username, email, password_hash, role_id, name, phone, status)
-         VALUES (?, ?, ?, ?, 3, ?, ?, 'Active')`,
-        [studentId, username, emailNorm, defaultHash, studentName, studentPhone || null]
-      );
+    if (req.user) {
+      // Authenticated session is authoritative; never trust client-supplied identity fields
+      studentId = req.user.id;
+      effectiveName = req.user.name;
+      effectiveEmail = req.user.email;
+    } else {
+      // Unauthenticated visitor must supply valid credentials
+      if (!studentName || !studentEmail) {
+        return res.status(400).json({
+          success: false,
+          error: { code: "MISSING_FIELDS", message: "Name and email are required." }
+        });
+      }
+      effectiveName = studentName.trim();
+      effectiveEmail = studentEmail.trim().toLowerCase();
+
+      // Check if user exists or create student record
+      const [existingUsers]: [any[], any] = await query("SELECT id FROM users WHERE email = ? LIMIT 1", [effectiveEmail]);
+      if (existingUsers.length > 0) {
+        studentId = existingUsers[0].id;
+      } else {
+        studentId = `stu-${crypto.randomBytes(8).toString("hex")}`;
+        const defaultHash = await (await import("bcryptjs")).default.hash("Welcome@123", 10);
+        const username = effectiveEmail.split("@")[0].replace(/[^a-zA-Z0-9_]/g, "_");
+
+        await query(
+          `INSERT INTO users (id, username, email, password_hash, role_id, name, phone, status)
+           VALUES (?, ?, ?, ?, 3, ?, ?, 'Active')`,
+          [studentId, username, effectiveEmail, defaultHash, effectiveName, studentPhone || null]
+        );
+      }
     }
 
-    // Insert or update enrollment
-    await query(
-      `INSERT INTO enrollments (student_id, course_id, status, joined_date, notes)
-       VALUES (?, ?, 'Active', CURDATE(), ?)
-       ON DUPLICATE KEY UPDATE notes = ?`,
-      [studentId, courseId, `Level: ${experienceLevel || "Beginner"}. Notes: ${notes || ""}`, `Level: ${experienceLevel || "Beginner"}. Notes: ${notes || ""}`]
+    // Prevent duplicate registrations
+    const [existingEnrollment]: [any[], any] = await query(
+      "SELECT id, status FROM enrollments WHERE student_id = ? AND course_id = ? LIMIT 1",
+      [studentId, courseId]
     );
+
+    if (existingEnrollment.length > 0) {
+      return res.status(200).json({
+        success: true,
+        data: {
+          registrationId: existingEnrollment[0].id,
+          studentId,
+          courseId,
+          alreadyRegistered: true,
+          message: "You are already registered for this course."
+        }
+      });
+    }
+
+    // Persist registration in MySQL
+    const regNotes = `Level: ${experienceLevel || "Intermediate"}. Notes: ${notes || ""}`.trim();
+    await query(
+      `INSERT INTO enrollments (student_id, course_id, status, joined_date, progress, attendance_percentage, avg_grade, notes)
+       VALUES (?, ?, 'Active', CURDATE(), 0, 100.00, 0.00, ?)`,
+      [studentId, courseId, regNotes]
+    );
+
+    // Update course student count
+    await query("UPDATE courses SET students_count = students_count + 1 WHERE id = ?", [courseId]);
 
     // Notify student
     await query(
-      `INSERT INTO notifications (user_id, type, title, message)
-       VALUES (?, 'Registration', 'Course Registration Received', 'Your registration for ${courses[0].title} has been logged successfully.')`,
-      [studentId]
+      `INSERT INTO notifications (user_id, type, title, message, link)
+       VALUES (?, 'Registration', 'Course Registration Received', ?, '#dashboard')`,
+      [studentId, `Your registration for ${courses[0].title} has been received and confirmed.`]
     );
 
     return res.status(201).json({

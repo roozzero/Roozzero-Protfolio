@@ -6,6 +6,7 @@ import {
   Bell, ChevronRight, FileText, Check, X, Shield, Sparkles, Send
 } from "lucide-react";
 import { Course, Student, Session, Assignment, DiscussionThread, Resource } from "../types/teacher";
+import { teacherApi } from "../lib/api";
 
 interface TeacherDashboardProps {
   onLogout: () => void;
@@ -15,71 +16,66 @@ interface TeacherDashboardProps {
 export default function TeacherDashboard({ onLogout, onGoHome }: TeacherDashboardProps) {
   const [activeTab, setActiveTab] = useState<"courses" | "students" | "sessions" | "assignments" | "discussions" | "resources">("courses");
 
-  // Synchronized state with fallback values
-  const [courses, setCourses] = useState<Course[]>(() => {
-    const saved = localStorage.getItem("teacher_courses");
-    return saved ? JSON.parse(saved) : [
-      { id: "react-adv", title: "Advanced React & Architecture", code: "REACT-401", studentsCount: 28, sessionsCount: 16, progress: 75, status: "Active" },
-      { id: "swiss-typo", title: "Swiss Typography & Editorial Layout", code: "SWISS-102", studentsCount: 16, sessionsCount: 10, progress: 40, status: "Active" }
-    ];
-  });
-
-  const [students, setStudents] = useState<Student[]>(() => {
-    const saved = localStorage.getItem("teacher_students");
-    return saved ? JSON.parse(saved) : [
-      { id: "stu-1", name: "Courtney Henry", email: "courtney.henry@academy.local", phone: "+1 (555) 234-5678", courseId: "react-adv", courseTitle: "Advanced React & Architecture", progress: 88, attendance: 95, avgGrade: 92, status: "Active", joinedDate: "2026-04-10" },
-      { id: "stu-2", name: "Cody Fisher", email: "cody.f@academy.local", phone: "+1 (555) 019-2834", courseId: "react-adv", courseTitle: "Advanced React & Architecture", progress: 75, attendance: 90, avgGrade: 85, status: "Active", joinedDate: "2026-04-12" }
-    ];
-  });
-
-  const [sessions, setSessions] = useState<Session[]>(() => {
-    const saved = localStorage.getItem("teacher_sessions");
-    return saved ? JSON.parse(saved) : [
-      { id: "sess-1", courseId: "react-adv", courseTitle: "Advanced React & Architecture", title: "State Machines & Architectural Flow", date: "2026-07-02", time: "10:00 AM", duration: "2 hours", link: "https://meet.google.com/abc-defg-hij", status: "Scheduled", studentCount: 28 }
-    ];
-  });
-
-  const [assignments, setAssignments] = useState<Assignment[]>(() => {
-    const saved = localStorage.getItem("teacher_assignments");
-    return saved ? JSON.parse(saved) : [
-      { id: "asg-1", courseId: "react-adv", courseTitle: "Advanced React & Architecture", title: "Custom Reactive State Engine", description: "Build an optimized atomic reactive state library.", publishDate: "2026-06-25", dueDate: "2026-07-10", maxPoints: 100, status: "Published", submissions: [] }
-    ];
-  });
-
-  const [discussions, setDiscussions] = useState<DiscussionThread[]>(() => {
-    const saved = localStorage.getItem("teacher_discussions");
-    return saved ? JSON.parse(saved) : [
-      { id: "disc-1", courseId: "react-adv", courseTitle: "Advanced React & Architecture", studentName: "Courtney Henry", title: "Concurrent Mode Question", text: "How does lane prioritization work in transitions?", time: "10:05 AM", status: "New", replies: [] }
-    ];
-  });
-
-  const [resources, setResources] = useState<Resource[]>(() => {
-    const saved = localStorage.getItem("teacher_resources");
-    return saved ? JSON.parse(saved) : [
-      { id: "res-1", title: "Lecture Notes & Fiber Reconciliation Specs", courseId: "react-adv", courseTitle: "Advanced React & Architecture", fileType: "pdf", fileSize: "4.2 MB", uploadedAt: "2026-06-15" }
-    ];
-  });
-
+  // State populated from authoritative MySQL backend via API
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [students, setStudents] = useState<Student[]>([]);
+  const [sessions, setSessions] = useState<Session[]>([]);
+  const [assignments, setAssignments] = useState<Assignment[]>([]);
+  const [discussions, setDiscussions] = useState<DiscussionThread[]>([]);
+  const [resources, setResources] = useState<Resource[]>([]);
   const [replyInputs, setReplyInputs] = useState<Record<string, string>>({});
 
-  const handleAddReply = (threadId: string) => {
+  useEffect(() => {
+    let isMounted = true;
+    async function loadData() {
+      try {
+        const [cRes, sRes, sessRes, aRes, dRes, rRes] = await Promise.all([
+          teacherApi.getCourses().catch(() => ({ success: false, data: [] })),
+          teacherApi.getStudents().catch(() => ({ success: false, data: [] })),
+          teacherApi.getSessions().catch(() => ({ success: false, data: [] })),
+          teacherApi.getAssignments().catch(() => ({ success: false, data: [] })),
+          teacherApi.getDiscussions().catch(() => ({ success: false, data: [] })),
+          teacherApi.getResources().catch(() => ({ success: false, data: [] }))
+        ]);
+
+        if (!isMounted) return;
+
+        if (cRes.success && Array.isArray(cRes.data)) setCourses(cRes.data);
+        if (sRes.success && Array.isArray(sRes.data)) setStudents(sRes.data);
+        if (sessRes.success && Array.isArray(sessRes.data)) setSessions(sessRes.data);
+        if (aRes.success && Array.isArray(aRes.data)) setAssignments(aRes.data);
+        if (dRes.success && Array.isArray(dRes.data)) setDiscussions(dRes.data);
+        if (rRes.success && Array.isArray(rRes.data)) setResources(rRes.data);
+      } catch (err) {
+        console.error("Failed to load teacher data from backend API", err);
+      }
+    }
+    loadData();
+    return () => { isMounted = false; };
+  }, []);
+
+  const handleAddReply = async (threadId: string) => {
     const text = replyInputs[threadId];
     if (!text?.trim()) return;
 
-    const newReply = {
-      id: `rep-${Date.now()}`,
-      sender: "Sarah Vance",
-      role: "Instructor",
-      time: "Just Now",
-      text: text.trim(),
-    };
+    try {
+      const res = await teacherApi.replyDiscussion(threadId, text.trim());
+      const newReply = res.data || {
+        id: `rep-${Date.now()}`,
+        sender: "Instructor",
+        role: "Instructor",
+        time: "Just Now",
+        text: text.trim(),
+      };
 
-    const updated = discussions.map((d) =>
-      d.id === threadId ? { ...d, status: "Replied", replies: [...(d.replies || []), newReply] } : d
-    );
-    setDiscussions(updated);
-    localStorage.setItem("teacher_discussions", JSON.stringify(updated));
-    setReplyInputs((prev) => ({ ...prev, [threadId]: "" }));
+      const updated = discussions.map((d) =>
+        d.id === threadId ? { ...d, status: "Replied", replies: [...(d.replies || []), newReply] } : d
+      );
+      setDiscussions(updated);
+      setReplyInputs((prev) => ({ ...prev, [threadId]: "" }));
+    } catch (err) {
+      console.error("Failed to post discussion reply to backend", err);
+    }
   };
 
   return (
