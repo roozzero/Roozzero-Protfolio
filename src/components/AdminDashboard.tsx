@@ -21,6 +21,7 @@ import HomepageManagementTab from "./AdminDashboard/HomepageManagementTab";
 // Type references
 import { AdminUser, CourseRequest, Enrollment, Exam, ActivityLog, RolePermission } from "./AdminDashboard/types";
 import { Course, Student, Session, Assignment, DiscussionThread, Resource, Announcement, GradeRecord, Certificate, CalendarEvent, CourseSeason } from "../types/teacher";
+import { adminApi, coursesApi, teacherApi } from "../lib/api";
 
 // Fallback seed data to guarantee system boot-up
 const fallbackCourses: Course[] = [
@@ -54,27 +55,39 @@ export default function AdminDashboard({ onLogout, onGoHome }: AdminDashboardPro
   const [activeTab, setActiveTab] = useState<"overview" | "users" | "academic" | "lms" | "services" | "settings" | "security" | "inbox" | "homepage-management">("overview");
   const [activeSubTab, setActiveSubTab] = useState("all");
 
-  const [profile, setProfile] = useState(() => {
-    const saved = localStorage.getItem("admin_profile");
-    if (saved) return JSON.parse(saved);
-    return {
-      name: "Jaden Smith",
-      email: "admin@roozzero.dev",
-      phone: "+98 9123456789",
-      photo: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=300&auto=format&fit=crop",
-      bio: "Super Administrator and Learning Management Architect. Orchestrating system-wide course allocations, credential signing, and academy security operations.",
-      department: "LMS Administration",
-      theme: "dark" as const,
-      titlePrefix: "Mr.",
-      specialization: "Super Admin"
-    };
+  const [profile, setProfile] = useState({
+    name: "Jaden Smith",
+    email: "admin@roozzero.dev",
+    phone: "+98 9123456789",
+    photo: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=300&auto=format&fit=crop",
+    bio: "Super Administrator and Learning Management Architect. Orchestrating system-wide course allocations, credential signing, and academy security operations.",
+    department: "LMS Administration",
+    theme: "dark" as const,
+    titlePrefix: "Mr.",
+    specialization: "Super Admin"
   });
 
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
+  // Load admin profile from MySQL backend on mount
   useEffect(() => {
-    localStorage.setItem("admin_profile", JSON.stringify(profile));
-  }, [profile]);
+    adminApi.getProfile()
+      .then((res) => {
+        if (res.success && res.data) {
+          setProfile((prev) => ({ ...prev, ...res.data }));
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to load admin profile from backend:", err);
+      });
+  }, []);
+
+  const handleSaveProfile = (newProfile: any) => {
+    setProfile(newProfile);
+    adminApi.updateProfile(newProfile).catch((err) => {
+      console.error("Failed to update admin profile in backend:", err);
+    });
+  };
 
   // Global search query
   const [searchQuery, setSearchQuery] = useState("");
@@ -85,137 +98,137 @@ export default function AdminDashboard({ onLogout, onGoHome }: AdminDashboardPro
   const [unreadCount, setUnreadCount] = useState(3);
   const [showNotificationDropdown, setShowNotificationDropdown] = useState(false);
 
-  // Core synchronized state loaded from localStorage keys (aligns with student/teacher)
-  const [courses, setCourses] = useState<Course[]>(() => {
-    const saved = localStorage.getItem("teacher_courses");
-    return saved ? JSON.parse(saved) : fallbackCourses;
-  });
-
-  const [students, setStudents] = useState<Student[]>(() => {
-    const saved = localStorage.getItem("teacher_students");
-    return saved ? JSON.parse(saved) : fallbackStudents;
-  });
-
-  const [sessions, setSessions] = useState<Session[]>(() => {
-    const saved = localStorage.getItem("teacher_sessions");
-    return saved ? JSON.parse(saved) : fallbackSessions;
-  });
-
-  const [assignments, setAssignments] = useState<Assignment[]>(() => {
-    const saved = localStorage.getItem("teacher_assignments");
-    return saved ? JSON.parse(saved) : [
-      { id: "ass-1", courseId: "react-adv", courseTitle: "Advanced React & Architecture", title: "Framer Motion Custom Canvas Engine", description: "Build an interactive, high-performance web canvas engine.", publishDate: "2026-06-01", dueDate: "2026-07-08", maxPoints: 100, status: "Published", submissions: [] },
-      { id: "ass-2", courseId: "swiss-typo", courseTitle: "Swiss Typography & Editorial Layout", title: "Typography Book Cover Layout", description: "Design a poster or book cover utilizing Swiss modernist layout constraints.", publishDate: "2026-06-05", dueDate: "2026-07-12", maxPoints: 100, status: "Published", submissions: [] }
-    ];
-  });
-
-  const [certificates, setCertificates] = useState<Certificate[]>(() => {
-    const saved = localStorage.getItem("teacher_certificates");
-    return saved ? JSON.parse(saved) : fallbackCertificates;
-  });
-
-  const [discussions, setDiscussions] = useState<DiscussionThread[]>(() => {
-    const saved = localStorage.getItem("teacher_discussions");
-    return saved ? JSON.parse(saved) : [
-      { id: "disc-1", courseId: "react-adv", courseTitle: "Advanced React & Architecture", studentName: "Cody Fisher", title: "Understanding useTransition in React 19", text: "Is useTransition safe for fetching metadata?", time: "2026-06-29", status: "New", replies: [{ id: "rep-1", sender: "Cody Fisher", role: "Student", time: "2026-06-29", text: "Is useTransition safe for fetching metadata?" }] }
-    ];
-  });
-
-  const [resources, setResources] = useState<Resource[]>(() => {
-    const saved = localStorage.getItem("teacher_resources");
-    return saved ? JSON.parse(saved) : [
-      { id: "res-1", title: "Cubic Bezier Animation Presets", courseId: "react-adv", courseTitle: "Advanced React & Architecture", fileType: "pdf", fileSize: "2.1 MB", uploadedAt: "2026-06-20", visibility: "Visible" }
-    ];
-  });
-
-  const [announcements, setAnnouncements] = useState<Announcement[]>(() => {
-    const saved = localStorage.getItem("teacher_announcements");
-    return saved ? JSON.parse(saved) : [
-      { id: "ann-1", title: "Academy Summer Break Schedule", description: "Academy classes will resume normal schedules starting July 10.", courseId: "all", courseTitle: "All Courses", audience: "Everyone", publishedAt: "2026-06-24", status: "Published" }
-    ];
-  });
-
-  const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>(() => {
-    const saved = localStorage.getItem("teacher_calendar_events");
-    return saved ? JSON.parse(saved) : [
-      { id: "evt-1", title: "Standard Midterm Examination", type: "Exam", date: "2026-07-15", courseId: "react-adv", time: "10:00 AM" }
-    ];
-  });
-
-  const [courseSeasons, setCourseSeasons] = useState<CourseSeason[]>(() => {
-    const saved = localStorage.getItem("teacher_course_seasons");
-    return saved ? JSON.parse(saved) : [
-      { id: "season-1", name: "Summer 2026 Core Intake", courseId: "react-adv", courseTitle: "Advanced React & Architecture", startDate: "2026-06-01", endDate: "2026-08-31", maxCapacity: 25, registrationStatus: "Open", notes: "Core intake cohort.", status: "Active" },
-      { id: "season-2", name: "Autumn 2026 Typography", courseId: "swiss-typo", courseTitle: "Swiss Typography & Editorial Layout", startDate: "2026-09-01", endDate: "2026-11-30", maxCapacity: 20, registrationStatus: "Not Available", notes: "Awaiting approval.", status: "Pending Admin Approval" }
-    ];
-  });
+  // Core state populated authoritatively from MySQL backend APIs
+  const [courses, setCourses] = useState<Course[]>(fallbackCourses);
+  const [students, setStudents] = useState<Student[]>(fallbackStudents);
+  const [sessions, setSessions] = useState<Session[]>(fallbackSessions);
+  const [assignments, setAssignments] = useState<Assignment[]>([
+    { id: "ass-1", courseId: "react-adv", courseTitle: "Advanced React & Architecture", title: "Framer Motion Custom Canvas Engine", description: "Build an interactive, high-performance web canvas engine.", publishDate: "2026-06-01", dueDate: "2026-07-08", maxPoints: 100, status: "Published", submissions: [] },
+    { id: "ass-2", courseId: "swiss-typo", courseTitle: "Swiss Typography & Editorial Layout", title: "Typography Book Cover Layout", description: "Design a poster or book cover utilizing Swiss modernist layout constraints.", publishDate: "2026-06-05", dueDate: "2026-07-12", maxPoints: 100, status: "Published", submissions: [] }
+  ]);
+  const [certificates, setCertificates] = useState<Certificate[]>(fallbackCertificates);
+  const [discussions, setDiscussions] = useState<DiscussionThread[]>([
+    { id: "disc-1", courseId: "react-adv", courseTitle: "Advanced React & Architecture", studentName: "Cody Fisher", title: "Understanding useTransition in React 19", text: "Is useTransition safe for fetching metadata?", time: "2026-06-29", status: "New", replies: [{ id: "rep-1", sender: "Cody Fisher", role: "Student", time: "2026-06-29", text: "Is useTransition safe for fetching metadata?" }] }
+  ]);
+  const [resources, setResources] = useState<Resource[]>([
+    { id: "res-1", title: "Cubic Bezier Animation Presets", courseId: "react-adv", courseTitle: "Advanced React & Architecture", fileType: "pdf", fileSize: "2.1 MB", uploadedAt: "2026-06-20", visibility: "Visible" }
+  ]);
+  const [announcements, setAnnouncements] = useState<Announcement[]>([
+    { id: "ann-1", title: "Academy Summer Break Schedule", description: "Academy classes will resume normal schedules starting July 10.", courseId: "all", courseTitle: "All Courses", audience: "Everyone", publishedAt: "2026-06-24", status: "Published" }
+  ]);
+  const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([
+    { id: "evt-1", title: "Standard Midterm Examination", type: "Exam", date: "2026-07-15", courseId: "react-adv", time: "10:00 AM" }
+  ]);
+  const [courseSeasons, setCourseSeasons] = useState<CourseSeason[]>([
+    { id: "season-1", name: "Summer 2026 Core Intake", courseId: "react-adv", courseTitle: "Advanced React & Architecture", startDate: "2026-06-01", endDate: "2026-08-31", maxCapacity: 25, registrationStatus: "Open", notes: "Core intake cohort.", status: "Active" },
+    { id: "season-2", name: "Autumn 2026 Typography", courseId: "swiss-typo", courseTitle: "Swiss Typography & Editorial Layout", startDate: "2026-09-01", endDate: "2026-11-30", maxCapacity: 20, registrationStatus: "Not Available", notes: "Awaiting approval.", status: "Pending Admin Approval" }
+  ]);
 
   // Admin exclusive states
-  const [users, setUsers] = useState<AdminUser[]>(() => {
-    const saved = localStorage.getItem("admin_users");
-    return saved ? JSON.parse(saved) : [
-      { id: "usr-1", name: "Jaden Smith", email: "admin@roozzero.dev", phone: "+1 (555) 012-3456", role: "super-admin", status: "Active", lastLogin: "Just Now", joinedDate: "2026-01-01" },
-      { id: "usr-2", name: "Cody Fisher", email: "cody.f@academy.local", phone: "+1 (555) 019-2834", role: "student", status: "Active", lastLogin: "3 hours ago", joinedDate: "2026-05-10" },
-      { id: "usr-3", name: "Sarah Vance", email: "teacher@academy.local", phone: "+1 (555) 021-9876", role: "teacher", status: "Active", lastLogin: "Yesterday", joinedDate: "2026-02-15" }
-    ];
-  });
+  const [users, setUsers] = useState<AdminUser[]>([
+    { id: "usr-1", name: "Jaden Smith", email: "admin@roozzero.dev", phone: "+1 (555) 012-3456", role: "super-admin", status: "Active", lastLogin: "Just Now", joinedDate: "2026-01-01" },
+    { id: "usr-2", name: "Cody Fisher", email: "cody.f@academy.local", phone: "+1 (555) 019-2834", role: "student", status: "Active", lastLogin: "3 hours ago", joinedDate: "2026-05-10" },
+    { id: "usr-3", name: "Sarah Vance", email: "teacher@academy.local", phone: "+1 (555) 021-9876", role: "teacher", status: "Active", lastLogin: "Yesterday", joinedDate: "2026-02-15" }
+  ]);
 
-  const [courseRequests, setCourseRequests] = useState<CourseRequest[]>(() => {
-    const saved = localStorage.getItem("admin_course_requests");
-    return saved ? JSON.parse(saved) : [
-      { id: "req-1", teacherId: "usr-3", teacherName: "Sarah Vance", type: "New Course Season", title: "Autumn 2026 Typography Season", details: "Filing request for Autumn intake. 20 seats limit.", status: "Pending", date: "2026-07-01" }
-    ];
-  });
+  const [courseRequests, setCourseRequests] = useState<CourseRequest[]>([
+    { id: "req-1", teacherId: "usr-3", teacherName: "Sarah Vance", type: "New Course Season", title: "Autumn 2026 Typography Season", details: "Filing request for Autumn intake. 20 seats limit.", status: "Pending", date: "2026-07-01" }
+  ]);
 
-  const [enrollments, setEnrollments] = useState<Enrollment[]>(() => {
-    const saved = localStorage.getItem("admin_enrollments");
-    return saved ? JSON.parse(saved) : [
-      { id: "enr-1", studentId: "stu-1", studentName: "Cody Fisher", courseId: "react-adv", courseTitle: "Advanced React & Architecture", seasonId: "season-1", seasonName: "Summer 2026 Core Intake", enrollmentDate: "2026-05-10", paymentStatus: "Paid", courseStatus: "Enrolled" }
-    ];
-  });
+  const [enrollments, setEnrollments] = useState<Enrollment[]>([
+    { id: "enr-1", studentId: "stu-1", studentName: "Cody Fisher", courseId: "react-adv", courseTitle: "Advanced React & Architecture", seasonId: "season-1", seasonName: "Summer 2026 Core Intake", enrollmentDate: "2026-05-10", paymentStatus: "Paid", courseStatus: "Enrolled" }
+  ]);
 
-  const [exams, setExams] = useState<Exam[]>(() => {
-    const saved = localStorage.getItem("admin_exams");
-    return saved ? JSON.parse(saved) : [
-      { id: "ex-1", title: "React State & Context Midterm", courseId: "react-adv", courseTitle: "Advanced React & Architecture", dueDate: "2026-07-15", maxPoints: 100, passRate: 94, avgScore: 82, status: "Published" }
-    ];
-  });
+  const [exams, setExams] = useState<Exam[]>([
+    { id: "ex-1", title: "React State & Context Midterm", courseId: "react-adv", courseTitle: "Advanced React & Architecture", dueDate: "2026-07-15", maxPoints: 100, passRate: 94, avgScore: 82, status: "Published" }
+  ]);
 
-  const [activityLogs, setActivityLogs] = useState<ActivityLog[]>(() => {
-    const saved = localStorage.getItem("admin_activity_logs");
-    return saved ? JSON.parse(saved) : [
-      { id: "log-1", timestamp: "09:42 AM", username: "Jaden Smith", role: "super-admin", action: "Approved digital certificate for Cody Fisher", module: "Certificates", status: "Success" }
-    ];
-  });
+  const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([
+    { id: "log-1", timestamp: "09:42 AM", username: "Jaden Smith", role: "super-admin", action: "Approved digital certificate for Cody Fisher", module: "Certificates", status: "Success" }
+  ]);
 
-  const [rolesPermissions, setRolesPermissions] = useState<RolePermission[]>(() => {
-    const saved = localStorage.getItem("admin_roles_permissions");
-    return saved ? JSON.parse(saved) : [
-      { role: "super-admin", permissions: { certificateApproval: true, courseManagement: true, userManagement: true, systemSettings: true } },
-      { role: "admin", permissions: { certificateApproval: true, courseManagement: true, userManagement: true, systemSettings: false } },
-      { role: "teacher", permissions: { certificateApproval: false, courseManagement: false, userManagement: false, systemSettings: false } },
-      { role: "student", permissions: { certificateApproval: false, courseManagement: false, userManagement: false, systemSettings: false } }
-    ];
-  });
+  const [rolesPermissions, setRolesPermissions] = useState<RolePermission[]>([
+    { role: "super-admin", permissions: { certificateApproval: true, courseManagement: true, userManagement: true, systemSettings: true } },
+    { role: "admin", permissions: { certificateApproval: true, courseManagement: true, userManagement: true, systemSettings: false } },
+    { role: "teacher", permissions: { certificateApproval: false, courseManagement: false, userManagement: false, systemSettings: false } },
+    { role: "student", permissions: { certificateApproval: false, courseManagement: false, userManagement: false, systemSettings: false } }
+  ]);
 
-  // Effect triggers to persist synchronized arrays
-  useEffect(() => { localStorage.setItem("teacher_courses", JSON.stringify(courses)); }, [courses]);
-  useEffect(() => { localStorage.setItem("teacher_students", JSON.stringify(students)); }, [students]);
-  useEffect(() => { localStorage.setItem("teacher_sessions", JSON.stringify(sessions)); }, [sessions]);
-  useEffect(() => { localStorage.setItem("teacher_assignments", JSON.stringify(assignments)); }, [assignments]);
-  useEffect(() => { localStorage.setItem("teacher_certificates", JSON.stringify(certificates)); }, [certificates]);
-  useEffect(() => { localStorage.setItem("teacher_discussions", JSON.stringify(discussions)); }, [discussions]);
-  useEffect(() => { localStorage.setItem("teacher_resources", JSON.stringify(resources)); }, [resources]);
-  useEffect(() => { localStorage.setItem("teacher_announcements", JSON.stringify(announcements)); }, [announcements]);
-  useEffect(() => { localStorage.setItem("teacher_calendar_events", JSON.stringify(calendarEvents)); }, [calendarEvents]);
-  useEffect(() => { localStorage.setItem("teacher_course_seasons", JSON.stringify(courseSeasons)); }, [courseSeasons]);
+  // Load authoritative data from MySQL backend APIs
+  useEffect(() => {
+    let isMounted = true;
+    async function loadAdminData() {
+      try {
+        const [
+          usersRes, enrollmentsRes, certsRes, annsRes, seasonsRes, logsRes, coursesRes, studentsRes, sessionsRes, assignmentsRes, discussionsRes, resourcesRes
+        ] = await Promise.all([
+          adminApi.getUsers({ limit: 100 }).catch(() => ({ success: false, data: { users: [] } })),
+          adminApi.getEnrollments().catch(() => ({ success: false, data: [] })),
+          adminApi.getCertificates().catch(() => ({ success: false, data: [] })),
+          adminApi.getAnnouncements().catch(() => ({ success: false, data: [] })),
+          adminApi.getCourseSeasons().catch(() => ({ success: false, data: [] })),
+          adminApi.getActivityLogs().catch(() => ({ success: false, data: [] })),
+          coursesApi.getAllCourses().catch(() => ({ success: false, data: [] })),
+          teacherApi.getStudents().catch(() => ({ success: false, data: [] })),
+          teacherApi.getSessions().catch(() => ({ success: false, data: [] })),
+          teacherApi.getAssignments().catch(() => ({ success: false, data: [] })),
+          teacherApi.getDiscussions().catch(() => ({ success: false, data: [] })),
+          teacherApi.getResources().catch(() => ({ success: false, data: [] }))
+        ]);
 
-  useEffect(() => { localStorage.setItem("admin_users", JSON.stringify(users)); }, [users]);
-  useEffect(() => { localStorage.setItem("admin_course_requests", JSON.stringify(courseRequests)); }, [courseRequests]);
-  useEffect(() => { localStorage.setItem("admin_enrollments", JSON.stringify(enrollments)); }, [enrollments]);
-  useEffect(() => { localStorage.setItem("admin_exams", JSON.stringify(exams)); }, [exams]);
-  useEffect(() => { localStorage.setItem("admin_activity_logs", JSON.stringify(activityLogs)); }, [activityLogs]);
-  useEffect(() => { localStorage.setItem("admin_roles_permissions", JSON.stringify(rolesPermissions)); }, [rolesPermissions]);
+        if (!isMounted) return;
+
+        if (usersRes.success && usersRes.data?.users?.length) {
+          setUsers(usersRes.data.users);
+        }
+        if (enrollmentsRes.success && Array.isArray(enrollmentsRes.data) && enrollmentsRes.data.length) {
+          setEnrollments(enrollmentsRes.data);
+        }
+        if (certsRes.success && Array.isArray(certsRes.data) && certsRes.data.length) {
+          setCertificates(certsRes.data);
+        }
+        if (annsRes.success && Array.isArray(annsRes.data) && annsRes.data.length) {
+          setAnnouncements(annsRes.data);
+        }
+        if (seasonsRes.success && Array.isArray(seasonsRes.data) && seasonsRes.data.length) {
+          setCourseSeasons(seasonsRes.data);
+        }
+        if (logsRes.success && Array.isArray(logsRes.data) && logsRes.data.length) {
+          setActivityLogs(logsRes.data.map((l: any) => ({
+            id: String(l.id),
+            timestamp: l.created_at ? (l.created_at instanceof Date ? l.created_at.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : String(l.created_at)) : "Just Now",
+            username: l.user_name || "Admin",
+            role: "super-admin" as const,
+            action: l.action || "System Action",
+            module: "System",
+            status: "Success" as const
+          })));
+        }
+        if (coursesRes.success && Array.isArray(coursesRes.data) && coursesRes.data.length) {
+          setCourses(coursesRes.data);
+        }
+        if (studentsRes.success && Array.isArray(studentsRes.data) && studentsRes.data.length) {
+          setStudents(studentsRes.data);
+        }
+        if (sessionsRes.success && Array.isArray(sessionsRes.data) && sessionsRes.data.length) {
+          setSessions(sessionsRes.data);
+        }
+        if (assignmentsRes.success && Array.isArray(assignmentsRes.data) && assignmentsRes.data.length) {
+          setAssignments(assignmentsRes.data);
+        }
+        if (discussionsRes.success && Array.isArray(discussionsRes.data) && discussionsRes.data.length) {
+          setDiscussions(discussionsRes.data);
+        }
+        if (resourcesRes.success && Array.isArray(resourcesRes.data) && resourcesRes.data.length) {
+          setResources(resourcesRes.data);
+        }
+      } catch (err) {
+        console.error("Failed to load admin backend data", err);
+      }
+    }
+    loadAdminData();
+    return () => { isMounted = false; };
+  }, []);
 
   // Handle Global Search
   useEffect(() => {
@@ -708,7 +721,7 @@ export default function AdminDashboard({ onLogout, onGoHome }: AdminDashboardPro
               {activeTab === "settings" && (
                 <AdminSettingsTab 
                   profile={profile}
-                  onSaveProfile={setProfile}
+                  onSaveProfile={handleSaveProfile}
                   showCustomToast={(msg) => dispatchAlert(msg)}
                 />
               )}

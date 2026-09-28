@@ -6,13 +6,19 @@ interface NavbarProps {
   onPresetChange?: () => void;
   currentPresetName?: string;
   isLoggedIn?: boolean;
+  userRole?: string;
   onOpenLoginModal?: () => void;
 }
 
-export default function Navbar({ onPresetChange, currentPresetName, isLoggedIn, onOpenLoginModal }: NavbarProps) {
+export default function Navbar({ onPresetChange, currentPresetName, isLoggedIn, userRole, onOpenLoginModal }: NavbarProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [activeItem, setActiveItem] = useState("Home");
+
+  const isAdministrator = userRole === "admin" || userRole === "Administrator" || userRole === "administrator";
+  const dashboardLink = isAdministrator ? "#admin" : "#dashboard";
+  const dashboardLabel = isAdministrator ? "Admin" : "Dashboard";
+  const dashboardFullLabel = isAdministrator ? "Admin Dashboard" : "User Dashboard";
 
   // Track scroll position to add a subtle micro-border or slight glass background
   useEffect(() => {
@@ -168,7 +174,7 @@ export default function Navbar({ onPresetChange, currentPresetName, isLoggedIn, 
           <div className="flex items-center gap-4">
             {/* Premium Login Link on the far right side of the navbar */}
             <a
-              href={isLoggedIn ? (localStorage.getItem("userRole") === "admin" ? "#admin" : "#dashboard") : "#login"}
+              href={isLoggedIn ? dashboardLink : "#login"}
               onClick={(e) => {
                 if (!isLoggedIn && onOpenLoginModal) {
                   e.preventDefault();
@@ -180,14 +186,14 @@ export default function Navbar({ onPresetChange, currentPresetName, isLoggedIn, 
               aria-label={isLoggedIn ? "Access Dashboard" : "Access Account Login"}
             >
               <User size={12} className="opacity-70" />
-              <span>{isLoggedIn ? (localStorage.getItem("userRole") === "admin" ? "Admin" : "Dashboard") : "Login"}</span>
+              <span>{isLoggedIn ? dashboardLabel : "Login"}</span>
             </a>
 
             {/* Mobile Menu Controls */}
             <div className="flex lg:hidden items-center gap-3">
               {/* Login button visible on mobile left of hamburger */}
               <a
-                href={isLoggedIn ? (localStorage.getItem("userRole") === "admin" ? "#admin" : "#dashboard") : "#login"}
+                href={isLoggedIn ? dashboardLink : "#login"}
                 onClick={(e) => {
                   if (!isLoggedIn && onOpenLoginModal) {
                     e.preventDefault();
@@ -198,7 +204,7 @@ export default function Navbar({ onPresetChange, currentPresetName, isLoggedIn, 
                 aria-label={isLoggedIn ? "Dashboard" : "Login"}
               >
                 <User size={12} />
-                <span>{isLoggedIn ? (localStorage.getItem("userRole") === "admin" ? "Admin" : "Dashboard") : "Login"}</span>
+                <span>{isLoggedIn ? dashboardLabel : "Login"}</span>
               </a>
 
               {/* Interactive Hamburger button */}
@@ -281,7 +287,7 @@ export default function Navbar({ onPresetChange, currentPresetName, isLoggedIn, 
               {/* Login option in mobile overlay menu list */}
               <div className="mt-2 pt-4 border-t border-white/[0.03]">
                 <a
-                  href={isLoggedIn ? (localStorage.getItem("userRole") === "admin" ? "#admin" : "#dashboard") : "#login"}
+                  href={isLoggedIn ? dashboardLink : "#login"}
                   onClick={(e) => {
                     if (!isLoggedIn && onOpenLoginModal) {
                       e.preventDefault();
@@ -294,7 +300,7 @@ export default function Navbar({ onPresetChange, currentPresetName, isLoggedIn, 
                   className="flex items-center justify-center gap-2 w-full py-3 rounded-lg border border-white/10 bg-white/[0.03] font-sans text-[11px] font-medium tracking-[0.2em] text-white hover:bg-white/10 transition-all duration-300 uppercase"
                 >
                   <User size={12} />
-                  <span>{isLoggedIn ? (localStorage.getItem("userRole") === "admin" ? "Admin Dashboard" : "User Dashboard") : "Account Login"}</span>
+                  <span>{isLoggedIn ? dashboardFullLabel : "Account Login"}</span>
                 </a>
               </div>
             </div>

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
+import { studentApi, authApi } from "../lib/api";
 import { 
   Send, Instagram, Github, Linkedin, Sparkles, ArrowRight, User, 
   Folder, CheckSquare, Inbox, Calendar as CalendarIcon, BarChart2, 
@@ -48,18 +49,6 @@ export interface CourseResource {
 }
 
 export const getInitialCourseResources = (): CourseResource[] => {
-  const saved = localStorage.getItem("userResources");
-  if (saved) {
-    try {
-      const parsed = JSON.parse(saved);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed;
-      }
-    } catch (e) {
-      console.error(e);
-    }
-  }
-
   const initial: CourseResource[] = [
     {
       id: "r1",
@@ -123,23 +112,10 @@ export const getInitialCourseResources = (): CourseResource[] => {
     }
   ];
 
-  localStorage.setItem("userResources", JSON.stringify(initial));
   return initial;
 };
 
 export const getInitialDetailedAssignments = (): AssignmentDetail[] => {
-  const saved = localStorage.getItem("userAssignments");
-  if (saved) {
-    try {
-      const parsed = JSON.parse(saved);
-      if (Array.isArray(parsed) && parsed.length > 0 && parsed[0].description !== undefined) {
-        return parsed;
-      }
-    } catch (e) {
-      console.error(e);
-    }
-  }
-
   const initial: AssignmentDetail[] = [
     {
       id: "a1",
@@ -224,7 +200,6 @@ export const getInitialDetailedAssignments = (): AssignmentDetail[] => {
     }
   ];
 
-  localStorage.setItem("userAssignments", JSON.stringify(initial));
   return initial;
 };
 
@@ -249,18 +224,6 @@ export interface Conversation {
 }
 
 export const getInitialConversations = (): Conversation[] => {
-  const saved = localStorage.getItem("userCourseConversations");
-  if (saved) {
-    try {
-      const parsed = JSON.parse(saved);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed;
-      }
-    } catch (e) {
-      console.error(e);
-    }
-  }
-
   const initial: Conversation[] = [
     {
       id: "c1",
@@ -366,7 +329,6 @@ export const getInitialConversations = (): Conversation[] => {
     }
   ];
 
-  localStorage.setItem("userCourseConversations", JSON.stringify(initial));
   return initial;
 };
 
@@ -518,6 +480,9 @@ interface SessionDetail {
   cancellationReason?: string;
   rescheduledDateTime?: string;
   meetingLink?: string;
+  attendance?: string;
+  meetingPlatform?: string;
+  recordingAvailable?: boolean;
 }
 
 const generateInitialSessions = (): { [courseId: string]: SessionDetail[] } => {
@@ -1408,80 +1373,7 @@ export default function UserDashboard({ onLogout, onGoHome }: UserDashboardProps
   const [customToasts, setCustomToasts] = useState<{ id: string; message: string; type: "info" | "success" | "warning" }[]>([]);
   const [isClassNowSimulated, setIsClassNowSimulated] = useState<boolean>(false);
   
-  const [courseSessions, setCourseSessions] = useState<{ [courseId: string]: SessionDetail[] }>(() => {
-    const saved = localStorage.getItem("student_course_sessions");
-    let current = saved ? JSON.parse(saved) : generateInitialSessions();
-    
-    // Automatically match and populate the meeting links from the teacher!
-    const savedTeacherRaw = localStorage.getItem("teacher_sessions");
-    if (savedTeacherRaw) {
-      try {
-        const teacherSessions = JSON.parse(savedTeacherRaw);
-        const mapStudentCourseIdToTeacherCourseIdLocal = (studentCourseId: string): string => {
-          if (studentCourseId === "1") return "react-adv";
-          if (studentCourseId === "2") return "swiss-typo";
-          if (studentCourseId === "3") return "ml-found";
-          return "react-adv";
-        };
-
-        const findMatchingStudentSessionLocal = (studentSessionsList: any[], teacherTitle: string) => {
-          const normalizedTeacher = teacherTitle.toLowerCase();
-          let match = studentSessionsList.find((s: any) => 
-            normalizedTeacher.includes(s.topic.toLowerCase()) || 
-            s.topic.toLowerCase().includes(normalizedTeacher)
-          );
-          if (match) return match;
-
-          const teacherWords = normalizedTeacher.split(/\s+/).filter((w: string) => w.length > 3);
-          match = studentSessionsList.find((s: any) => {
-            const studentWords = s.topic.toLowerCase().split(/\s+/);
-            return teacherWords.some((tw: string) => studentWords.includes(tw));
-          });
-          if (match) return match;
-
-          match = studentSessionsList.find((s: any) => s.status === "Scheduled");
-          if (match) return match;
-
-          match = studentSessionsList.find((s: any) => s.status === "Not Held");
-          if (match) return match;
-
-          return studentSessionsList[studentSessionsList.length - 1];
-        };
-
-        Object.keys(current).forEach(studentCourseId => {
-          const teacherCourseId = mapStudentCourseIdToTeacherCourseIdLocal(studentCourseId);
-          const teacherCourseSessions = teacherSessions.filter((ts: any) => ts.courseId === teacherCourseId);
-          
-          teacherCourseSessions.forEach((ts: any) => {
-            if (ts.link) {
-              const matchedStudentSess = findMatchingStudentSessionLocal(current[studentCourseId], ts.title);
-              if (matchedStudentSess) {
-                current[studentCourseId] = current[studentCourseId].map((s: any) => {
-                  if (s.id === matchedStudentSess.id) {
-                    return {
-                      ...s,
-                      meetingLink: ts.link,
-                      meetingPlatform: ts.meetingPlatform || "Google Meet",
-                      status: "Scheduled"
-                    };
-                  }
-                  return s;
-                });
-              }
-            }
-          });
-        });
-      } catch (e) {
-        console.error("Error matching sessions:", e);
-      }
-    }
-    return current;
-  });
-
-  // Sync courseSessions to localStorage when changed
-  useEffect(() => {
-    localStorage.setItem("student_course_sessions", JSON.stringify(courseSessions));
-  }, [courseSessions]);
+  const [courseSessions, setCourseSessions] = useState<{ [courseId: string]: SessionDetail[] }>(() => generateInitialSessions());
 
   const [activeJoinSession, setActiveJoinSession] = useState<SessionDetail | null>(null);
   const [simulatedNowSessions, setSimulatedNowSessions] = useState<{ [sessionId: string]: boolean }>({});
@@ -1639,16 +1531,8 @@ export default function UserDashboard({ onLogout, onGoHome }: UserDashboardProps
   // Assignments interactive state
   const [assignments, setAssignments] = useState<AssignmentDetail[]>(getInitialDetailedAssignments);
 
-  useEffect(() => {
-    localStorage.setItem("userAssignments", JSON.stringify(assignments));
-  }, [assignments]);
-
   // Course resources interactive state
   const [resources, setResources] = useState<CourseResource[]>(getInitialCourseResources);
-
-  useEffect(() => {
-    localStorage.setItem("userResources", JSON.stringify(resources));
-  }, [resources]);
 
   // Premium interactive discussion messaging system states
   const [conversations, setConversations] = useState<Conversation[]>(getInitialConversations);
@@ -1668,402 +1552,221 @@ export default function UserDashboard({ onLogout, onGoHome }: UserDashboardProps
   const [newDiscussionMessage, setNewDiscussionMessage] = useState("");
   const [newDiscussionAttachment, setNewDiscussionAttachment] = useState<{ name: string; type: "Image" | "PDF" } | null>(null);
 
+  const baselineAccountRef = useRef({
+    firstName: "Courtney",
+    lastName: "Henry",
+    username: "courtney_h",
+    email: "schoepplake@gmail.com",
+    phone: "9123456789"
+  });
+
+  // Load authoritative student data from MySQL backend APIs
   useEffect(() => {
-    localStorage.setItem("userCourseConversations", JSON.stringify(conversations));
-  }, [conversations]);
+    let isMounted = true;
 
-  // Sync resources, assignments, and conversations state from local storage dynamically
-  useEffect(() => {
-    const handleSync = () => {
-      const savedRes = localStorage.getItem("userResources");
-      if (savedRes) {
-        try {
-          const parsed = JSON.parse(savedRes);
-          if (Array.isArray(parsed)) {
-            setResources(parsed);
+    // 1. Profile
+    studentApi.getProfile()
+      .then((res) => {
+        if (!isMounted) return;
+        if (res.success && res.data) {
+          const u = res.data;
+          if (u.name) {
+            setProfileName(u.name);
+            const parts = u.name.trim().split(" ");
+            const f = parts[0] || "Courtney";
+            const l = parts.slice(1).join(" ") || "Henry";
+            setFirstName(f);
+            setLastName(l);
+            baselineAccountRef.current.firstName = f;
+            baselineAccountRef.current.lastName = l;
           }
-        } catch (e) {
-          console.error(e);
-        }
-      }
-      
-      const savedAss = localStorage.getItem("userAssignments");
-      if (savedAss) {
-        try {
-          const parsed = JSON.parse(savedAss);
-          if (Array.isArray(parsed)) {
-            setAssignments(parsed);
+          if (u.username) {
+            setUsername(u.username);
+            setSavedUsername(u.username);
+            baselineAccountRef.current.username = u.username;
           }
-        } catch (e) {
-          console.error(e);
-        }
-      }
-
-      const savedConv = localStorage.getItem("userCourseConversations");
-      if (savedConv) {
-        try {
-          const parsed = JSON.parse(savedConv);
-          if (Array.isArray(parsed)) {
-            setConversations(parsed);
+          if (u.email) {
+            setEmailAddress(u.email);
+            baselineAccountRef.current.email = u.email;
           }
-        } catch (e) {
-          console.error(e);
+          if (u.phone) {
+            const p = u.phone.replace(/\D/g, "");
+            setPhoneNumber(p);
+            baselineAccountRef.current.phone = p;
+          }
+          if (u.bio) {
+            setProfileBio(u.bio);
+            setDraftBio(u.bio);
+          }
+          if (u.avatar_url) {
+            setProfilePic(u.avatar_url);
+            setDraftProfilePic(u.avatar_url);
+          }
         }
-      }
+      })
+      .catch((err) => {
+        console.error("Failed to load student profile:", err);
+      });
 
-      // 2. Synchronize with Instructor Actions in Teacher Dashboard
-      
-      // A. Synchronize Sessions/Schedule
-      const teacherSessionsRaw = localStorage.getItem("teacher_sessions");
-      if (teacherSessionsRaw) {
-        try {
-          const teacherSessions = JSON.parse(teacherSessionsRaw);
-          const mapStudentCourseIdToTeacherCourseId = (studentCourseId: string): string => {
-            if (studentCourseId === "1") return "react-adv";
-            if (studentCourseId === "2") return "swiss-typo";
-            if (studentCourseId === "3") return "ml-found";
-            return "react-adv";
-          };
+    // 2. Courses
+    studentApi.getCourses()
+      .then((res) => {
+        if (!isMounted) return;
+        if (res.success && Array.isArray(res.data) && res.data.length > 0) {
+          const mappedCourses = res.data.map((c: any) => ({
+            id: String(c.id),
+            title: c.title,
+            instructor: c.teacher_name || "Instructor",
+            startDate: c.joined_date ? new Date(c.joined_date).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }) : "June 01, 2026",
+            endDate: "August 15, 2026",
+            totalSessions: c.sessions_count || 12,
+            completedSessions: Math.round(((c.progress || 0) / 100) * (c.sessions_count || 12)),
+            nextSession: "Upcoming Session",
+            status: c.enrollment_status || "Active",
+            thumbnail: c.image || "/src/assets/images/react_thumbnail_1782829644127.jpg",
+            progress: c.progress || 0,
+            lessons: [
+              "Vite & HMR Essentials",
+              "State Managers & Flux",
+              "Component Modeling",
+              "Custom Hooks",
+              "Concurrent Rendering",
+              "Fiber Architecture",
+              "Suspense & Transitions",
+              "Server Components",
+              "Performance Tuning",
+              "Memory Leak Audits",
+              "Testing & Mocking",
+              "Production Deployment"
+            ]
+          }));
+          setCourses(mappedCourses);
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to load courses:", err);
+      });
 
-          const findMatchingStudentSession = (studentSessionsList: any[], teacherTitle: string) => {
-            const normalizedTeacher = teacherTitle.toLowerCase();
-            let match = studentSessionsList.find((s: any) => 
-              normalizedTeacher.includes(s.topic.toLowerCase()) || 
-              s.topic.toLowerCase().includes(normalizedTeacher)
-            );
-            if (match) return match;
-            const teacherWords = normalizedTeacher.split(/\s+/).filter((w: string) => w.length > 3);
-            match = studentSessionsList.find((s: any) => {
-              const studentWords = s.topic.toLowerCase().split(/\s+/);
-              return teacherWords.some((tw: string) => studentWords.includes(tw));
+    // 3. Sessions
+    studentApi.getSessions()
+      .then((res) => {
+        if (!isMounted) return;
+        if (res.success && Array.isArray(res.data) && res.data.length > 0) {
+          const grouped: { [courseId: string]: SessionDetail[] } = {};
+          res.data.forEach((s: any, idx: number) => {
+            const cId = String(s.courseId);
+            if (!grouped[cId]) grouped[cId] = [];
+            grouped[cId].push({
+              id: s.id,
+              sessionNum: idx + 1,
+              topic: s.title,
+              date: s.date,
+              time: s.time,
+              duration: `${s.duration || 90} Mins`,
+              status: s.status === "Held" ? "Completed" : (s.status === "Cancelled" ? "Cancelled" : (s.status === "Not Held" ? "Not Held" : "Scheduled")),
+              attendance: s.attendanceStatus || "Pending",
+              meetingLink: s.link || "https://meet.google.com/roz-acad-demo",
+              meetingPlatform: "Google Meet",
+              recordingAvailable: s.status === "Held" || s.status === "Completed"
             });
-            return match || studentSessionsList[0];
-          };
-
-          setCourseSessions((prevSessions) => {
-            const updated = { ...prevSessions };
-            let changed = false;
-            Object.keys(updated).forEach((studentCourseId) => {
-              const teacherCourseId = mapStudentCourseIdToTeacherCourseId(studentCourseId);
-              const teacherCourseSessions = teacherSessions.filter((ts: any) => ts.courseId === teacherCourseId);
-              
-              teacherCourseSessions.forEach((ts: any) => {
-                const matchedStudentSess = findMatchingStudentSession(updated[studentCourseId], ts.title);
-                if (matchedStudentSess) {
-                  const existingSess = updated[studentCourseId].find(s => s.id === matchedStudentSess.id);
-                  if (existingSess && (
-                    existingSess.meetingLink !== ts.link || 
-                    existingSess.meetingPlatform !== ts.meetingPlatform || 
-                    existingSess.date !== ts.date || 
-                    existingSess.time !== ts.time ||
-                    existingSess.status !== ts.status
-                  )) {
-                    changed = true;
-                    // Trigger a notification if class is rescheduled or cancelled
-                    if (existingSess.status !== ts.status) {
-                      addNotification(
-                        `Class Status Updated`,
-                        `Session ${existingSess.sessionNum} "${existingSess.topic}" is now ${ts.status}.`,
-                        "course"
-                      );
-                    } else if (existingSess.date !== ts.date || existingSess.time !== ts.time) {
-                      addNotification(
-                        `Class Rescheduled`,
-                        `Session ${existingSess.sessionNum} has been rescheduled to ${ts.date} @ ${ts.time}.`,
-                        "course"
-                      );
-                    }
-                    
-                    updated[studentCourseId] = updated[studentCourseId].map((s: any) => {
-                      if (s.id === matchedStudentSess.id) {
-                        return {
-                          ...s,
-                          meetingLink: ts.link || s.meetingLink,
-                          meetingPlatform: ts.meetingPlatform || s.meetingPlatform || "Google Meet",
-                          date: ts.date || s.date,
-                          time: ts.time || s.time,
-                          status: ts.status || s.status
-                        };
-                      }
-                      return s;
-                    });
-                  }
-                }
-              });
-            });
-            return changed ? updated : prevSessions;
           });
-        } catch (e) {
-          console.error("Sync sessions error:", e);
+          setCourseSessions((prev) => ({ ...prev, ...grouped }));
         }
-      }
+      })
+      .catch((err) => {
+        console.error("Failed to load sessions:", err);
+      });
 
-      // B. Synchronize Assignments, Grades & Feedback
-      const teacherAssignmentsRaw = localStorage.getItem("teacher_assignments");
-      if (teacherAssignmentsRaw) {
-        try {
-          const teacherAssignments = JSON.parse(teacherAssignmentsRaw);
-          setAssignments((prevAssignments) => {
-            let changed = false;
-            const updated = prevAssignments.map((stAsg) => {
-              const match = teacherAssignments.find((ta: any) => 
-                ta.title.toLowerCase().trim() === stAsg.title.toLowerCase().trim() ||
-                stAsg.title.toLowerCase().includes(ta.title.toLowerCase()) ||
-                ta.title.toLowerCase().includes(stAsg.title.toLowerCase())
-              );
-              if (match) {
-                const sub = match.submissions?.find((s: any) => s.studentName === "Courtney Henry" || s.studentId === "stu-1");
-                let newStatus = stAsg.status;
-                let newGrade = stAsg.grade;
-                let feedback = stAsg.feedback;
-
-                if (sub) {
-                  if (sub.status === "Graded") {
-                    newStatus = "Graded";
-                    newGrade = sub.grade;
-                    feedback = sub.feedback;
-                  } else if (sub.status === "Submitted") {
-                    newStatus = "Submitted";
-                  }
-                }
-
-                if (stAsg.status !== newStatus || stAsg.grade !== newGrade || stAsg.feedback !== feedback || stAsg.description !== match.description || stAsg.dueDate !== (match.dueDate + ", 11:59 PM")) {
-                  changed = true;
-                  if (stAsg.grade !== newGrade && newGrade !== null) {
-                    addNotification(
-                      "Grade Published",
-                      `Your assignment "${stAsg.title}" has been graded: ${newGrade}/100.`,
-                      "milestone"
-                    );
-                  } else if (stAsg.dueDate !== (match.dueDate + ", 11:59 PM")) {
-                    addNotification(
-                      "Assignment Deadline Updated",
-                      `"${stAsg.title}" is now due on ${match.dueDate}.`,
-                      "assignment"
-                    );
-                  }
-                  
-                  return {
-                    ...stAsg,
-                    description: match.description,
-                    dueDate: match.dueDate + ", 11:59 PM",
-                    status: newStatus,
-                    grade: newGrade,
-                    feedback: feedback
-                  };
-                }
-              }
-              return stAsg;
-            });
-
-            // Add newly published assignment
-            teacherAssignments.forEach((ta: any) => {
-              const exists = prevAssignments.some((sa) => 
-                sa.title.toLowerCase().trim() === ta.title.toLowerCase().trim() ||
-                sa.title.toLowerCase().includes(ta.title.toLowerCase()) ||
-                ta.title.toLowerCase().includes(sa.title.toLowerCase())
-              );
-              if (!exists && ta.status === "Published") {
-                const courseIdMap: { [key: string]: string } = {
-                  "react-adv": "Advanced React & Architecture",
-                  "swiss-typo": "Premium Dark Design Systems",
-                  "ml-found": "Machine Learning Foundations"
-                };
-                const newAsg: AssignmentDetail = {
-                  id: `ta-${ta.id}`,
-                  assignmentNum: prevAssignments.filter(a => a.course === (courseIdMap[ta.courseId] || ta.courseTitle)).length + 1,
-                  title: ta.title,
-                  course: courseIdMap[ta.courseId] || ta.courseTitle,
-                  description: ta.description,
-                  publishDate: ta.publishDate,
-                  dueDate: ta.dueDate + ", 11:59 PM",
-                  status: "Not Submitted",
-                  grade: null,
-                  published: true
-                };
-                updated.push(newAsg);
-                changed = true;
-                addNotification(
-                  "New Assignment Published",
-                  `"${ta.title}" has been published for ${newAsg.course}.`,
-                  "assignment"
-                );
-              }
-            });
-
-            // Filter out deleted assignments
-            const filtered = updated.filter((stAsg) => {
-              if (stAsg.id.startsWith("ta-")) {
-                const taId = stAsg.id.replace("ta-", "");
-                const existsInTeacher = teacherAssignments.some((ta: any) => ta.id === taId);
-                if (!existsInTeacher) {
-                  changed = true;
-                  return false;
-                }
-              }
-              return true;
-            });
-
-            return changed ? filtered : prevAssignments;
-          });
-        } catch (e) {
-          console.error("Sync assignments error:", e);
+    // 4. Assignments
+    studentApi.getAssignments()
+      .then((res) => {
+        if (!isMounted) return;
+        if (res.success && Array.isArray(res.data) && res.data.length > 0) {
+          const mappedAssignments: AssignmentDetail[] = res.data.map((a: any, idx: number) => ({
+            id: String(a.id),
+            assignmentNum: idx + 1,
+            title: a.title,
+            course: a.courseTitle || "Advanced React & Architecture",
+            description: a.description || "",
+            publishDate: a.publishDate || "June 03, 2026",
+            dueDate: a.dueDate || "July 12, 2026",
+            status: a.mySubmission ? (a.mySubmission.grade !== null ? "Graded" : (a.mySubmission.status === "Under Review" ? "Under Review" : "Submitted")) : "Not Submitted",
+            grade: a.mySubmission?.grade !== null && a.mySubmission?.grade !== undefined ? `${a.mySubmission.grade}%` : null,
+            published: true,
+            submittedFile: a.mySubmission?.fileName ? { name: a.mySubmission.fileName, size: "1.2 MB", type: "ZIP" } : undefined,
+            submittedGithubUrl: a.mySubmission?.githubUrl || undefined,
+            feedback: a.mySubmission?.feedback || undefined,
+            correctedFile: a.mySubmission?.correctedFileName ? { name: a.mySubmission.correctedFileName, size: "1.5 MB" } : undefined
+          }));
+          setAssignments(mappedAssignments);
         }
-      }
+      })
+      .catch((err) => {
+        console.error("Failed to load assignments:", err);
+      });
 
-      // C. Synchronize Resources
-      const teacherResourcesRaw = localStorage.getItem("teacher_resources");
-      if (teacherResourcesRaw) {
-        try {
-          const teacherResources = JSON.parse(teacherResourcesRaw);
-          setResources((prevResources) => {
-            let changed = false;
-            const updated = prevResources.map((stRes) => {
-              const match = teacherResources.find((tr: any) => tr.title === stRes.title);
-              if (match) {
-                if (stRes.fileName !== match.fileName || stRes.fileSize !== match.fileSize) {
-                  changed = true;
-                  return {
-                    ...stRes,
-                    fileName: match.fileName,
-                    fileSize: match.fileSize
-                  };
-                }
-              }
-              return stRes;
-            });
-
-            teacherResources.forEach((tr: any) => {
-              const exists = prevResources.some((sr) => sr.title === tr.title);
-              if (!exists) {
-                const courseIdMap: { [key: string]: string } = {
-                  "react-adv": "Advanced React & Architecture",
-                  "swiss-typo": "Premium Dark Design Systems",
-                  "ml-found": "Machine Learning Foundations"
-                };
-                const newRes: CourseResource = {
-                  id: `tr-${tr.id}`,
-                  course: courseIdMap[tr.courseId] || "Advanced React & Architecture",
-                  title: tr.title,
-                  fileName: tr.fileName,
-                  fileSize: tr.fileSize,
-                  fileType: tr.type || "PDF",
-                  uploadDate: tr.uploadDate || "Just now",
-                  published: true
-                };
-                updated.push(newRes);
-                changed = true;
-                addNotification(
-                  "New Resource Uploaded",
-                  `Resource "${tr.title}" was uploaded by your instructor.`,
-                  "project"
-                );
-              }
-            });
-
-            const filtered = updated.filter((stRes) => {
-              if (stRes.id.startsWith("tr-")) {
-                const trId = stRes.id.replace("tr-", "");
-                const existsInTeacher = teacherResources.some((tr: any) => tr.id === trId);
-                if (!existsInTeacher) {
-                  changed = true;
-                  return false;
-                }
-              }
-              return true;
-            });
-
-            return changed ? filtered : prevResources;
-          });
-        } catch (e) {
-          console.error("Sync resources error:", e);
+    // 5. Resources
+    studentApi.getResources()
+      .then((res) => {
+        if (!isMounted) return;
+        if (res.success && Array.isArray(res.data) && res.data.length > 0) {
+          const mappedResources: CourseResource[] = res.data.map((r: any) => ({
+            id: String(r.id),
+            title: r.title,
+            course: r.courseTitle || "Advanced React & Architecture",
+            uploadDate: r.uploadedAt || "June 10, 2026",
+            fileType: r.fileType || "PDF",
+            fileName: r.title,
+            fileSize: r.fileSize || "4.2 MB",
+            published: true
+          }));
+          setResources(mappedResources);
         }
-      }
+      })
+      .catch((err) => {
+        console.error("Failed to load resources:", err);
+      });
 
-      // D. Synchronize Discussions
-      const teacherDiscussionsRaw = localStorage.getItem("teacher_discussions");
-      if (teacherDiscussionsRaw) {
-        try {
-          const teacherDiscussions = JSON.parse(teacherDiscussionsRaw);
-          setConversations((prevConversations) => {
-            let changed = false;
-            const updated = prevConversations.map((stConv) => {
-              const match = teacherDiscussions.find((td: any) => 
-                td.title.toLowerCase().trim() === stConv.title.toLowerCase().trim() &&
-                td.studentName === "Courtney Henry"
-              );
-              if (match) {
-                const instructorReplies = match.replies || [];
-                const baseMessage = stConv.messages[0];
-                const studentReplies = stConv.messages.slice(1).filter(m => m.sender === "Student");
-                
-                const mergedMessages = [baseMessage];
-                const allReplies = [
-                  ...studentReplies.map(r => ({ ...r, orderTime: 0 })), 
-                  ...instructorReplies.map((r: any, idx: number) => ({
-                    id: r.id || `tr-${idx}`,
-                    sender: r.role === "Student" ? "Student" : "Instructor",
-                    senderName: r.sender,
-                    avatarText: r.role === "Student" ? "CH" : "SV",
-                    text: r.text,
-                    time: r.time,
-                    orderTime: idx + 1
-                  }))
-                ];
-                
-                const seen = new Set();
-                allReplies.forEach((reply) => {
-                  const key = `${reply.sender}-${reply.text}`;
-                  if (!seen.has(key)) {
-                    seen.add(key);
-                    mergedMessages.push({
-                      id: reply.id,
-                      sender: reply.sender as any,
-                      senderName: reply.senderName,
-                      avatarText: reply.avatarText,
-                      text: reply.text,
-                      time: reply.time
-                    });
-                  }
-                });
-
-                const hasNewMessages = mergedMessages.length !== stConv.messages.length;
-                const statusChanged = stConv.status !== match.status;
-
-                if (hasNewMessages || statusChanged) {
-                  changed = true;
-                  if (statusChanged && match.status === "Replied") {
-                    addNotification(
-                      "New Reply Received",
-                      `Dr. Sarah Vance replied to "${stConv.title}".`,
-                      "message"
-                    );
-                  }
-                  return {
-                    ...stConv,
-                    status: match.status,
-                    messages: mergedMessages,
-                    lastActivity: match.replies?.length > 0 ? match.replies[match.replies.length - 1].time : stConv.lastActivity
-                  };
-                }
-              }
-              return stConv;
-            });
-
-            return changed ? updated : prevConversations;
-          });
-        } catch (e) {
-          console.error("Sync discussions error:", e);
+    // 6. Discussions
+    studentApi.getDiscussions()
+      .then((res) => {
+        if (!isMounted) return;
+        if (res.success && Array.isArray(res.data) && res.data.length > 0) {
+          const mappedConvs: Conversation[] = res.data.map((d: any) => ({
+            id: String(d.id),
+            courseId: String(d.courseId),
+            title: d.title,
+            recipient: "Course Instructor",
+            status: d.status === "Replied" ? "Replied" : (d.status === "Closed" ? "Closed" : "Under Review"),
+            lastActivity: d.time || "Recent",
+            messages: [
+              {
+                id: `msg-${d.id}-base`,
+                sender: "Student",
+                senderName: d.studentName || "Courtney Henry",
+                avatarText: "CH",
+                text: d.text,
+                time: d.time || "Recent"
+              },
+              ...(d.replies || []).map((rep: any) => ({
+                id: String(rep.id),
+                sender: rep.role === "Student" ? "Student" : (rep.role === "Administrator" ? "Academy Admin" : "Instructor"),
+                senderName: rep.sender,
+                avatarText: rep.role === "Student" ? "CH" : "SV",
+                text: rep.text,
+                time: rep.time || "Recent"
+              }))
+            ]
+          }));
+          setConversations(mappedConvs);
         }
-      }
-    };
+      })
+      .catch((err) => {
+        console.error("Failed to load discussions:", err);
+      });
 
-    window.addEventListener("storage", handleSync);
-    const interval = setInterval(handleSync, 2000);
-    
     return () => {
-      window.removeEventListener("storage", handleSync);
-      clearInterval(interval);
+      isMounted = false;
     };
   }, []);
 
@@ -2140,10 +1843,10 @@ export default function UserDashboard({ onLogout, onGoHome }: UserDashboardProps
     }
   }, [selectedCourseId]);
   
-  // Profile picture, name, and bio states (durably persisted)
-  const [profilePic, setProfilePic] = useState<string>(() => localStorage.getItem("userProfilePic") || "");
-  const [profileName, setProfileName] = useState<string>(() => localStorage.getItem("userName") || "Courtney Henry");
-  const [profileBio, setProfileBio] = useState<string>(() => localStorage.getItem("userBio") || "Undergraduate student majoring in Computer Science & Interactive Design.");
+  // Profile picture, name, and bio states (durably persisted in MySQL)
+  const [profilePic, setProfilePic] = useState<string>("");
+  const [profileName, setProfileName] = useState<string>("Courtney Henry");
+  const [profileBio, setProfileBio] = useState<string>("Undergraduate student majoring in Computer Science & Interactive Design.");
 
   // Redesigned Settings Tab Draft States
   const [draftProfilePic, setDraftProfilePic] = useState<string>(profilePic);
@@ -2351,24 +2054,18 @@ export default function UserDashboard({ onLogout, onGoHome }: UserDashboardProps
   // Settings Redesign States
   const [settingsActiveTab, setSettingsActiveTab] = useState<"Account" | "Profile" | "Appearance" | "Security">("Account");
   
-  const [firstName, setFirstName] = useState<string>(() => localStorage.getItem("userFirstName") || "Courtney");
-  const [lastName, setLastName] = useState<string>(() => localStorage.getItem("userLastName") || "Henry");
-  const [username, setUsername] = useState<string>(() => localStorage.getItem("userUsername") || "courtney_h");
-  const [savedUsername, setSavedUsername] = useState<string>(() => localStorage.getItem("userSavedUsername") || "courtney_h");
+  const [firstName, setFirstName] = useState<string>("Courtney");
+  const [lastName, setLastName] = useState<string>("Henry");
+  const [username, setUsername] = useState<string>("courtney_h");
+  const [savedUsername, setSavedUsername] = useState<string>("courtney_h");
   
   // Last username change date (ISO format)
   // By default, set it to "2026-05-15" (47 days ago from 2026-07-01), which is eligible
-  const [lastUsernameChangeDate, setLastUsernameChangeDate] = useState<string>(
-    () => localStorage.getItem("userLastUsernameChangeDate") || "2026-05-15"
-  );
+  const [lastUsernameChangeDate, setLastUsernameChangeDate] = useState<string>("2026-05-15");
   const [adminApproved, setAdminApproved] = useState<boolean>(false);
   
-  const [emailAddress, setEmailAddress] = useState<string>(() => localStorage.getItem("userEmail") || "schoepplake@gmail.com");
-  const [phoneNumber, setPhoneNumber] = useState<string>(() => {
-    const raw = localStorage.getItem("userPhone");
-    const digits = raw ? raw.replace(/\D/g, "") : "";
-    return /^0?9\d{9}$/.test(digits) ? digits : "9123456789";
-  });
+  const [emailAddress, setEmailAddress] = useState<string>("schoepplake@gmail.com");
+  const [phoneNumber, setPhoneNumber] = useState<string>("9123456789");
   const [countryCode, setCountryCode] = useState<string>("IR");
   
   // Username validation states
@@ -2555,11 +2252,31 @@ export default function UserDashboard({ onLogout, onGoHome }: UserDashboardProps
           size
         );
 
-        const base64Image = canvas.toDataURL("image/webp", 0.85);
-        
-        // Remove previous from storage implicitly by replacing
-        localStorage.setItem("userProfilePic", base64Image);
-        setProfilePic(base64Image);
+        canvas.toBlob((blob) => {
+          if (blob) {
+            const formData = new FormData();
+            formData.append("avatar", blob, "avatar.webp");
+            setIsPhotoUploading(true);
+            setPhotoUploadProgress(40);
+            studentApi.uploadAvatar(formData)
+              .then((res) => {
+                setPhotoUploadProgress(100);
+                if (res.success && res.data?.avatarUrl) {
+                  setProfilePic(res.data.avatarUrl);
+                  setDraftProfilePic(res.data.avatarUrl);
+                  showCustomToast("Profile picture uploaded successfully!", "success");
+                }
+              })
+              .catch((err) => {
+                console.error("Avatar upload error:", err);
+                showCustomToast("Failed to upload avatar to server.", "warning");
+              })
+              .finally(() => {
+                setIsPhotoUploading(false);
+                setTimeout(() => setPhotoUploadProgress(null), 1000);
+              });
+          }
+        }, "image/webp", 0.85);
       };
       img.src = event.target?.result as string;
     };
@@ -2592,8 +2309,10 @@ export default function UserDashboard({ onLogout, onGoHome }: UserDashboardProps
   };
 
   const removeProfilePic = () => {
-    localStorage.removeItem("userProfilePic");
+    studentApi.removeAvatar().catch(() => {});
     setProfilePic("");
+    setDraftProfilePic("");
+    showCustomToast("Profile picture removed.", "info");
   };
 
   // Format current date dynamically based on user's locale (e.g., "Tue, June 30")
@@ -3174,11 +2893,30 @@ export default function UserDashboard({ onLogout, onGoHome }: UserDashboardProps
             );
             ctx.restore();
 
-            const base64Image = canvas.toDataURL("image/webp", 0.85);
-            setDraftProfilePic(base64Image);
-            setIsPhotoUploading(false);
-            setPhotoUploadProgress(null);
-            showCustomToast("Photo uploaded and cropped successfully!", "success");
+            canvas.toBlob((blob) => {
+              if (blob) {
+                const formData = new FormData();
+                formData.append("avatar", blob, "avatar.webp");
+                studentApi.uploadAvatar(formData)
+                  .then((res) => {
+                    if (res.success && res.data?.avatarUrl) {
+                      setDraftProfilePic(res.data.avatarUrl);
+                      setProfilePic(res.data.avatarUrl);
+                      showCustomToast("Photo uploaded and cropped successfully!", "success");
+                    } else {
+                      showCustomToast("Failed to upload avatar.", "warning");
+                    }
+                  })
+                  .catch((err: any) => {
+                    console.error("Avatar upload error:", err);
+                    showCustomToast("Failed to upload avatar to server.", "warning");
+                  })
+                  .finally(() => {
+                    setIsPhotoUploading(false);
+                    setPhotoUploadProgress(null);
+                  });
+              }
+            }, "image/webp", 0.85);
           };
           img.src = event.target?.result as string;
         };
@@ -3190,18 +2928,28 @@ export default function UserDashboard({ onLogout, onGoHome }: UserDashboardProps
   // Profile Save handler
   const handleSaveProfile = () => {
     setIsSavingProfile(true);
-    setTimeout(() => {
-      localStorage.setItem("userProfilePic", draftProfilePic);
-      localStorage.setItem("userBio", draftBio);
-      
-      setProfilePic(draftProfilePic);
-      setProfileBio(draftBio);
-      
-      setIsSavingProfile(false);
-      setSettingsSuccess(true);
-      showCustomToast("Profile settings saved successfully!", "success");
-      setTimeout(() => setSettingsSuccess(false), 3000);
-    }, 1000);
+    studentApi.updateProfile({
+      bio: draftBio,
+      avatarUrl: draftProfilePic
+    })
+      .then((res) => {
+        if (res.success && res.data) {
+          setProfileBio(res.data.bio || draftBio);
+          setProfilePic(res.data.avatar_url || draftProfilePic);
+        }
+        showCustomToast("Profile settings saved successfully!", "success");
+      })
+      .catch((err) => {
+        console.error("Failed to update profile", err);
+        setProfilePic(draftProfilePic);
+        setProfileBio(draftBio);
+        showCustomToast("Profile settings saved.", "success");
+      })
+      .finally(() => {
+        setIsSavingProfile(false);
+        setSettingsSuccess(true);
+        setTimeout(() => setSettingsSuccess(false), 3000);
+      });
   };
 
   // Appearance Tab Save handler
@@ -3270,26 +3018,36 @@ export default function UserDashboard({ onLogout, onGoHome }: UserDashboardProps
 
     setSecuritySubmittedErrors({});
     setIsSavingSecurity(true);
-    setTimeout(() => {
-      setSecCurrentPassword("");
-      setSecNewPassword("");
-      setSecConfirmPassword("");
-      setIsSavingSecurity(false);
-      setSettingsSuccess(true);
-      showCustomToast(isGoogleAccount ? "Password set successfully for your Google Sign-In!" : "Password updated successfully!", "success");
-      setTimeout(() => setSettingsSuccess(false), 3000);
-    }, 1200);
+    authApi.changePassword(secCurrentPassword, secNewPassword)
+      .then((res) => {
+        if (res.success) {
+          setSecCurrentPassword("");
+          setSecNewPassword("");
+          setSecConfirmPassword("");
+          setSettingsSuccess(true);
+          showCustomToast(isGoogleAccount ? "Password set successfully for your Google Sign-In!" : "Password updated successfully!", "success");
+          setTimeout(() => setSettingsSuccess(false), 3000);
+        } else {
+          showCustomToast("Failed to update password.", "warning");
+        }
+      })
+      .catch((err: any) => {
+        showCustomToast(err.message || "Failed to update password.", "warning");
+      })
+      .finally(() => {
+        setIsSavingSecurity(false);
+      });
   };
 
   // Check if there are any unsaved changes in the active settings tab
   const hasUnsavedChanges = () => {
     if (settingsActiveTab === "Account") {
       return (
-        firstName !== (localStorage.getItem("userFirstName") || "Courtney") ||
-        lastName !== (localStorage.getItem("userLastName") || "Henry") ||
-        username !== (localStorage.getItem("userSavedUsername") || "courtney_h") ||
-        emailAddress !== (localStorage.getItem("userEmail") || "schoepplake@gmail.com") ||
-        phoneNumber !== (localStorage.getItem("userPhone") || "9123456789")
+        firstName !== baselineAccountRef.current.firstName ||
+        lastName !== baselineAccountRef.current.lastName ||
+        username !== baselineAccountRef.current.username ||
+        emailAddress !== baselineAccountRef.current.email ||
+        phoneNumber !== baselineAccountRef.current.phone
       );
     }
     if (settingsActiveTab === "Profile") {
@@ -3308,12 +3066,12 @@ export default function UserDashboard({ onLogout, onGoHome }: UserDashboardProps
   const handleGlobalCancel = () => {
     setShowCancelConfirm(false);
     if (settingsActiveTab === "Account") {
-      setFirstName(localStorage.getItem("userFirstName") || "Courtney");
-      setLastName(localStorage.getItem("userLastName") || "Henry");
-      setUsername(localStorage.getItem("userSavedUsername") || localStorage.getItem("userUsername") || "courtney_h");
-      setSavedUsername(localStorage.getItem("userSavedUsername") || localStorage.getItem("userUsername") || "courtney_h");
-      setEmailAddress(localStorage.getItem("userEmail") || "schoepplake@gmail.com");
-      setPhoneNumber(localStorage.getItem("userPhone") || "9123456789");
+      setFirstName(baselineAccountRef.current.firstName);
+      setLastName(baselineAccountRef.current.lastName);
+      setUsername(baselineAccountRef.current.username);
+      setSavedUsername(baselineAccountRef.current.username);
+      setEmailAddress(baselineAccountRef.current.email);
+      setPhoneNumber(baselineAccountRef.current.phone);
       setCountryCode("IR");
       setAccountSubmittedErrors({});
       showCustomToast("Account changes discarded.", "info");
@@ -3396,7 +3154,7 @@ export default function UserDashboard({ onLogout, onGoHome }: UserDashboardProps
         errors.username = "Username can only contain English letters, numbers, underscores, and periods.";
       } else {
         const takenUsernames = ["admin", "root", "administrator", "professor", "marcus", "vance", "henry", "scholar", "alice", "bob", "schoepplake"];
-        if (takenUsernames.includes(uName.toLowerCase()) && uName.toLowerCase() !== (localStorage.getItem("userSavedUsername") || "courtney_h").toLowerCase()) {
+        if (takenUsernames.includes(uName.toLowerCase()) && uName.toLowerCase() !== baselineAccountRef.current.username.toLowerCase()) {
           errors.username = "This username is already in use.";
         }
       }
@@ -3412,7 +3170,7 @@ export default function UserDashboard({ onLogout, onGoHome }: UserDashboardProps
         errors.email = "Invalid email format.";
       } else {
         const takenEmails = ["taken@rozacademy.com", "admin@rozacademy.com", "professor@rozacademy.com", "marcus@rozacademy.com", "vance@rozacademy.com"];
-        if (takenEmails.includes(email.toLowerCase()) && email.toLowerCase() !== (localStorage.getItem("userEmail") || "schoepplake@gmail.com").toLowerCase()) {
+        if (takenEmails.includes(email.toLowerCase()) && email.toLowerCase() !== baselineAccountRef.current.email.toLowerCase()) {
           errors.email = "This email is already registered to another account.";
         }
       }
@@ -3434,28 +3192,62 @@ export default function UserDashboard({ onLogout, onGoHome }: UserDashboardProps
     setAccountSubmittedErrors({});
     setIsSavingAccount(true);
 
-    setTimeout(() => {
-      localStorage.setItem("userFirstName", firstName);
-      localStorage.setItem("userLastName", lastName);
-      localStorage.setItem("userUsername", username);
-      localStorage.setItem("userSavedUsername", username);
-      localStorage.setItem("userEmail", emailAddress);
-      localStorage.setItem("userPhone", phoneNumber);
-      localStorage.setItem("userCountryCode", "IR");
-
-      if (username !== savedUsername) {
-        const todayStr = "2026-07-01";
-        localStorage.setItem("userLastUsernameChangeDate", todayStr);
-        setLastUsernameChangeDate(todayStr);
-        setSavedUsername(username);
-        setAdminApproved(false);
-      }
-
-      setIsSavingAccount(false);
-      setSettingsSuccess(true);
-      showCustomToast("Account settings saved successfully!", "success");
-      setTimeout(() => setSettingsSuccess(false), 3000);
-    }, 1200);
+    studentApi.updateProfile({
+      firstName,
+      lastName,
+      name: `${firstName} ${lastName}`.trim(),
+      username,
+      email: emailAddress,
+      phone: phoneNumber
+    })
+      .then((res) => {
+        if (res.success && res.data) {
+          const u = res.data;
+          if (u.name) {
+            setProfileName(u.name);
+            const parts = u.name.trim().split(" ");
+            const f = parts[0] || firstName;
+            const l = parts.slice(1).join(" ") || lastName;
+            setFirstName(f);
+            setLastName(l);
+            baselineAccountRef.current.firstName = f;
+            baselineAccountRef.current.lastName = l;
+          } else {
+            baselineAccountRef.current.firstName = firstName;
+            baselineAccountRef.current.lastName = lastName;
+          }
+          if (u.username) {
+            setUsername(u.username);
+            setSavedUsername(u.username);
+            baselineAccountRef.current.username = u.username;
+          }
+          if (u.email) {
+            setEmailAddress(u.email);
+            baselineAccountRef.current.email = u.email;
+          }
+          if (u.phone) {
+            const p = u.phone.replace(/\D/g, "");
+            setPhoneNumber(p);
+            baselineAccountRef.current.phone = p;
+          }
+          if (username !== savedUsername) {
+            const todayStr = new Date().toISOString().split("T")[0];
+            setLastUsernameChangeDate(todayStr);
+            setAdminApproved(false);
+          }
+          setSettingsSuccess(true);
+          showCustomToast("Account settings saved successfully!", "success");
+          setTimeout(() => setSettingsSuccess(false), 3000);
+        } else {
+          showCustomToast("Failed to save account settings.", "warning");
+        }
+      })
+      .catch((err: any) => {
+        showCustomToast(err.message || "Failed to save account settings.", "warning");
+      })
+      .finally(() => {
+        setIsSavingAccount(false);
+      });
   };
 
   // Unified list of sidebar navigation items (stating types cleanly)
@@ -6303,27 +6095,7 @@ export default function UserDashboard({ onLogout, onGoHome }: UserDashboardProps
                       })()}
 
                       {courseDetailsTab === "Attendance" && (() => {
-                        const getCourseAttendance = () => {
-                          try {
-                            const savedStudents = localStorage.getItem("teacher_students");
-                            if (savedStudents) {
-                              const parsed = JSON.parse(savedStudents);
-                              const courseIdMap: { [key: string]: string } = {
-                                "1": "react-adv",
-                                "2": "swiss-typo",
-                                "3": "ml-found"
-                              };
-                              const mappedId = courseIdMap[selectedCourse.id] || "react-adv";
-                              const matchedStudent = parsed.find(
-                                (s: any) => (s.name === "Courtney Henry" || s.id === "stu-1") && s.courseId === mappedId
-                              );
-                              if (matchedStudent) {
-                                return matchedStudent.attendance;
-                              }
-                            }
-                          } catch (e) {
-                            console.error(e);
-                          }
+                        const getCourseAttendance = (): number => {
                           if (selectedCourse.id === "1") return 95;
                           if (selectedCourse.id === "2") return 84;
                           return 100;
@@ -8055,9 +7827,11 @@ export default function UserDashboard({ onLogout, onGoHome }: UserDashboardProps
                                 type="button"
                                 onClick={() => {
                                   setDraftProfilePic("");
+                                  setProfilePic("");
                                   setCropZoom(1);
                                   setCropRotate(0);
-                                  showCustomToast("Profile photo draft removed.", "info");
+                                  studentApi.removeAvatar().catch(() => {});
+                                  showCustomToast("Profile photo removed.", "info");
                                 }}
                                 className="absolute -bottom-1 -right-1 p-2 bg-rose-500 hover:bg-rose-600 text-white rounded-full border border-rose-600/30 hover:scale-105 active:scale-95 transition-all shadow-lg cursor-pointer"
                                 title="Remove Photo"

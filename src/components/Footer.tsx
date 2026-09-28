@@ -1,45 +1,59 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Send, Instagram, Github, Linkedin, Sparkles, ArrowRight } from "lucide-react";
+import { loadCmsConfig } from "../constants/defaultCms";
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
 
-  // Word slider state: alternates between "BUILD" and "CREATE"
-  const words = ["BUILD", "CREATE"];
+  const [footerConfig, setFooterConfig] = useState(() => loadCmsConfig().footer);
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      setFooterConfig(loadCmsConfig().footer);
+    };
+    window.addEventListener("cms_config_updated", handleUpdate);
+    window.addEventListener("storage", handleUpdate);
+    return () => {
+      window.removeEventListener("cms_config_updated", handleUpdate);
+      window.removeEventListener("storage", handleUpdate);
+    };
+  }, []);
+
+  // Word slider state: alternates between configured words
+  const words = footerConfig.animatedWords && footerConfig.animatedWords.length > 0
+    ? footerConfig.animatedWords
+    : ["BUILD", "CREATE"];
   const [wordIndex, setWordIndex] = useState(0);
 
   useEffect(() => {
+    if (words.length <= 1) return;
     const wordInterval = setInterval(() => {
       setWordIndex((prev) => (prev + 1) % words.length);
     }, 3000);
     return () => clearInterval(wordInterval);
-  }, []);
+  }, [words.length]);
 
   const socialLinks = [
     {
       name: "Telegram",
       icon: Send,
       url: "https://t.me/roozzero",
-      color: "hover:text-[#229ED9] hover:border-[#229ED9]/30 hover:bg-[#229ED9]/[0.02]",
     },
     {
       name: "Instagram",
       icon: Instagram,
       url: "https://instagram.com/roozzero",
-      color: "hover:text-white hover:border-transparent hover:bg-gradient-to-tr hover:from-[#F58529] hover:via-[#D62976] hover:to-[#962FBF] hover:shadow-[0_0_15px_rgba(214,41,118,0.3)]",
     },
     {
       name: "GitHub",
       icon: Github,
       url: "https://github.com/roozzero",
-      color: "hover:text-white hover:border-white/20 hover:bg-white/[0.02]",
     },
     {
       name: "LinkedIn",
       icon: Linkedin,
       url: "https://linkedin.com/in/roozzero",
-      color: "hover:text-[#0077B5] hover:border-[#0077B5]/30 hover:bg-[#0077B5]/[0.02]",
     },
   ];
 
@@ -80,7 +94,7 @@ export default function Footer() {
 
               {/* Smaller Subtitle */}
               <p className="font-sans text-xs sm:text-sm font-normal text-white/40 tracking-wider">
-                incredible work together.
+                {footerConfig.tagline || "incredible work together."}
               </p>
             </div>
 
@@ -90,7 +104,7 @@ export default function Footer() {
           <div className="flex flex-col items-start md:items-end space-y-5 text-left md:text-right w-full md:w-auto shrink-0">
             
             {/* Social Media Row */}
-            <div className="hidden sm:block space-y-2.5 w-full md:w-auto">
+            <div className="space-y-2.5 w-full md:w-auto">
               <p className="text-[10px] tracking-widest text-white/40 uppercase font-bold font-mono block">
                 Connect on Socials
               </p>
@@ -107,10 +121,10 @@ export default function Footer() {
                       rel="noopener noreferrer"
                       whileHover={{ scale: 1.03, y: -1 }}
                       whileTap={{ scale: 0.97 }}
-                      className={`flex items-center gap-2 px-3.5 py-2 rounded-xl border border-white/[0.05] bg-white/[0.01] text-white/50 transition-all duration-300 font-sans text-xs font-semibold tracking-wider ${social.color}`}
+                      className="group flex items-center gap-2 px-3.5 py-2 rounded-xl border border-white/10 bg-transparent text-white/50 hover:text-[#10b981] hover:border-[#10b981] hover:bg-transparent transition-colors duration-300 font-sans text-xs font-semibold tracking-wider cursor-pointer"
                     >
-                      <Icon size={13} className="shrink-0" />
-                      <span>{social.name}</span>
+                      <Icon size={13} className="shrink-0 transition-colors duration-300 text-white/50 group-hover:text-[#10b981]" />
+                      <span className="transition-colors duration-300 text-white/50 group-hover:text-[#10b981]">{social.name}</span>
                     </motion.a>
                   );
                 })}
@@ -128,7 +142,7 @@ export default function Footer() {
 
         {/* Copyright notice and Dynamic year */}
         <div className="flex flex-row items-center justify-between gap-2 text-center text-[9px] xs:text-[10px] sm:text-[11px] font-sans tracking-wider text-white/30 font-light w-full whitespace-nowrap">
-          <p className="whitespace-nowrap">© {currentYear} All Rights Reserved.</p>
+          <p className="whitespace-nowrap">© {currentYear} {footerConfig.brandName || "ROOZZERO"}. {footerConfig.copyright || "All Rights Reserved."}</p>
           <p className="flex items-center gap-1 whitespace-nowrap">
             Designed & Developed with <span className="text-emerald-500">❤️</span>.
           </p>
