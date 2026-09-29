@@ -48,160 +48,9 @@ export interface CourseResource {
   published: boolean;
 }
 
-export const getInitialCourseResources = (): CourseResource[] => {
-  const initial: CourseResource[] = [
-    {
-      id: "r1",
-      title: "Production Bundle & Code-Splitting Guide",
-      course: "Advanced React & Architecture",
-      uploadDate: "June 10, 2026",
-      fileType: "PDF",
-      fileName: "react_code_splitting_production_guide.pdf",
-      fileSize: "4.2 MB",
-      published: true
-    },
-    {
-      id: "r2",
-      title: "Advanced Memory Profiling Workshop Boilerplates",
-      course: "Advanced React & Architecture",
-      uploadDate: "June 20, 2026",
-      fileType: "ZIP",
-      fileName: "memory_profiling_workshop_exercises.zip",
-      fileSize: "15.8 MB",
-      published: true
-    },
-    {
-      id: "r3",
-      title: "Syllabus Presentation Slide Decks",
-      course: "Advanced React & Architecture",
-      uploadDate: "June 01, 2026",
-      fileType: "PPTX",
-      fileName: "advanced_react_architecture_syllabus_slides.pptx",
-      fileSize: "5.1 MB",
-      published: true
-    },
-    {
-      id: "r4",
-      title: "Aesthetic Color Palettes & Contrast Design Guide",
-      course: "Premium Dark Design Systems",
-      uploadDate: "May 15, 2026",
-      fileType: "Image",
-      fileName: "contrast_ratio_reference_board.png",
-      fileSize: "1.8 MB",
-      published: true
-    },
-    {
-      id: "r5",
-      title: "Micro-interactions & Spring Physics Presets",
-      course: "Premium Dark Design Systems",
-      uploadDate: "May 25, 2026",
-      fileType: "Source Code",
-      fileName: "spring_physics_framer_motion_presets.ts",
-      fileSize: "250 KB",
-      published: true
-    },
-    {
-      id: "r6",
-      title: "Deep Learning Foundations Lectures",
-      course: "Machine Learning Foundations",
-      uploadDate: "June 28, 2026",
-      fileType: "Video",
-      fileName: "machine_learning_foundations_lecture_01.mp4",
-      fileSize: "142.5 MB",
-      published: false
-    }
-  ];
+export const getInitialCourseResources = (): CourseResource[] => [];
 
-  return initial;
-};
-
-export const getInitialDetailedAssignments = (): AssignmentDetail[] => {
-  const initial: AssignmentDetail[] = [
-    {
-      id: "a1",
-      assignmentNum: 1,
-      title: "Custom Hooks & Memory Leak Audits",
-      course: "Advanced React & Architecture",
-      description: "Design custom React hooks that handle secure local state synchronization across windows. Complete an audit on the memory profiler inside Chrome DevTools, locate 3 simulated memory leaks, and patch them.",
-      publishDate: "June 03, 2026",
-      dueDate: "July 12, 2026, 11:59 PM",
-      status: "Not Submitted",
-      grade: null,
-      published: true,
-      files: [
-        { name: "react_memory_leak_audit_guide.pdf", size: "2.4 MB", type: "PDF" },
-        { name: "dashboard_boilerplate_workspace.zip", size: "12.8 MB", type: "ZIP" }
-      ]
-    },
-    {
-      id: "a2",
-      assignmentNum: 2,
-      title: "Concurrent Features Exploration",
-      course: "Advanced React & Architecture",
-      description: "Implement non-blocking UI rendering using React 18 transitions. Optimize high-volume search components with useTransition and useDeferredValue to ensure input feedback is instant.",
-      publishDate: "June 17, 2026",
-      dueDate: "August 01, 2026, 11:59 PM",
-      status: "Not Submitted",
-      grade: null,
-      published: true,
-      files: [
-        { name: "concurrent_rendering_syllabus.pdf", size: "1.1 MB", type: "PDF" }
-      ]
-    },
-    {
-      id: "a3",
-      assignmentNum: 1,
-      title: "Micro-interactions & Physics Canvas",
-      course: "Premium Dark Design Systems",
-      description: "Create an interactive fluid simulation using HTML5 Canvas or SVG inside React, incorporating beautiful motion micro-interactions, responsive sizing, and spring-physics.",
-      publishDate: "June 01, 2026",
-      dueDate: "June 25, 2026, 11:59 PM",
-      status: "Graded",
-      grade: "A+",
-      published: true,
-      files: [
-        { name: "microinteractions_curriculum_spec.pdf", size: "3.5 MB", type: "PDF" }
-      ],
-      submittedFile: { name: "galaxy_canvas_interaction_code.zip", size: "1.2 MB", type: "ZIP" },
-      submittedGithubUrl: "https://github.com/courtney-henry/fluid-canvas-interactions",
-      submittedNotes: "I used custom spring physics inside Framer Motion combined with canvas rendering. It achieves 60fps on mobile.",
-      feedback: "Outstanding visual precision. The hover micro-interactions are highly responsive. Your code is modular, well-commented, and perfectly styled.",
-      correctedFile: { name: "graded_annotated_solution.zip", size: "1.3 MB" }
-    },
-    {
-      id: "a4",
-      assignmentNum: 2,
-      title: "Bento Grid Layouts & Glowing Shadows",
-      course: "Premium Dark Design Systems",
-      description: "Develop a bento-grid styled interactive dashboard panel. Style components using Tailwind CSS utility classes and custom color variables, maintaining exactly 0.0 CLS.",
-      publishDate: "June 15, 2026",
-      dueDate: "July 20, 2026, 11:59 PM",
-      status: "Under Review",
-      grade: null,
-      published: true,
-      submittedFile: { name: "bento_grid_interactive_dashboard.zip", size: "4.8 MB", type: "ZIP" },
-      submittedGithubUrl: "https://github.com/courtney-henry/bento-dashboard",
-      submittedNotes: "I focused on responsiveness and elegant drop shadows. It fits perfectly on mobile up to ultra-wide desktop monitors."
-    },
-    {
-      id: "a5",
-      assignmentNum: 1,
-      title: "Linear Regression Foundations",
-      course: "Machine Learning Foundations",
-      description: "Formulate simple linear regression equations, derive cost functions, and construct optimization passes using batch gradient descent from scratch.",
-      publishDate: "July 10, 2026",
-      dueDate: "July 31, 2026, 11:59 PM",
-      status: "Not Submitted",
-      grade: null,
-      published: false, // Course 3 has NO published assignments by default!
-      files: [
-        { name: "linear_regression_formulas.pdf", size: "850 KB", type: "PDF" }
-      ]
-    }
-  ];
-
-  return initial;
-};
+export const getInitialDetailedAssignments = (): AssignmentDetail[] => [];
 
 export interface DiscussionMessage {
   id: string;
@@ -223,114 +72,7 @@ export interface Conversation {
   messages: DiscussionMessage[];
 }
 
-export const getInitialConversations = (): Conversation[] => {
-  const initial: Conversation[] = [
-    {
-      id: "c1",
-      courseId: "1",
-      title: "Question about Server-Side Rendering in React 19",
-      recipient: "Course Instructor",
-      status: "Replied",
-      lastActivity: "June 29, 2026, 11:45 AM",
-      messages: [
-        {
-          id: "m1",
-          sender: "Student",
-          senderName: "Courtney Henry",
-          avatarText: "CH",
-          text: "Hi Dr. Sarah, I'm working on the Server Components section. Should we prefer using server actions for all mutations, or are standard API routes still recommended for decoupled custom architectures?",
-          time: "June 29, 2026, 10:15 AM"
-        },
-        {
-          id: "m2",
-          sender: "Instructor",
-          senderName: "Dr. Sarah Vance",
-          avatarText: "SV",
-          text: "Hello Courtney! Server Actions are great for form submissions and simple mutations within the same origin. However, for a fully decoupled application, custom APIs, or third-party webhooks, standard API routes remain highly robust. I've attached a reference diagram on SSR mutation patterns for your study.",
-          time: "June 29, 2026, 11:45 AM",
-          attachments: [
-            { name: "ssr_mutation_flows.png", type: "Image" }
-          ]
-        }
-      ]
-    },
-    {
-      id: "c2",
-      courseId: "1",
-      title: "Access credentials to VPC cloud environment for sandbox deployment",
-      recipient: "Academy Administrator",
-      status: "Under Review",
-      lastActivity: "June 30, 2026, 8:12 AM",
-      messages: [
-        {
-          id: "m1",
-          sender: "Student",
-          senderName: "Courtney Henry",
-          avatarText: "CH",
-          text: "Hi support team, I need access to the private sandbox AWS environment to deploy my final React architectural project. Can you please check and grant the necessary IAM credentials to my user account?",
-          time: "June 30, 2026, 8:12 AM"
-        }
-      ]
-    },
-    {
-      id: "c3",
-      courseId: "2",
-      title: "Syllabus details on Contrast ratios and WCAG AA compliance in Dark Themes",
-      recipient: "Course Instructor",
-      status: "Replied",
-      lastActivity: "June 25, 2026, 4:30 PM",
-      messages: [
-        {
-          id: "m1",
-          sender: "Student",
-          senderName: "Courtney Henry",
-          avatarText: "CH",
-          text: "In dark interfaces, what contrast ratio is recommended for body copy versus tiny secondary captions to retain high readability without causing visual strain?",
-          time: "June 25, 2026, 2:00 PM"
-        },
-        {
-          id: "m2",
-          sender: "Instructor",
-          senderName: "Marcus Aurelius",
-          avatarText: "MA",
-          text: "Courtney, for premium dark systems we aim for at least 4.5:1 (WCAG AA) for standard body copy. For captions, you can go lower to 3:1 only if font-weight or size is increased slightly. I've attached our internal premium contrast guideline cheat sheet.",
-          time: "June 25, 2026, 4:30 PM",
-          attachments: [
-            { name: "wcag_dark_contrast_standards.pdf", type: "PDF" }
-          ]
-        }
-      ]
-    },
-    {
-      id: "c4",
-      courseId: "3",
-      title: "Required Math Prerequisites for Linear Regression Lessons",
-      recipient: "Course Instructor",
-      status: "Closed",
-      lastActivity: "June 20, 2026, 5:15 PM",
-      messages: [
-        {
-          id: "m1",
-          sender: "Student",
-          senderName: "Courtney Henry",
-          avatarText: "CH",
-          text: "Hi Dr. Turing, do I need to deeply study partial derivatives before starting Session 2, or is basic matrix multiplication sufficient?",
-          time: "June 20, 2026, 1:10 PM"
-        },
-        {
-          id: "m2",
-          sender: "Instructor",
-          senderName: "Dr. Alan Turing",
-          avatarText: "AT",
-          text: "Courtney, basic matrix multiplication is highly sufficient for now. We will introduce partial derivatives of the cost function gently when we code Gradient Descent. No need to stress!",
-          time: "June 20, 2026, 5:15 PM"
-        }
-      ]
-    }
-  ];
-
-  return initial;
-};
+export const getInitialConversations = (): Conversation[] => [];
 
 export const validateGitHubUrl = (url: string): boolean => {
   if (!url) return true;
@@ -485,53 +227,7 @@ interface SessionDetail {
   recordingAvailable?: boolean;
 }
 
-const generateInitialSessions = (): { [courseId: string]: SessionDetail[] } => {
-  return {
-    "1": [
-      { id: "1-1", sessionNum: 1, topic: "Vite & HMR Essentials", duration: "90 Mins", date: "June 03, 2026", time: "10:00 AM – 11:30 AM", status: "Completed" },
-      { id: "1-2", sessionNum: 2, topic: "State Managers & Flux", duration: "90 Mins", date: "June 10, 2026", time: "10:00 AM – 11:30 AM", status: "Completed" },
-      { id: "1-3", sessionNum: 3, topic: "Component Modeling", duration: "90 Mins", date: "June 17, 2026", time: "10:00 AM – 11:30 AM", status: "Completed" },
-      { id: "1-4", sessionNum: 4, topic: "Custom Hooks", duration: "90 Mins", date: "June 24, 2026", time: "10:00 AM – 11:30 AM", status: "Completed" },
-      { id: "1-5", sessionNum: 5, topic: "Concurrent Rendering", duration: "90 Mins", date: "July 01, 2026", time: "10:00 AM – 11:30 AM", status: "Completed" },
-      { id: "1-6", sessionNum: 6, topic: "Fiber Architecture", duration: "90 Mins", date: "July 08, 2026", time: "10:00 AM – 11:30 AM", status: "Completed" },
-      { id: "1-7", sessionNum: 7, topic: "Suspense & Transitions", duration: "90 Mins", date: "July 15, 2026", time: "10:00 AM – 11:30 AM", status: "Completed" },
-      { id: "1-8", sessionNum: 8, topic: "Server Components", duration: "90 Mins", date: "July 22, 2026", time: "10:00 AM – 11:30 AM", status: "Completed" },
-      { id: "1-9", sessionNum: 9, topic: "Performance Tuning", duration: "90 Mins", date: "July 29, 2026", time: "10:00 AM – 11:30 AM", status: "Scheduled", meetingLink: "https://zoom.us/j/98765432101" },
-      { id: "1-10", sessionNum: 10, topic: "Memory Leak Audits", duration: "90 Mins", date: "August 05, 2026", time: "10:00 AM – 11:30 AM", status: "Not Held" },
-      { id: "1-11", sessionNum: 11, topic: "Testing & Mocking", duration: "90 Mins", date: "August 12, 2026", time: "10:00 AM – 11:30 AM", status: "Cancelled", cancellationReason: "Instructor attending React Global Summit. Content moved to Session 12 self-study." },
-      { id: "1-12", sessionNum: 12, topic: "Production Deployment", duration: "90 Mins", date: "August 19, 2026", time: "10:00 AM – 11:30 AM", status: "Not Held" }
-    ],
-    "2": [
-      { id: "2-1", sessionNum: 1, topic: "Swiss Typography", duration: "90 Mins", date: "May 12, 2026", time: "14:00 – 15:30", status: "Completed" },
-      { id: "2-2", sessionNum: 2, topic: "Color Theory & Contrast", duration: "90 Mins", date: "May 19, 2026", time: "14:00 – 15:30", status: "Completed" },
-      { id: "2-3", sessionNum: 3, topic: "Tailwind Variables", duration: "90 Mins", date: "May 26, 2026", time: "14:00 – 15:30", status: "Completed" },
-      { id: "2-4", sessionNum: 4, topic: "Micro-interactions", duration: "90 Mins", date: "June 02, 2026", time: "14:00 – 15:30", status: "Completed" },
-      { id: "2-5", sessionNum: 5, topic: "Bento Grid Layouts", duration: "90 Mins", date: "June 09, 2026", time: "14:00 – 15:30", status: "Completed" },
-      { id: "2-6", sessionNum: 6, topic: "Dark Mode Principles", duration: "90 Mins", date: "June 16, 2026", time: "14:00 – 15:30", status: "Completed" },
-      { id: "2-7", sessionNum: 7, topic: "Fluid Layouts & Spacing", duration: "90 Mins", date: "June 23, 2026", time: "14:00 – 15:30", status: "Completed" },
-      { id: "2-8", sessionNum: 8, topic: "Motion Design", duration: "90 Mins", date: "June 30, 2026", time: "14:00 – 15:30", status: "Completed" },
-      { id: "2-9", sessionNum: 9, topic: "Component Libraries", duration: "90 Mins", date: "July 07, 2026", time: "14:00 – 15:30", status: "Completed" },
-      { id: "2-10", sessionNum: 10, topic: "System Documentation", duration: "90 Mins", date: "July 14, 2026", time: "14:00 – 15:30", status: "Completed" }
-    ],
-    "3": [
-      { id: "3-1", sessionNum: 1, topic: "Linear Regression Foundations", duration: "120 Mins", date: "July 15, 2026", time: "14:00 – 16:00", status: "Scheduled", meetingLink: "https://zoom.us/j/12345678901" },
-      { id: "3-2", sessionNum: 2, topic: "Gradient Descent Algorithms", duration: "120 Mins", date: "July 22, 2026", time: "14:00 – 16:00", status: "Not Held" },
-      { id: "3-3", sessionNum: 3, topic: "Multi-layer Perceptrons", duration: "120 Mins", date: "July 29, 2026", time: "14:00 – 16:00", status: "Not Held" },
-      { id: "3-4", sessionNum: 4, topic: "Neural Network Tuning", duration: "120 Mins", date: "August 05, 2026", time: "14:00 – 16:00", status: "Not Held" },
-      { id: "3-5", sessionNum: 5, topic: "Fine-tuning Models", duration: "120 Mins", date: "August 12, 2026", time: "14:00 – 16:00", status: "Not Held" },
-      { id: "3-6", sessionNum: 6, topic: "Prompt Engineering", duration: "120 Mins", date: "August 19, 2026", time: "14:00 – 16:00", status: "Not Held" },
-      { id: "3-7", sessionNum: 7, topic: "Transformer Models", duration: "120 Mins", date: "August 26, 2026", time: "14:00 – 16:00", status: "Not Held" },
-      { id: "3-8", sessionNum: 8, topic: "Attention Mechanisms", duration: "120 Mins", date: "September 02, 2026", time: "14:00 – 16:00", status: "Not Held" },
-      { id: "3-9", sessionNum: 9, topic: "Convolutional Nets", duration: "120 Mins", date: "September 09, 2026", time: "14:00 – 16:00", status: "Not Held" },
-      { id: "3-10", sessionNum: 10, topic: "Recurrent Architectures", duration: "120 Mins", date: "September 16, 2026", time: "14:00 – 16:00", status: "Not Held" },
-      { id: "3-11", sessionNum: 11, topic: "Reinforcement Learning", duration: "120 Mins", date: "September 23, 2026", time: "14:00 – 16:00", status: "Not Held" },
-      { id: "3-12", sessionNum: 12, topic: "Generative Adversarial Nets", duration: "120 Mins", date: "September 30, 2026", time: "14:00 – 16:00", status: "Not Held" },
-      { id: "3-13", sessionNum: 13, topic: "Clustering & SVMs", duration: "120 Mins", date: "October 07, 2026", time: "14:00 – 16:00", status: "Not Held" },
-      { id: "3-14", sessionNum: 14, topic: "PCA & Dimension Reduction", duration: "120 Mins", date: "October 14, 2026", time: "14:00 – 16:00", status: "Not Held" },
-      { id: "3-15", sessionNum: 15, topic: "Final ML Capstone", duration: "120 Mins", date: "October 21, 2026", time: "14:00 – 16:00", status: "Not Held" }
-    ]
-  };
-};
+const generateInitialSessions = (): { [courseId: string]: SessionDetail[] } => ({});
 
 interface CertificateCardProps {
   course: {
@@ -549,7 +245,7 @@ interface CertificateCardProps {
 
 const CertificateCard: React.FC<CertificateCardProps> = ({
   course,
-  studentName = "Courtney Henry",
+  studentName = "Student",
   showCustomToast
 }) => {
   const isPassed = course.progress >= 60;
@@ -763,11 +459,13 @@ interface PremiumFeedbackModalProps {
     totalSessions: number;
     progress: number;
   };
+  studentName?: string;
   onClose: () => void;
 }
 
 const PremiumFeedbackModal: React.FC<PremiumFeedbackModalProps> = ({
   course,
+  studentName = "Student",
   onClose
 }) => {
   // ESC key to close
@@ -787,7 +485,7 @@ const PremiumFeedbackModal: React.FC<PremiumFeedbackModalProps> = ({
     strengths: "Excellent grasp of concurrent rendering paradigms and performance tuning. Demonstrated exceptional engineering in designing custom hooks and memory leak audits.",
     weaknesses: "Could spend a bit more focus on documenting decoupled custom architectures and service-to-service state synchronization flows.",
     suggestions: "Deepen understanding of React Server Components (RSC) and study HTTP/3 streaming strategies for complex edge delivery.",
-    comments: "Courtney has shown stellar performance throughout the core syllabus. Highly capable of leading complex web engineering projects."
+    comments: `${studentName || "Student"} has shown stellar performance throughout the core syllabus. Highly capable of leading complex web engineering projects.`
   };
 
   if (course.title.toLowerCase().includes("design")) {
@@ -795,7 +493,7 @@ const PremiumFeedbackModal: React.FC<PremiumFeedbackModalProps> = ({
       strengths: "Unparalleled eye for pixel-perfection, Swiss typography principles, and WCAG AA contrast compliance in complex dark layouts.",
       weaknesses: "Occasionally spent too much time perfecting micro-interaction timing in early sandbox drafts before establishing baseline wireframes.",
       suggestions: "Perfect standard design token automation using Style Dictionary to scale systems across multiple platforms like Android and iOS.",
-      comments: "A masterclass student. Courtney's ability to maintain a dark design theme with aesthetic harmony and high usability is phenomenal."
+      comments: `A masterclass student. ${(studentName || "Student")}'s ability to maintain a dark design theme with aesthetic harmony and high usability is phenomenal.`
     };
   } else if (course.title.toLowerCase().includes("learning") || course.title.toLowerCase().includes("machine")) {
     recommendation = {
@@ -947,7 +645,7 @@ interface PremiumCertificateViewerModalProps {
 
 const PremiumCertificateViewerModal: React.FC<PremiumCertificateViewerModalProps> = ({
   course,
-  studentName = "Courtney Henry",
+  studentName = "Student",
   onClose,
   showCustomToast
 }) => {
@@ -1237,133 +935,13 @@ export default function UserDashboard({ onLogout, onGoHome }: UserDashboardProps
   const currentYear = new Date().getFullYear();
 
   // State to simulate new projects list
-  const [projectsList, setProjectsList] = useState([
-    { name: "Product launch", tasks: "6 tasks", teammates: "12 teammates", color: "from-purple-500 to-indigo-500" },
-    { name: "Team brainstorm", tasks: "2 tasks", teammates: "32 teammates", color: "from-blue-500 to-cyan-500" },
-    { name: "Branding launch", tasks: "4 tasks", teammates: "9 teammates", color: "from-teal-500 to-emerald-500" }
-  ]);
+  const [projectsList, setProjectsList] = useState<any[]>([]);
 
   // Inbox interactive state
-  const [emails, setEmailList] = useState([
-    {
-      id: "1",
-      from: "Professor Sarah Vance",
-      subject: "Syllabus Update: Week 4 Assignments",
-      date: "9:24 AM",
-      body: "Hello Courtney,\n\nI have updated the Week 4 syllabus with additional reading materials on React hooks and state management. Please review them before the next lecture.\n\nBest,\nSarah",
-      read: false,
-      attachments: [
-        { name: "Syllabus_Update_Week4.pdf", type: "PDF" as const, size: "1.2 MB" },
-        { name: "React_State_Patterns_Reference.pdf", type: "PDF" as const, size: "850 KB" }
-      ]
-    },
-    {
-      id: "2",
-      from: "Roozzero Admin",
-      subject: "Welcome to Premium Student Portal",
-      date: "Yesterday",
-      body: "Welcome Courtney! Your Roozzero Premium student workspace has been successfully provisioned. Enjoy the AI-powered task recommendations, priority course enrollments, and customized planner boards.\n\nCheers,\nAdmin",
-      read: true,
-      attachments: [
-        { name: "rozacademy_guide_v1.pdf", type: "PDF" as const, size: "3.4 MB" },
-        { name: "dashboard_layout_mockup.png", type: "Image" as const, size: "1.1 MB" }
-      ]
-    },
-    {
-      id: "3",
-      from: "John Doe (Teammate)",
-      subject: "Group Assignment Feedback",
-      date: "June 29",
-      body: "Hey Courtney, looked at the custom hooks outline you drafted. The approach is extremely solid! Let's get together during the next lab to assemble the final design system presentation.",
-      read: true
-    },
-  ]);
+  const [emails, setEmailList] = useState<any[]>([]);
 
   // My Courses interactive state
-  const [courses, setCourses] = useState([
-    {
-      id: "1",
-      title: "Advanced React & Architecture",
-      instructor: "Dr. Sarah Vance",
-      startDate: "June 01, 2026",
-      endDate: "August 15, 2026",
-      totalSessions: 12,
-      completedSessions: 8,
-      nextSession: "July 01, 2026 at 10:00 AM",
-      status: "Active",
-      thumbnail: "/src/assets/images/react_thumbnail_1782829644127.jpg",
-      progress: 67,
-      lessons: [
-        "Vite & HMR Essentials",
-        "State Managers & Flux",
-        "Component Modeling",
-        "Custom Hooks",
-        "Concurrent Rendering",
-        "Fiber Architecture",
-        "Suspense & Transitions",
-        "Server Components",
-        "Performance Tuning",
-        "Memory Leak Audits",
-        "Testing & Mocking",
-        "Production Deployment"
-      ]
-    },
-    {
-      id: "2",
-      title: "Premium Dark Design Systems",
-      instructor: "Marcus Aurelius",
-      startDate: "May 10, 2026",
-      endDate: "July 20, 2026",
-      totalSessions: 10,
-      completedSessions: 10,
-      nextSession: "None (Course Completed)",
-      status: "Completed",
-      thumbnail: "/src/assets/images/design_thumbnail_1782829662379.jpg",
-      progress: 100,
-      lessons: [
-        "Swiss Typography",
-        "Color Theory & Contrast",
-        "Tailwind Variables",
-        "Micro-interactions",
-        "Bento Grid Layouts",
-        "Dark Mode Principles",
-        "Fluid Layouts & Spacing",
-        "Motion Design",
-        "Component Libraries",
-        "System Documentation"
-      ]
-    },
-    {
-      id: "3",
-      title: "Machine Learning Foundations",
-      instructor: "Dr. Alan Turing",
-      startDate: "July 15, 2026",
-      endDate: "September 30, 2026",
-      totalSessions: 15,
-      completedSessions: 0,
-      nextSession: "July 15, 2026 at 02:00 PM",
-      status: "Waiting to Start",
-      thumbnail: "/src/assets/images/ml_thumbnail_1782829674713.jpg",
-      progress: 0,
-      lessons: [
-        "Linear Regression Foundations",
-        "Gradient Descent Algorithms",
-        "Multi-layer Perceptrons",
-        "Neural Network Tuning",
-        "Fine-tuning Models",
-        "Prompt Engineering",
-        "Transformer Models",
-        "Attention Mechanisms",
-        "Convolutional Nets",
-        "Recurrent Architectures",
-        "Reinforcement Learning",
-        "Generative Adversarial Nets",
-        "Clustering & SVMs",
-        "PCA & Dimension Reduction",
-        "Final ML Capstone"
-      ]
-    }
-  ]);
+  const [courses, setCourses] = useState<any[]>([]);
 
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
   const [courseFilter, setCourseFilter] = useState<"All" | "Active" | "Completed" | "Waiting to Start">("All");
@@ -1373,7 +951,7 @@ export default function UserDashboard({ onLogout, onGoHome }: UserDashboardProps
   const [customToasts, setCustomToasts] = useState<{ id: string; message: string; type: "info" | "success" | "warning" }[]>([]);
   const [isClassNowSimulated, setIsClassNowSimulated] = useState<boolean>(false);
   
-  const [courseSessions, setCourseSessions] = useState<{ [courseId: string]: SessionDetail[] }>(() => generateInitialSessions());
+  const [courseSessions, setCourseSessions] = useState<{ [courseId: string]: SessionDetail[] }>({});
 
   const [activeJoinSession, setActiveJoinSession] = useState<SessionDetail | null>(null);
   const [simulatedNowSessions, setSimulatedNowSessions] = useState<{ [sessionId: string]: boolean }>({});
@@ -1476,18 +1054,7 @@ export default function UserDashboard({ onLogout, onGoHome }: UserDashboardProps
     });
   };
   
-  const [courseDiscussions, setCourseDiscussions] = useState<{ [courseId: string]: { id: string; sender: string; role: string; time: string; text: string }[] }>({
-    "1": [
-      { id: "1", sender: "Dr. Sarah Vance", role: "Instructor", time: "10:05 AM", text: "Welcome to Advanced React & Architecture! Please make sure to review the syllabus." },
-      { id: "2", sender: "Courtney Henry", role: "Student (You)", time: "10:12 AM", text: "Excited for this course! I am working on the first assignment." }
-    ],
-    "2": [
-      { id: "1", sender: "Marcus Aurelius", role: "Instructor", time: "Yesterday", text: "Great job on the Swiss Typography design layouts, everyone." }
-    ],
-    "3": [
-      { id: "1", sender: "Dr. Alan Turing", role: "Instructor", time: "Monday", text: "Class starts soon. Get ready to dive into Linear Regression." }
-    ]
-  });
+  const [courseDiscussions, setCourseDiscussions] = useState<{ [courseId: string]: { id: string; sender: string; role: string; time: string; text: string }[] }>({});
   const [newDiscussionText, setNewDiscussionText] = useState("");
   const [feedbackRating, setFeedbackRating] = useState<number>(0);
   const [feedbackText, setFeedbackText] = useState("");
@@ -1529,13 +1096,13 @@ export default function UserDashboard({ onLogout, onGoHome }: UserDashboardProps
   };
 
   // Assignments interactive state
-  const [assignments, setAssignments] = useState<AssignmentDetail[]>(getInitialDetailedAssignments);
+  const [assignments, setAssignments] = useState<AssignmentDetail[]>([]);
 
   // Course resources interactive state
-  const [resources, setResources] = useState<CourseResource[]>(getInitialCourseResources);
+  const [resources, setResources] = useState<CourseResource[]>([]);
 
   // Premium interactive discussion messaging system states
-  const [conversations, setConversations] = useState<Conversation[]>(getInitialConversations);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeDiscussionFilter, setActiveDiscussionFilter] = useState<"All" | "Replied" | "Under Review" | "Closed">("All");
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const [confirmingCloseConvId, setConfirmingCloseConvId] = useState<string | null>(null);
@@ -1553,11 +1120,11 @@ export default function UserDashboard({ onLogout, onGoHome }: UserDashboardProps
   const [newDiscussionAttachment, setNewDiscussionAttachment] = useState<{ name: string; type: "Image" | "PDF" } | null>(null);
 
   const baselineAccountRef = useRef({
-    firstName: "Courtney",
-    lastName: "Henry",
-    username: "courtney_h",
-    email: "schoepplake@gmail.com",
-    phone: "9123456789"
+    firstName: "",
+    lastName: "",
+    username: "",
+    email: "",
+    phone: ""
   });
 
   // Load authoritative student data from MySQL backend APIs
@@ -1573,8 +1140,8 @@ export default function UserDashboard({ onLogout, onGoHome }: UserDashboardProps
           if (u.name) {
             setProfileName(u.name);
             const parts = u.name.trim().split(" ");
-            const f = parts[0] || "Courtney";
-            const l = parts.slice(1).join(" ") || "Henry";
+            const f = parts[0] || "";
+            const l = parts.slice(1).join(" ") || "";
             setFirstName(f);
             setLastName(l);
             baselineAccountRef.current.firstName = f;
@@ -1612,13 +1179,13 @@ export default function UserDashboard({ onLogout, onGoHome }: UserDashboardProps
     studentApi.getCourses()
       .then((res) => {
         if (!isMounted) return;
-        if (res.success && Array.isArray(res.data) && res.data.length > 0) {
+        if (res.success && Array.isArray(res.data)) {
           const mappedCourses = res.data.map((c: any) => ({
             id: String(c.id),
             title: c.title,
             instructor: c.teacher_name || "Instructor",
-            startDate: c.joined_date ? new Date(c.joined_date).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }) : "June 01, 2026",
-            endDate: "August 15, 2026",
+            startDate: c.joined_date ? new Date(c.joined_date).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }) : "",
+            endDate: "",
             totalSessions: c.sessions_count || 12,
             completedSessions: Math.round(((c.progress || 0) / 100) * (c.sessions_count || 12)),
             nextSession: "Upcoming Session",
@@ -1626,32 +1193,27 @@ export default function UserDashboard({ onLogout, onGoHome }: UserDashboardProps
             thumbnail: c.image || "/src/assets/images/react_thumbnail_1782829644127.jpg",
             progress: c.progress || 0,
             lessons: [
-              "Vite & HMR Essentials",
-              "State Managers & Flux",
-              "Component Modeling",
-              "Custom Hooks",
-              "Concurrent Rendering",
-              "Fiber Architecture",
-              "Suspense & Transitions",
-              "Server Components",
-              "Performance Tuning",
-              "Memory Leak Audits",
-              "Testing & Mocking",
+              "Course Introduction",
+              "Core Concepts & Architecture",
+              "Practical Workshops & Projects",
               "Production Deployment"
             ]
           }));
           setCourses(mappedCourses);
+        } else {
+          setCourses([]);
         }
       })
       .catch((err) => {
         console.error("Failed to load courses:", err);
+        setCourses([]);
       });
 
     // 3. Sessions
     studentApi.getSessions()
       .then((res) => {
         if (!isMounted) return;
-        if (res.success && Array.isArray(res.data) && res.data.length > 0) {
+        if (res.success && Array.isArray(res.data)) {
           const grouped: { [courseId: string]: SessionDetail[] } = {};
           res.data.forEach((s: any, idx: number) => {
             const cId = String(s.courseId);
@@ -1670,26 +1232,29 @@ export default function UserDashboard({ onLogout, onGoHome }: UserDashboardProps
               recordingAvailable: s.status === "Held" || s.status === "Completed"
             });
           });
-          setCourseSessions((prev) => ({ ...prev, ...grouped }));
+          setCourseSessions(grouped);
+        } else {
+          setCourseSessions({});
         }
       })
       .catch((err) => {
         console.error("Failed to load sessions:", err);
+        setCourseSessions({});
       });
 
     // 4. Assignments
     studentApi.getAssignments()
       .then((res) => {
         if (!isMounted) return;
-        if (res.success && Array.isArray(res.data) && res.data.length > 0) {
+        if (res.success && Array.isArray(res.data)) {
           const mappedAssignments: AssignmentDetail[] = res.data.map((a: any, idx: number) => ({
             id: String(a.id),
             assignmentNum: idx + 1,
             title: a.title,
-            course: a.courseTitle || "Advanced React & Architecture",
+            course: a.courseTitle || "",
             description: a.description || "",
-            publishDate: a.publishDate || "June 03, 2026",
-            dueDate: a.dueDate || "July 12, 2026",
+            publishDate: a.publishDate || "",
+            dueDate: a.dueDate || "",
             status: a.mySubmission ? (a.mySubmission.grade !== null ? "Graded" : (a.mySubmission.status === "Under Review" ? "Under Review" : "Submitted")) : "Not Submitted",
             grade: a.mySubmission?.grade !== null && a.mySubmission?.grade !== undefined ? `${a.mySubmission.grade}%` : null,
             published: true,
@@ -1699,39 +1264,45 @@ export default function UserDashboard({ onLogout, onGoHome }: UserDashboardProps
             correctedFile: a.mySubmission?.correctedFileName ? { name: a.mySubmission.correctedFileName, size: "1.5 MB" } : undefined
           }));
           setAssignments(mappedAssignments);
+        } else {
+          setAssignments([]);
         }
       })
       .catch((err) => {
         console.error("Failed to load assignments:", err);
+        setAssignments([]);
       });
 
     // 5. Resources
     studentApi.getResources()
       .then((res) => {
         if (!isMounted) return;
-        if (res.success && Array.isArray(res.data) && res.data.length > 0) {
+        if (res.success && Array.isArray(res.data)) {
           const mappedResources: CourseResource[] = res.data.map((r: any) => ({
             id: String(r.id),
             title: r.title,
-            course: r.courseTitle || "Advanced React & Architecture",
-            uploadDate: r.uploadedAt || "June 10, 2026",
+            course: r.courseTitle || "",
+            uploadDate: r.uploadedAt || "",
             fileType: r.fileType || "PDF",
             fileName: r.title,
-            fileSize: r.fileSize || "4.2 MB",
+            fileSize: r.fileSize || "1.0 MB",
             published: true
           }));
           setResources(mappedResources);
+        } else {
+          setResources([]);
         }
       })
       .catch((err) => {
         console.error("Failed to load resources:", err);
+        setResources([]);
       });
 
     // 6. Discussions
     studentApi.getDiscussions()
       .then((res) => {
         if (!isMounted) return;
-        if (res.success && Array.isArray(res.data) && res.data.length > 0) {
+        if (res.success && Array.isArray(res.data)) {
           const mappedConvs: Conversation[] = res.data.map((d: any) => ({
             id: String(d.id),
             courseId: String(d.courseId),
@@ -1743,8 +1314,8 @@ export default function UserDashboard({ onLogout, onGoHome }: UserDashboardProps
               {
                 id: `msg-${d.id}-base`,
                 sender: "Student",
-                senderName: d.studentName || "Courtney Henry",
-                avatarText: "CH",
+                senderName: d.studentName || profileName || "Student",
+                avatarText: (d.studentName || profileName || "ST").substring(0, 2).toUpperCase(),
                 text: d.text,
                 time: d.time || "Recent"
               },
@@ -1752,17 +1323,66 @@ export default function UserDashboard({ onLogout, onGoHome }: UserDashboardProps
                 id: String(rep.id),
                 sender: rep.role === "Student" ? "Student" : (rep.role === "Administrator" ? "Academy Admin" : "Instructor"),
                 senderName: rep.sender,
-                avatarText: rep.role === "Student" ? "CH" : "SV",
+                avatarText: (rep.sender || "IN").substring(0, 2).toUpperCase(),
                 text: rep.text,
                 time: rep.time || "Recent"
               }))
             ]
           }));
           setConversations(mappedConvs);
+        } else {
+          setConversations([]);
         }
       })
       .catch((err) => {
         console.error("Failed to load discussions:", err);
+        setConversations([]);
+      });
+
+    // 7. Notifications
+    studentApi.getNotifications()
+      .then((res) => {
+        if (!isMounted) return;
+        if (res.success && Array.isArray(res.data)) {
+          const mapped = res.data.map((n: any) => ({
+            id: String(n.id),
+            title: n.title,
+            preview: n.message,
+            timestamp: n.created_at ? new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "Just now",
+            read: Boolean(n.is_read),
+            type: (n.type?.toLowerCase() || "message") as any,
+            targetId: n.target_id ? String(n.target_id) : undefined
+          }));
+          setNotifications(mapped);
+        } else {
+          setNotifications([]);
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to load notifications:", err);
+        setNotifications([]);
+      });
+
+    // 8. Calendar
+    studentApi.getCalendar()
+      .then((res) => {
+        if (!isMounted) return;
+        if (res.success && Array.isArray(res.data)) {
+          const mapped = res.data.map((e: any) => ({
+            id: String(e.id),
+            title: e.title,
+            time: e.time || "",
+            date: e.date || "",
+            desc: e.courseTitle ? `Course: ${e.courseTitle}` : (e.type || "Academic Event")
+          }));
+          setCalendarEvents(mapped);
+        } else {
+          setCalendarEvents([]);
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to load calendar events:", err);
+        setCalendarEvents([]);
       });
 
     return () => {
@@ -1845,8 +1465,8 @@ export default function UserDashboard({ onLogout, onGoHome }: UserDashboardProps
   
   // Profile picture, name, and bio states (durably persisted in MySQL)
   const [profilePic, setProfilePic] = useState<string>("");
-  const [profileName, setProfileName] = useState<string>("Courtney Henry");
-  const [profileBio, setProfileBio] = useState<string>("Undergraduate student majoring in Computer Science & Interactive Design.");
+  const [profileName, setProfileName] = useState<string>("");
+  const [profileBio, setProfileBio] = useState<string>("");
 
   // Redesigned Settings Tab Draft States
   const [draftProfilePic, setDraftProfilePic] = useState<string>(profilePic);
@@ -2054,18 +1674,17 @@ export default function UserDashboard({ onLogout, onGoHome }: UserDashboardProps
   // Settings Redesign States
   const [settingsActiveTab, setSettingsActiveTab] = useState<"Account" | "Profile" | "Appearance" | "Security">("Account");
   
-  const [firstName, setFirstName] = useState<string>("Courtney");
-  const [lastName, setLastName] = useState<string>("Henry");
-  const [username, setUsername] = useState<string>("courtney_h");
-  const [savedUsername, setSavedUsername] = useState<string>("courtney_h");
+  const [firstName, setFirstName] = useState<string>("");
+  const [lastName, setLastName] = useState<string>("");
+  const [username, setUsername] = useState<string>("");
+  const [savedUsername, setSavedUsername] = useState<string>("");
   
   // Last username change date (ISO format)
-  // By default, set it to "2026-05-15" (47 days ago from 2026-07-01), which is eligible
-  const [lastUsernameChangeDate, setLastUsernameChangeDate] = useState<string>("2026-05-15");
+  const [lastUsernameChangeDate, setLastUsernameChangeDate] = useState<string>("");
   const [adminApproved, setAdminApproved] = useState<boolean>(false);
   
-  const [emailAddress, setEmailAddress] = useState<string>("schoepplake@gmail.com");
-  const [phoneNumber, setPhoneNumber] = useState<string>("9123456789");
+  const [emailAddress, setEmailAddress] = useState<string>("");
+  const [phoneNumber, setPhoneNumber] = useState<string>("");
   const [countryCode, setCountryCode] = useState<string>("IR");
   
   // Username validation states
@@ -2341,44 +1960,7 @@ export default function UserDashboard({ onLogout, onGoHome }: UserDashboardProps
     targetId?: string;
   }
 
-  const [notifications, setNotifications] = useState<NotificationItem[]>([
-    {
-      id: "n1",
-      title: "New Message from Dr. Vance",
-      preview: "Syllabus Update: Week 4 Assignments",
-      timestamp: "9:24 AM",
-      read: false,
-      type: "message",
-      targetId: "1"
-    },
-    {
-      id: "n2",
-      title: "Course Progress Update",
-      preview: "Advanced React progress is at 68%",
-      timestamp: "10 mins ago",
-      read: false,
-      type: "course",
-      targetId: "1"
-    },
-    {
-      id: "n3",
-      title: "Assignment Due Soon",
-      preview: "Custom Hooks & Memory Leak Audits is due tomorrow",
-      timestamp: "Yesterday",
-      read: true,
-      type: "assignment",
-      targetId: "1"
-    },
-    {
-      id: "n4",
-      title: "Welcome to Premium Student Portal",
-      preview: "Enjoy your customized student workspace",
-      timestamp: "June 29",
-      read: true,
-      type: "message",
-      targetId: "2"
-    }
-  ]);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [isNotificationDropdownOpen, setIsNotificationDropdownOpen] = useState(false);
   const notificationRef = useRef<HTMLDivElement>(null);
   const [pulseBadge, setPulseBadge] = useState(false);
@@ -2596,12 +2178,7 @@ export default function UserDashboard({ onLogout, onGoHome }: UserDashboardProps
   const [isUpcomingOpen, setIsUpcomingOpen] = useState(true);
 
   // Task lists
-  const [tasks, setTasks] = useState<Task[]>([
-    { id: "1", name: "One-on-One Meeting with Counselor", priority: "High", dueDate: "Today", section: "InProgress" },
-    { id: "2", name: "Submit grading spreadsheet for design system class", priority: "Low", dueDate: "3 days left", section: "InProgress" },
-    { id: "3", name: "Review updated course curriculum mockups", priority: "Medium", dueDate: "Tomorrow", section: "ToDo" },
-    { id: "4", name: "Complete ML linear algebra worksheets", priority: "Low", dueDate: "Next week", section: "Upcoming" }
-  ]);
+  const [tasks, setTasks] = useState<Task[]>([]);
 
   // Add Task inline form state
   const [showAddTaskInline, setShowAddTaskInline] = useState(false);
@@ -2768,14 +2345,14 @@ export default function UserDashboard({ onLogout, onGoHome }: UserDashboardProps
   };
 
   // Achievements interactive state
-  const [streak, setStreak] = useState(5);
-  const [xp, setXp] = useState(2450);
+  const [streak, setStreak] = useState(0);
+  const [xp, setXp] = useState(0);
   const [hasCheckedInToday, setHasCheckedInToday] = useState(false);
   const [badges, setBadges] = useState([
-    { id: "1", title: "React Master", description: "Successfully completed 5 React lessons", unlocked: true, icon: "⚛️" },
-    { id: "2", title: "Pixel Perfect", description: "Styled a UI component with pristine contrast ratios", unlocked: true, icon: "🎨" },
+    { id: "1", title: "React Master", description: "Successfully completed 5 React lessons", unlocked: false, icon: "⚛️" },
+    { id: "2", title: "Pixel Perfect", description: "Styled a UI component with pristine contrast ratios", unlocked: false, icon: "🎨" },
     { id: "3", title: "First Submission", description: "Submitted your first course assignment", unlocked: false, icon: "📤" },
-    { id: "4", title: "AI Whisperer", description: "Generated 10 speaking point outlines with Prodify AI", unlocked: true, icon: "🤖" },
+    { id: "4", title: "AI Whisperer", description: "Generated 10 speaking point outlines with Prodify AI", unlocked: false, icon: "🤖" },
   ]);
 
   const handleCheckIn = () => {
@@ -2794,11 +2371,7 @@ export default function UserDashboard({ onLogout, onGoHome }: UserDashboardProps
   };
 
   // Calendar interactive state
-  const [calendarEvents, setCalendarEvents] = useState([
-    { id: "1", title: "One-on-One Meeting with Counselor", time: "10:00 - 11:00 am", date: "Mon 07", desc: "Brief status update regarding course curriculum mockups." },
-    { id: "2", title: "Syllabus Review Session", time: "2:00 - 3:30 pm", date: "Tue 08", desc: "Deep dive review with Dr. Sarah Vance." },
-    { id: "3", title: "ML Study Group", time: "6:00 - 7:30 pm", date: "Thu 10", desc: "Peer session covering Gradient Descent formulas." },
-  ]);
+  const [calendarEvents, setCalendarEvents] = useState<any[]>([]);
   const [newMeetingTitle, setNewMeetingTitle] = useState("");
   const [newMeetingTime, setNewMeetingTime] = useState("1:00 - 2:00 pm");
   const [newMeetingDesc, setNewMeetingDesc] = useState("");
@@ -3530,7 +3103,7 @@ export default function UserDashboard({ onLogout, onGoHome }: UserDashboardProps
                 {formattedDate}
               </span>
               <h1 className="font-sans text-base sm:text-lg font-extrabold text-white tracking-tight leading-none mt-1">
-                Hello, {profileName.split(" ")[0]}
+                Hello, {profileName ? profileName.split(" ")[0] : "Student"}
               </h1>
             </div>
           </div>
@@ -5288,8 +4861,8 @@ export default function UserDashboard({ onLogout, onGoHome }: UserDashboardProps
                             const newMsg: DiscussionMessage = {
                               id: `m_${Date.now()}`,
                               sender: "Student",
-                              senderName: "Courtney Henry",
-                              avatarText: "CH",
+                              senderName: profileName || firstName || "Student",
+                              avatarText: (profileName || firstName || "ST").substring(0, 2).toUpperCase(),
                               text: discussionReplyText.trim(),
                               time: new Date().toLocaleString("en-US", { 
                                 month: "short", 
@@ -5355,8 +4928,8 @@ export default function UserDashboard({ onLogout, onGoHome }: UserDashboardProps
                               {
                                 id: `m_${Date.now()}`,
                                 sender: "Student",
-                                senderName: "Courtney Henry",
-                                avatarText: "CH",
+                                senderName: profileName || firstName || "Student",
+                                avatarText: (profileName || firstName || "ST").substring(0, 2).toUpperCase(),
                                 text: newDiscussionMessage.trim(),
                                 time: formattedTime,
                                 attachments: newDiscussionAttachment ? [newDiscussionAttachment] : undefined
@@ -5916,7 +5489,7 @@ export default function UserDashboard({ onLogout, onGoHome }: UserDashboardProps
                           strengths: "Excellent grasp of concurrent rendering paradigms and performance tuning. Demonstrated exceptional engineering in designing custom hooks and memory leak audits.",
                           weaknesses: "Could spend a bit more focus on documenting decoupled custom architectures and service-to-service state synchronization flows.",
                           suggestions: "Deepen understanding of React Server Components (RSC) and study HTTP/3 streaming strategies for complex edge delivery.",
-                          comments: "Courtney has shown stellar performance throughout the core syllabus. Highly capable of leading complex web engineering projects."
+                          comments: `${profileName || firstName || "Student"} has shown stellar performance throughout the core syllabus. Highly capable of leading complex web engineering projects.`
                         };
 
                         if (selectedCourse.title.toLowerCase().includes("design")) {
@@ -5924,7 +5497,7 @@ export default function UserDashboard({ onLogout, onGoHome }: UserDashboardProps
                             strengths: "Unparalleled eye for pixel-perfection, Swiss typography principles, and WCAG AA contrast compliance in complex dark layouts.",
                             weaknesses: "Occasionally spent too much time perfecting micro-interaction timing in early sandbox drafts before establishing baseline wireframes.",
                             suggestions: "Perfect standard design token automation using Style Dictionary to scale systems across multiple platforms like Android and iOS.",
-                            comments: "A masterclass student. Courtney's ability to maintain a dark design theme with aesthetic harmony and high usability is phenomenal."
+                            comments: `A masterclass student. ${profileName || firstName || "Student"}'s ability to maintain a dark design theme with aesthetic harmony and high usability is phenomenal.`
                           };
                         } else if (selectedCourse.title.toLowerCase().includes("learning") || selectedCourse.title.toLowerCase().includes("machine")) {
                           recommendation = {
@@ -6910,76 +6483,112 @@ export default function UserDashboard({ onLogout, onGoHome }: UserDashboardProps
                           {/* Latest Certificate */}
                           <div className="bg-[#08080c] border border-amber-500/10 hover:border-amber-500/20 rounded-2xl p-5 flex flex-col justify-between gap-4 shadow-[0_4px_25px_rgba(0,0,0,0.4)] transition-all duration-300 relative overflow-hidden group">
                             <div className="absolute top-0 right-0 w-24 h-24 bg-amber-500/[0.02] rounded-full blur-2xl pointer-events-none" />
-                            <div className="space-y-3">
-                              <div className="flex items-center justify-between">
-                                <span className="text-[9px] text-amber-400 font-bold uppercase font-mono tracking-widest">Latest Certificate</span>
-                                <span className="px-2 py-0.5 rounded-md text-[8px] font-extrabold uppercase font-mono bg-amber-500/10 text-amber-400 border border-amber-500/20">Credentials Active</span>
+                            {courses.filter(c => c.progress >= 60).length > 0 ? (
+                              <>
+                                <div className="space-y-3">
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-[9px] text-amber-400 font-bold uppercase font-mono tracking-widest">Latest Certificate</span>
+                                    <span className="px-2 py-0.5 rounded-md text-[8px] font-extrabold uppercase font-mono bg-amber-500/10 text-amber-400 border border-amber-500/20">Credentials Active</span>
+                                  </div>
+                                  <div className="space-y-1">
+                                    <h4 className="font-sans text-sm font-black text-white group-hover:text-amber-300 transition-colors">
+                                      {courses.filter(c => c.progress >= 60)[0].title}
+                                    </h4>
+                                    <p className="text-[10px] text-white/40 font-mono">Issued: {courses.filter(c => c.progress >= 60)[0].startDate || "2026"}</p>
+                                  </div>
+                                </div>
+                                <button
+                                  onClick={() => setViewingCertificateCourse(courses.filter(c => c.progress >= 60)[0].title)}
+                                  className="w-full py-2 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 hover:border-amber-500/30 text-amber-400 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer font-sans mt-2"
+                                >
+                                  <span>View Certificate</span>
+                                  <ExternalLink size={12} />
+                                </button>
+                              </>
+                            ) : (
+                              <div className="py-8 flex flex-col items-center justify-center text-center space-y-2">
+                                <Award size={24} className="text-amber-500/30" />
+                                <h4 className="font-sans text-xs font-bold text-white">No Certificates Yet</h4>
+                                <p className="text-[10px] text-white/40">Complete courses to unlock verified certificates.</p>
                               </div>
-                              <div className="space-y-1">
-                                <h4 className="font-sans text-sm font-black text-white group-hover:text-amber-300 transition-colors">Premium Dark Design Systems</h4>
-                                <p className="text-[10px] text-white/40 font-mono">Issued: July 20, 2026</p>
-                              </div>
-                            </div>
-                            <button
-                              onClick={() => setViewingCertificateCourse("Premium Dark Design Systems")}
-                              className="w-full py-2 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 hover:border-amber-500/30 text-amber-400 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer font-sans mt-2"
-                            >
-                              <span>View Certificate</span>
-                              <ExternalLink size={12} />
-                            </button>
+                            )}
                           </div>
 
                           {/* Latest Completed Course */}
                           <div className="bg-[#08080c] border border-indigo-500/10 hover:border-indigo-500/20 rounded-2xl p-5 flex flex-col justify-between gap-4 shadow-[0_4px_25px_rgba(0,0,0,0.4)] transition-all duration-300 relative overflow-hidden group">
                             <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/[0.02] rounded-full blur-2xl pointer-events-none" />
-                            <div className="space-y-3">
-                              <div className="flex items-center justify-between">
-                                <span className="text-[9px] text-indigo-400 font-bold uppercase font-mono tracking-widest">Completed Course</span>
-                                <span className="px-2 py-0.5 rounded-md text-[8px] font-extrabold uppercase font-mono bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">Syllabus complete</span>
-                              </div>
-                              <div className="space-y-1">
-                                <h4 className="font-sans text-sm font-black text-white group-hover:text-indigo-300 transition-colors">Premium Dark Design Systems</h4>
-                                <div className="flex items-center gap-2">
-                                  <span className="inline-flex items-center gap-1 text-[9px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-1.5 py-0.5 rounded-md">
-                                    <span className="w-1 h-1 rounded-full bg-emerald-400" /> Completed
-                                  </span>
-                                  <span className="text-[10px] text-white/40 font-mono">• July 20, 2026</span>
+                            {courses.filter(c => c.progress >= 60).length > 0 ? (
+                              <>
+                                <div className="space-y-3">
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-[9px] text-indigo-400 font-bold uppercase font-mono tracking-widest">Completed Course</span>
+                                    <span className="px-2 py-0.5 rounded-md text-[8px] font-extrabold uppercase font-mono bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">Syllabus complete</span>
+                                  </div>
+                                  <div className="space-y-1">
+                                    <h4 className="font-sans text-sm font-black text-white group-hover:text-indigo-300 transition-colors">
+                                      {courses.filter(c => c.progress >= 60)[0].title}
+                                    </h4>
+                                    <div className="flex items-center gap-2">
+                                      <span className="inline-flex items-center gap-1 text-[9px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-1.5 py-0.5 rounded-md">
+                                        <span className="w-1 h-1 rounded-full bg-emerald-400" /> Completed
+                                      </span>
+                                      <span className="text-[10px] text-white/40 font-mono">• {courses.filter(c => c.progress >= 60)[0].startDate || "2026"}</span>
+                                    </div>
+                                  </div>
                                 </div>
+                                <div className="text-[10px] text-white/50 leading-relaxed font-sans bg-white/[0.01] border border-white/[0.03] p-2.5 rounded-xl">
+                                  {courses.filter(c => c.progress >= 60)[0].instructor}: "Stellar course performance by {profileName || 'Student'}."
+                                </div>
+                              </>
+                            ) : (
+                              <div className="py-8 flex flex-col items-center justify-center text-center space-y-2">
+                                <CheckSquare size={24} className="text-indigo-500/30" />
+                                <h4 className="font-sans text-xs font-bold text-white">No Completed Courses</h4>
+                                <p className="text-[10px] text-white/40">Finish course syllabi to display graduation milestones.</p>
                               </div>
-                            </div>
-                            <div className="text-[10px] text-white/50 leading-relaxed font-sans bg-white/[0.01] border border-white/[0.03] p-2.5 rounded-xl">
-                              Marcus Aurelius: "A masterclass student. Courtney's ability to maintain a dark design theme with aesthetic harmony is phenomenal."
-                            </div>
+                            )}
                           </div>
 
                           {/* Latest Teacher Feedback */}
                           <div className="bg-[#08080c] border border-purple-500/10 hover:border-purple-500/20 rounded-2xl p-5 flex flex-col justify-between gap-4 shadow-[0_4px_25px_rgba(0,0,0,0.4)] transition-all duration-300 relative overflow-hidden group">
                             <div className="absolute top-0 right-0 w-24 h-24 bg-purple-500/[0.02] rounded-full blur-2xl pointer-events-none" />
-                            <div className="space-y-3">
-                              <div className="flex items-center justify-between">
-                                <span className="text-[9px] text-purple-400 font-bold uppercase font-mono tracking-widest">Instructor Evaluation</span>
-                                <span className="px-2 py-0.5 rounded-md text-[8px] font-extrabold uppercase font-mono bg-purple-500/10 text-purple-400 border border-purple-500/20">New Feedback</span>
+                            {courses.length > 0 ? (
+                              <>
+                                <div className="space-y-3">
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-[9px] text-purple-400 font-bold uppercase font-mono tracking-widest">Instructor Evaluation</span>
+                                    <span className="px-2 py-0.5 rounded-md text-[8px] font-extrabold uppercase font-mono bg-purple-500/10 text-purple-400 border border-purple-500/20">Evaluation</span>
+                                  </div>
+                                  <div className="space-y-1">
+                                    <h4 className="font-sans text-sm font-black text-white group-hover:text-purple-300 transition-colors">
+                                      {courses[0].title}
+                                    </h4>
+                                    <p className="text-[10px] text-white/40 font-mono">By Professor {courses[0].instructor}</p>
+                                  </div>
+                                </div>
+                                <div className="text-[11px] text-white/50 leading-relaxed font-sans line-clamp-2 bg-white/[0.01] border border-white/[0.03] p-2.5 rounded-xl">
+                                  "Consistent progress demonstrated by {profileName || 'Student'} across course sessions."
+                                </div>
+                                <button
+                                  onClick={() => {
+                                    setCourseDetailsTab("Feedback");
+                                    setSelectedCourseId(courses[0].id);
+                                    setActiveTab("courses");
+                                    showCustomToast("Switched to Course Evaluation view", "info");
+                                  }}
+                                  className="w-full py-2 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/20 hover:border-purple-500/30 text-purple-400 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer font-sans"
+                                >
+                                  <span>View Feedback</span>
+                                  <ArrowRight size={12} />
+                                </button>
+                              </>
+                            ) : (
+                              <div className="py-8 flex flex-col items-center justify-center text-center space-y-2">
+                                <Sparkles size={24} className="text-purple-500/30" />
+                                <h4 className="font-sans text-xs font-bold text-white">No Teacher Feedback</h4>
+                                <p className="text-[10px] text-white/40">Instructor evaluations will appear after assignment review.</p>
                               </div>
-                              <div className="space-y-1">
-                                <h4 className="font-sans text-sm font-black text-white group-hover:text-purple-300 transition-colors">Micro-interactions Evaluation</h4>
-                                <p className="text-[10px] text-white/40 font-mono">By Professor Marcus Aurelius</p>
-                              </div>
-                            </div>
-                            <div className="text-[11px] text-white/50 leading-relaxed font-sans line-clamp-2 bg-white/[0.01] border border-white/[0.03] p-2.5 rounded-xl">
-                              "Outstanding visual precision. The hover micro-interactions are highly responsive. Your code is modular..."
-                            </div>
-                            <button
-                              onClick={() => {
-                                setCourseDetailsTab("Feedback");
-                                setSelectedCourseId("2");
-                                setActiveTab("courses");
-                                showCustomToast("Switched to Course Evaluation view", "info");
-                              }}
-                              className="w-full py-2 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/20 hover:border-purple-500/30 text-purple-400 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer font-sans"
-                            >
-                              <span>View Feedback</span>
-                              <ArrowRight size={12} />
-                            </button>
+                            )}
                           </div>
 
                         </div>
@@ -7299,7 +6908,7 @@ export default function UserDashboard({ onLogout, onGoHome }: UserDashboardProps
                                 strengths: "Excellent grasp of concurrent rendering paradigms and performance tuning. Demonstrated exceptional engineering in designing custom hooks and memory leak audits.",
                                 weaknesses: "Could spend a bit more focus on documenting decoupled custom architectures and service-to-service state synchronization flows.",
                                 suggestions: "Deepen understanding of React Server Components (RSC) and study HTTP/3 streaming strategies for complex edge delivery.",
-                                comments: "Courtney has shown stellar performance throughout the core syllabus. Highly capable of leading complex web engineering projects."
+                                comments: `${profileName || firstName || "Student"} has shown stellar performance throughout the core syllabus. Highly capable of leading complex web engineering projects.`
                               };
 
                               if (course.title.toLowerCase().includes("design")) {
@@ -7307,7 +6916,7 @@ export default function UserDashboard({ onLogout, onGoHome }: UserDashboardProps
                                   strengths: "Unparalleled eye for pixel-perfection, Swiss typography principles, and WCAG AA contrast compliance in complex dark layouts.",
                                   weaknesses: "Occasionally spent too much time perfecting micro-interaction timing in early sandbox drafts before establishing baseline wireframes.",
                                   suggestions: "Perfect standard design token automation using Style Dictionary to scale systems across multiple platforms like Android and iOS.",
-                                  comments: "A masterclass student. Courtney's ability to maintain a dark design theme with aesthetic harmony and high usability is phenomenal."
+                                  comments: `A masterclass student. ${profileName || firstName || "Student"}'s ability to maintain a dark design theme with aesthetic harmony and high usability is phenomenal.`
                                 };
                               } else if (course.title.toLowerCase().includes("learning") || course.title.toLowerCase().includes("machine")) {
                                 recommendation = {
@@ -7431,6 +7040,7 @@ export default function UserDashboard({ onLogout, onGoHome }: UserDashboardProps
                 <AnimatePresence>
                   <PremiumFeedbackModal
                     course={viewingFeedbackCourse}
+                    studentName={profileName || firstName || "Student"}
                     onClose={() => setViewingFeedbackCourse(null)}
                   />
                 </AnimatePresence>
@@ -8257,7 +7867,7 @@ export default function UserDashboard({ onLogout, onGoHome }: UserDashboardProps
                     </div>
                     <div className="mt-3">
                       <span className="block text-2xl sm:text-3xl font-black text-white tracking-tight leading-none">
-                        <CountUp end={courses.filter(c => c.progress === 100).length + 2} />
+                        <CountUp end={courses.filter(c => c.progress === 100).length} />
                       </span>
                       <span className="block text-[10px] sm:text-[11px] font-semibold text-white/40 group-hover:text-white/60 transition-colors mt-1.5 uppercase tracking-wider">
                         Completed Courses
@@ -8303,7 +7913,7 @@ export default function UserDashboard({ onLogout, onGoHome }: UserDashboardProps
                     </div>
                     <div className="mt-3">
                       <span className="block text-2xl sm:text-3xl font-black text-white tracking-tight leading-none">
-                        <CountUp end={badges.filter(b => b.unlocked).length} />
+                        <CountUp end={courses.filter(c => c.progress >= 60).length} />
                       </span>
                       <span className="block text-[10px] sm:text-[11px] font-semibold text-white/40 group-hover:text-white/60 transition-colors mt-1.5 uppercase tracking-wider">
                         Certificates
@@ -8324,58 +7934,74 @@ export default function UserDashboard({ onLogout, onGoHome }: UserDashboardProps
                   <div className="flex-1 bg-[#08080c] border border-white/[0.06] rounded-3xl p-5 sm:p-6 shadow-[0_15px_35px_rgba(0,0,0,0.6)] flex flex-col justify-between relative overflow-hidden group">
                     <div className="absolute top-0 right-0 h-40 w-40 pointer-events-none blur-3xl bg-indigo-500/[0.03] group-hover:bg-indigo-500/[0.05] rounded-full transition-all duration-300" />
                     
-                    <div className="space-y-4">
-                      {/* Course Thumbnail */}
-                      <div className="h-28 w-full rounded-2xl bg-gradient-to-br from-indigo-500/20 via-purple-500/10 to-transparent border border-white/[0.06] flex items-center justify-center relative overflow-hidden shrink-0">
-                        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-indigo-500/10 via-transparent to-transparent" />
-                        <BookOpen size={36} className="text-indigo-400/80 group-hover:scale-110 transition-transform duration-500" />
-                        <span className="absolute bottom-3 left-3 px-2.5 py-0.5 rounded-md bg-black/40 border border-white/10 text-[9px] font-mono tracking-wider font-semibold text-white/70">
-                          React / SPA
-                        </span>
-                      </div>
+                    {courses.length > 0 ? (
+                      <>
+                        <div className="space-y-4">
+                          {/* Course Thumbnail */}
+                          <div className="h-28 w-full rounded-2xl bg-gradient-to-br from-indigo-500/20 via-purple-500/10 to-transparent border border-white/[0.06] flex items-center justify-center relative overflow-hidden shrink-0">
+                            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-indigo-500/10 via-transparent to-transparent" />
+                            <BookOpen size={36} className="text-indigo-400/80 group-hover:scale-110 transition-transform duration-500" />
+                            <span className="absolute bottom-3 left-3 px-2.5 py-0.5 rounded-md bg-black/40 border border-white/10 text-[9px] font-mono tracking-wider font-semibold text-white/70">
+                              Enrolled Course
+                            </span>
+                          </div>
 
-                      <div className="space-y-1">
-                        <span className="text-[10px] text-indigo-400 font-bold uppercase tracking-wider">
-                          {courses[0].instructor}
-                        </span>
-                        <h4 className="font-sans text-lg font-black text-white leading-snug">
-                          {courses[0].title}
-                        </h4>
-                        <p className="font-sans text-xs text-white/50 leading-relaxed line-clamp-2">
-                          Master component design, hooks architecture, and perform runtime optimization on high-scale Single Page Applications.
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="space-y-4 pt-4 mt-4 border-t border-white/[0.04]">
-                      {/* Progress bar */}
-                      <div className="space-y-1.5">
-                        <div className="flex justify-between text-[10px] font-bold">
-                          <span className="text-white/40">Syllabus Progress</span>
-                          <span className="text-white/90">{courses[0].progress}%</span>
+                          <div className="space-y-1">
+                            <span className="text-[10px] text-indigo-400 font-bold uppercase tracking-wider">
+                              {courses[0].instructor}
+                            </span>
+                            <h4 className="font-sans text-lg font-black text-white leading-snug">
+                              {courses[0].title}
+                            </h4>
+                            <p className="font-sans text-xs text-white/50 leading-relaxed line-clamp-2">
+                              Master course curriculum, sessions, and project hand-ins for {courses[0].title}.
+                            </p>
+                          </div>
                         </div>
-                        <div className="h-1.5 w-full bg-white/[0.05] rounded-full overflow-hidden">
-                          <div 
-                            className="h-full bg-gradient-to-r from-indigo-500 to-emerald-400 rounded-full transition-all duration-500 shadow-[0_0_12px_rgba(99,102,241,0.5)]"
-                            style={{ width: `${courses[0].progress}%` }}
-                          />
+
+                        <div className="space-y-4 pt-4 mt-4 border-t border-white/[0.04]">
+                          {/* Progress bar */}
+                          <div className="space-y-1.5">
+                            <div className="flex justify-between text-[10px] font-bold">
+                              <span className="text-white/40">Syllabus Progress</span>
+                              <span className="text-white/90">{courses[0].progress}%</span>
+                            </div>
+                            <div className="h-1.5 w-full bg-white/[0.05] rounded-full overflow-hidden">
+                              <div 
+                                className="h-full bg-gradient-to-r from-indigo-500 to-emerald-400 rounded-full transition-all duration-500 shadow-[0_0_12px_rgba(99,102,241,0.5)]"
+                                style={{ width: `${courses[0].progress}%` }}
+                              />
+                            </div>
+                          </div>
+
+                          {/* More Details Button */}
+                          <motion.button
+                            whileHover={{ scale: 1.02, y: -1 }}
+                            whileTap={{ scale: 0.98 }}
+                            onClick={() => {
+                              setActiveTab("courses");
+                              setSelectedCourseId(courses[0].id);
+                            }}
+                            className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold text-xs shadow-lg shadow-indigo-500/10 hover:shadow-indigo-500/20 transition-all text-center flex items-center justify-center gap-2"
+                          >
+                            <span>More Details</span>
+                            <ArrowRight size={13} />
+                          </motion.button>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="py-12 flex flex-col items-center justify-center text-center space-y-2 flex-1">
+                        <div className="p-3 rounded-2xl bg-white/[0.02] border border-white/[0.06] text-white/30">
+                          <BookOpen size={24} />
+                        </div>
+                        <div className="space-y-1">
+                          <h4 className="font-sans text-sm font-bold text-white">No Enrolled Courses</h4>
+                          <p className="font-sans text-xs text-white/40 max-w-xs">
+                            You are not currently enrolled in any courses.
+                          </p>
                         </div>
                       </div>
-
-                      {/* More Details Button */}
-                      <motion.button
-                        whileHover={{ scale: 1.02, y: -1 }}
-                        whileTap={{ scale: 0.98 }}
-                        onClick={() => {
-                          setActiveTab("courses");
-                          setSelectedCourseId(courses[0].id);
-                        }}
-                        className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold text-xs shadow-lg shadow-indigo-500/10 hover:shadow-indigo-500/20 transition-all text-center flex items-center justify-center gap-2"
-                      >
-                        <span>More Details</span>
-                        <ArrowRight size={13} />
-                      </motion.button>
-                    </div>
+                    )}
                   </div>
                 </div>
 
@@ -8386,7 +8012,14 @@ export default function UserDashboard({ onLogout, onGoHome }: UserDashboardProps
                   </h3>
                   <div className="flex-1 bg-[#08080c] border border-white/[0.06] rounded-3xl p-5 sm:p-6 shadow-[0_15px_35px_rgba(0,0,0,0.6)] flex flex-col justify-between space-y-4">
                     <div className="space-y-3 flex-1">
-                      {(() => {
+                      {assignments.length === 0 ? (
+                        <div className="py-12 flex flex-col items-center justify-center text-center space-y-2 flex-1">
+                          <div className="p-3 rounded-2xl bg-white/[0.02] border border-white/[0.06] text-white/30">
+                            <ClipboardList size={22} />
+                          </div>
+                          <p className="font-sans text-xs text-white/40">No pending assignments or deadlines.</p>
+                        </div>
+                      ) : (() => {
                         const sorted = [...assignments].sort((a, b) => {
                           if (a.status === "Pending" && b.status !== "Pending") return -1;
                           if (a.status !== "Pending" && b.status === "Pending") return 1;
@@ -8460,101 +8093,109 @@ export default function UserDashboard({ onLogout, onGoHome }: UserDashboardProps
                     <h3 className="font-sans text-base font-extrabold text-white">Learning Progress Roadmap</h3>
                   </div>
                   <span className="text-white/40 text-[10px] font-mono uppercase bg-white/[0.02] border border-white/[0.06] px-2.5 py-1 rounded-md">
-                    3 Completed • 1 Active
+                    {courses.filter(c => c.progress === 100).length} Completed • {courses.filter(c => c.progress < 100).length} Active
                   </span>
                 </div>
 
-                <div className="relative pt-4 pb-2">
-                  <div className="hidden lg:block absolute top-[43px] left-[5%] right-[5%] h-1 bg-white/[0.04] rounded-full z-0" />
-                  <div className="hidden lg:block absolute top-[43px] left-[5%] w-[68%] h-1 bg-gradient-to-r from-indigo-500 via-emerald-400 to-transparent rounded-full z-0" />
+                {courses.length === 0 ? (
+                  <div className="py-12 flex flex-col items-center justify-center text-center space-y-2">
+                    <div className="p-3 rounded-2xl bg-white/[0.02] border border-white/[0.06] text-white/30">
+                      <BookOpen size={24} />
+                    </div>
+                    <div className="space-y-1">
+                      <h4 className="font-sans text-sm font-bold text-white">No Roadmap Milestones</h4>
+                      <p className="font-sans text-xs text-white/40 max-w-sm">
+                        Enroll in courses to start tracking your curriculum milestones and progress.
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="relative pt-4 pb-2">
+                    <div className="hidden lg:block absolute top-[43px] left-[5%] right-[5%] h-1 bg-white/[0.04] rounded-full z-0" />
+                    <div className="hidden lg:block absolute top-[43px] left-[5%] w-[68%] h-1 bg-gradient-to-r from-indigo-500 via-emerald-400 to-transparent rounded-full z-0" />
 
-                  <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 sm:gap-8 lg:gap-4 relative z-10">
-                    {[
-                      { id: "step1", name: "UI/UX Design Systems", status: "completed", date: "Jan 2026", icon: "🎨" },
-                      { id: "step2", name: "Advanced Tailwind CSS", status: "completed", date: "Mar 2026", icon: "✨" },
-                      { id: "step3", name: "State Managers & React", status: "completed", date: "May 2026", icon: "⚛️" },
-                      { id: "step4", name: "Advanced React & Architecture", status: "current", progress: 68, date: "Active Now", icon: "⚡" },
-                      { id: "step5", name: "Machine Learning Foundations", status: "upcoming", progress: 15, date: "Next up", icon: "🧠" }
-                    ].map((step, idx) => {
-                      const isCompleted = step.status === "completed";
-                      const isCurrent = step.status === "current";
+                    <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 sm:gap-8 lg:gap-4 relative z-10">
+                      {courses.slice(0, 5).map((course, idx) => {
+                        const isCompleted = course.progress >= 100;
+                        const isCurrent = course.progress > 0 && course.progress < 100;
 
-                      return (
-                        <motion.div
-                          key={step.id}
-                          initial={{ opacity: 0, y: 15 }}
-                          whileInView={{ opacity: 1, y: 0 }}
-                          viewport={{ once: true }}
-                          transition={{ duration: 0.4, delay: idx * 0.1 }}
-                          className="flex lg:flex-col items-center lg:text-center gap-4 lg:gap-3 group/step relative"
-                        >
-                          <div className="relative shrink-0">
-                            {isCurrent && (
-                              <div className="absolute inset-[-6px] rounded-full bg-indigo-500/20 animate-ping" />
-                            )}
-                            {isCompleted && (
-                              <div className="absolute inset-[-4px] rounded-full bg-emerald-500/5 group-hover/step:bg-emerald-500/10 transition-all duration-300" />
-                            )}
-                            
-                            <div className={`h-14 w-14 rounded-full p-[1.5px] flex items-center justify-center transition-all duration-500 ${
-                              isCompleted 
-                                ? "bg-gradient-to-tr from-emerald-500 to-teal-400 shadow-[0_0_15px_rgba(16,185,129,0.15)] group-hover/step:shadow-[0_0_20px_rgba(16,185,129,0.25)]" 
-                                : isCurrent 
-                                ? "bg-gradient-to-tr from-indigo-500 via-purple-500 to-pink-500 shadow-[0_0_20px_rgba(99,102,241,0.3)] animate-pulse" 
-                                : "bg-white/10"
-                            }`}>
-                              <div className="h-full w-full rounded-full bg-[#0d0d14] flex items-center justify-center text-lg select-none">
-                                {isCompleted ? (
-                                  <span className="text-emerald-400 font-bold text-sm">✓</span>
-                                ) : (
-                                  <span>{step.icon}</span>
-                                )}
+                        return (
+                          <motion.div
+                            key={course.id}
+                            initial={{ opacity: 0, y: 15 }}
+                            whileInView={{ opacity: 1, y: 0 }}
+                            viewport={{ once: true }}
+                            transition={{ duration: 0.4, delay: idx * 0.1 }}
+                            className="flex lg:flex-col items-center lg:text-center gap-4 lg:gap-3 group/step relative"
+                          >
+                            <div className="relative shrink-0">
+                              {isCurrent && (
+                                <div className="absolute inset-[-6px] rounded-full bg-indigo-500/20 animate-ping" />
+                              )}
+                              {isCompleted && (
+                                <div className="absolute inset-[-4px] rounded-full bg-emerald-500/5 group-hover/step:bg-emerald-500/10 transition-all duration-300" />
+                              )}
+                              
+                              <div className={`h-14 w-14 rounded-full p-[1.5px] flex items-center justify-center transition-all duration-500 ${
+                                isCompleted 
+                                  ? "bg-gradient-to-tr from-emerald-500 to-teal-400 shadow-[0_0_15px_rgba(16,185,129,0.15)] group-hover/step:shadow-[0_0_20px_rgba(16,185,129,0.25)]" 
+                                  : isCurrent 
+                                  ? "bg-gradient-to-tr from-indigo-500 via-purple-500 to-pink-500 shadow-[0_0_20px_rgba(99,102,241,0.3)] animate-pulse" 
+                                  : "bg-white/10"
+                              }`}>
+                                <div className="h-full w-full rounded-full bg-[#0d0d14] flex items-center justify-center text-lg select-none">
+                                  {isCompleted ? (
+                                    <span className="text-emerald-400 font-bold text-sm">✓</span>
+                                  ) : (
+                                    <span>⚛️</span>
+                                  )}
+                                </div>
                               </div>
+
+                              <span className={`absolute -bottom-1 -right-1 h-5 w-5 rounded-full border flex items-center justify-center text-[9px] font-black font-mono shadow-md ${
+                                isCompleted 
+                                  ? "bg-[#08080c] border-emerald-500/30 text-emerald-400" 
+                                  : isCurrent 
+                                  ? "bg-indigo-600 border-indigo-500 text-white" 
+                                  : "bg-white/5 border-white/10 text-white/40"
+                              }`}>
+                                {idx + 1}
+                              </span>
                             </div>
 
-                            <span className={`absolute -bottom-1 -right-1 h-5 w-5 rounded-full border flex items-center justify-center text-[9px] font-black font-mono shadow-md ${
-                              isCompleted 
-                                ? "bg-[#08080c] border-emerald-500/30 text-emerald-400" 
-                                : isCurrent 
-                                ? "bg-indigo-600 border-indigo-500 text-white" 
-                                : "bg-white/5 border-white/10 text-white/40"
-                            }`}>
-                              {idx + 1}
-                            </span>
-                          </div>
-
-                          <div className="flex-1 lg:flex-1 text-left lg:text-center space-y-0.5 min-w-0">
-                            <span className={`text-[9px] font-mono font-bold tracking-wider uppercase block ${
-                              isCompleted ? "text-emerald-400/80" : isCurrent ? "text-indigo-400" : "text-white/30"
-                            }`}>
-                              {step.date}
-                            </span>
-                            <h4 className={`font-sans text-xs font-extrabold truncate ${
-                              isCurrent ? "text-white" : isCompleted ? "text-white/80 group-hover/step:text-white" : "text-white/40"
-                            }`}>
-                              {step.name}
-                            </h4>
-                            {isCurrent && (
-                              <div className="flex items-center gap-1.5 lg:justify-center mt-1">
-                                <div className="w-16 h-1 bg-white/[0.05] rounded-full overflow-hidden">
-                                  <div className="h-full bg-indigo-500 rounded-full" style={{ width: `${step.progress}%` }} />
+                            <div className="flex-1 lg:flex-1 text-left lg:text-center space-y-0.5 min-w-0">
+                              <span className={`text-[9px] font-mono font-bold tracking-wider uppercase block ${
+                                isCompleted ? "text-emerald-400/80" : isCurrent ? "text-indigo-400" : "text-white/30"
+                              }`}>
+                                {course.startDate || "Enrolled"}
+                              </span>
+                              <h4 className={`font-sans text-xs font-extrabold truncate ${
+                                isCurrent ? "text-white" : isCompleted ? "text-white/80 group-hover/step:text-white" : "text-white/40"
+                              }`}>
+                                {course.title}
+                              </h4>
+                              {isCurrent && (
+                                <div className="flex items-center gap-1.5 lg:justify-center mt-1">
+                                  <div className="w-16 h-1 bg-white/[0.05] rounded-full overflow-hidden">
+                                    <div className="h-full bg-indigo-500 rounded-full" style={{ width: `${course.progress}%` }} />
+                                  </div>
+                                  <span className="text-[8px] font-bold text-indigo-400 font-mono">{course.progress}%</span>
                                 </div>
-                                <span className="text-[8px] font-bold text-indigo-400 font-mono">{step.progress}%</span>
-                              </div>
-                            )}
-                            {isCompleted && (
-                              <span className="text-[9px] text-emerald-400/60 font-semibold block lg:text-center mt-0.5">Verified Certificate</span>
-                            )}
-                          </div>
+                              )}
+                              {isCompleted && (
+                                <span className="text-[9px] text-emerald-400/60 font-semibold block lg:text-center mt-0.5">Verified Certificate</span>
+                              )}
+                            </div>
 
-                          {idx < 4 && (
-                            <div className="lg:hidden absolute left-[27px] top-[56px] w-[2px] h-[32px] bg-gradient-to-b from-white/[0.08] to-transparent z-0" />
-                          )}
-                        </motion.div>
-                      );
-                    })}
+                            {idx < Math.min(courses.length - 1, 4) && (
+                              <div className="lg:hidden absolute left-[27px] top-[56px] w-[2px] h-[32px] bg-gradient-to-b from-white/[0.08] to-transparent z-0" />
+                            )}
+                          </motion.div>
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
 
             </div>

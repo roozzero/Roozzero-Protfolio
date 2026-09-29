@@ -424,6 +424,9 @@ function initSchema(db: DatabaseSync) {
       submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       grade REAL,
       feedback TEXT,
+      corrected_file_name TEXT,
+      corrected_file_path TEXT,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       UNIQUE (assignment_id, student_id)
     );
 
@@ -447,7 +450,149 @@ function initSchema(db: DatabaseSync) {
       is_read INTEGER DEFAULT 0,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
+
+    CREATE TABLE IF NOT EXISTS assignments (
+      id TEXT PRIMARY KEY,
+      course_id TEXT NOT NULL,
+      teacher_id TEXT,
+      title TEXT NOT NULL,
+      description TEXT NOT NULL,
+      publish_date DATE NOT NULL,
+      due_date DATE NOT NULL,
+      max_points INTEGER DEFAULT 100,
+      status TEXT DEFAULT 'Published',
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      deleted_at TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS assignment_files (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      assignment_id TEXT NOT NULL,
+      file_name TEXT NOT NULL,
+      stored_name TEXT,
+      file_url TEXT NOT NULL,
+      file_size TEXT,
+      file_type TEXT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS grades (
+      id TEXT PRIMARY KEY,
+      student_id TEXT NOT NULL,
+      student_name TEXT NOT NULL,
+      course_id TEXT NOT NULL,
+      course_title TEXT NOT NULL,
+      assignment_id TEXT NOT NULL,
+      assignment_title TEXT NOT NULL,
+      score INTEGER NOT NULL,
+      max_points INTEGER NOT NULL DEFAULT 100,
+      letter_grade TEXT NOT NULL,
+      published_date DATE NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS resource_categories (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL UNIQUE,
+      description TEXT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS resources (
+      id TEXT PRIMARY KEY,
+      title TEXT NOT NULL,
+      description TEXT,
+      course_id TEXT NOT NULL,
+      teacher_id TEXT,
+      category_id INTEGER,
+      file_name TEXT,
+      stored_name TEXT,
+      file_path TEXT,
+      file_type TEXT NOT NULL,
+      file_size TEXT NOT NULL,
+      visibility TEXT DEFAULT 'Visible',
+      uploaded_at DATE NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      deleted_at TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS resource_downloads (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      resource_id TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      downloaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS discussion_threads (
+      id TEXT PRIMARY KEY,
+      course_id TEXT NOT NULL,
+      student_id TEXT NOT NULL,
+      student_name TEXT NOT NULL,
+      title TEXT NOT NULL,
+      text TEXT NOT NULL,
+      time TEXT NOT NULL,
+      status TEXT DEFAULT 'New',
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      deleted_at TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS discussion_replies (
+      id TEXT PRIMARY KEY,
+      thread_id TEXT NOT NULL,
+      sender_id TEXT NOT NULL,
+      sender_name TEXT NOT NULL,
+      role TEXT DEFAULT 'Student',
+      time TEXT NOT NULL,
+      text TEXT NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS announcements (
+      id TEXT PRIMARY KEY,
+      title TEXT NOT NULL,
+      description TEXT NOT NULL,
+      course_id TEXT DEFAULT 'all',
+      course_title TEXT DEFAULT 'All Courses',
+      author_id TEXT,
+      audience TEXT DEFAULT 'Everyone',
+      published_at DATE NOT NULL,
+      status TEXT DEFAULT 'Published',
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      deleted_at TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS calendar_events (
+      id TEXT PRIMARY KEY,
+      title TEXT NOT NULL,
+      type TEXT DEFAULT 'Class',
+      date DATE NOT NULL,
+      time TEXT DEFAULT 'All Day',
+      duration TEXT DEFAULT '2 hours',
+      course_id TEXT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS payments (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      course_id TEXT,
+      amount REAL NOT NULL,
+      currency TEXT DEFAULT 'USD',
+      status TEXT DEFAULT 'Completed',
+      payment_method TEXT,
+      transaction_id TEXT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
   `);
+
+  try { db.exec("ALTER TABLE assignment_submissions ADD COLUMN corrected_file_name TEXT;"); } catch {}
+  try { db.exec("ALTER TABLE assignment_submissions ADD COLUMN corrected_file_path TEXT;"); } catch {}
+  try { db.exec("ALTER TABLE assignment_submissions ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;"); } catch {}
 }
 
 function seedDefaultData(db: DatabaseSync) {
