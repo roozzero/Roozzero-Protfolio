@@ -77,7 +77,8 @@ export default function LoginModal({ isOpen, onClose, onLoginSuccess }: LoginMod
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage("");
-    if (!loginEmail || !loginPassword) {
+    const trimmedEmail = loginEmail.trim().toLowerCase();
+    if (!trimmedEmail || !loginPassword) {
       setErrorMessage("Please enter both email and password.");
       return;
     }
@@ -85,7 +86,7 @@ export default function LoginModal({ isOpen, onClose, onLoginSuccess }: LoginMod
     setIsLoading(true);
     try {
       const res = await authApi.login({
-        email: loginEmail,
+        email: trimmedEmail,
         password: loginPassword,
         rememberMe
       });
@@ -94,7 +95,7 @@ export default function LoginModal({ isOpen, onClose, onLoginSuccess }: LoginMod
       setIsSuccess(true);
       const user = res.data.user;
       const rawRole = (user.roleName || "").toLowerCase();
-      const role = rawRole === "administrator" ? "admin" : (rawRole === "teacher" ? "teacher" : "user");
+      const role = rawRole === "administrator" || rawRole === "admin" ? "admin" : (rawRole === "teacher" ? "teacher" : "user");
       setSuccessMessage(`Welcome back, ${user.name}!`);
 
       setTimeout(() => {
@@ -104,7 +105,7 @@ export default function LoginModal({ isOpen, onClose, onLoginSuccess }: LoginMod
       }, 1500);
     } catch (err: any) {
       setIsLoading(false);
-      setErrorMessage(err.message || "Invalid credentials. Please verify your email and password.");
+      setErrorMessage(err.message || "Invalid email or password.");
     }
   };
 
@@ -112,13 +113,29 @@ export default function LoginModal({ isOpen, onClose, onLoginSuccess }: LoginMod
     e.preventDefault();
     setErrorMessage("");
 
-    if (!signupName || !signupEmail || !signupPassword) {
-      setErrorMessage("Please fill out all required fields.");
+    const trimmedName = signupName.trim();
+    const trimmedFamily = signupFamily.trim();
+    const trimmedEmail = signupEmail.trim().toLowerCase();
+    const trimmedPhone = signupPhone.trim();
+
+    if (!trimmedName) {
+      setErrorMessage("Please enter your name.");
       return;
     }
 
-    if (signupPassword !== signupConfirmPassword) {
-      setErrorMessage("Passwords do not match!");
+    if (!trimmedEmail) {
+      setErrorMessage("Please enter your email address.");
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(trimmedEmail)) {
+      setErrorMessage("Please enter a valid email address.");
+      return;
+    }
+
+    if (!signupPassword) {
+      setErrorMessage("Please enter a password.");
       return;
     }
 
@@ -127,15 +144,20 @@ export default function LoginModal({ isOpen, onClose, onLoginSuccess }: LoginMod
       return;
     }
 
+    if (signupPassword !== signupConfirmPassword) {
+      setErrorMessage("Passwords do not match!");
+      return;
+    }
+
     setIsLoading(true);
     try {
-      const fullName = `${signupName} ${signupFamily}`.trim();
+      const fullName = trimmedFamily ? `${trimmedName} ${trimmedFamily}` : trimmedName;
       const res = await authApi.register({
         name: fullName,
-        email: signupEmail,
+        email: trimmedEmail,
         password: signupPassword,
         confirmPassword: signupConfirmPassword,
-        phone: signupPhone || undefined
+        phone: trimmedPhone || undefined
       });
 
       setIsLoading(false);
@@ -269,6 +291,7 @@ export default function LoginModal({ isOpen, onClose, onLoginSuccess }: LoginMod
                       <motion.form
                         key="login-form"
                         onSubmit={handleLoginSubmit}
+                        noValidate
                         className="space-y-4"
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -415,12 +438,32 @@ export default function LoginModal({ isOpen, onClose, onLoginSuccess }: LoginMod
                       <motion.form
                         key="signup-form"
                         onSubmit={handleSignUpSubmit}
+                        noValidate
                         className="space-y-3.5"
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -10 }}
                         transition={{ duration: 0.3 }}
                       >
+                        {/* Error Alert Display */}
+                        <AnimatePresence>
+                          {errorMessage && (
+                            <motion.div
+                              initial={{ opacity: 0, height: 0, y: -10 }}
+                              animate={{ opacity: 1, height: "auto", y: 0 }}
+                              exit={{ opacity: 0, height: 0, y: -10 }}
+                              className="flex items-start gap-3 p-3 rounded-2xl border border-red-500/20 bg-red-500/[0.04] text-red-300"
+                            >
+                              <AlertCircle size={15} className="shrink-0 mt-0.5 text-red-400" />
+                              <div className="text-left">
+                                <p className="font-sans text-xs font-semibold leading-relaxed">
+                                  {errorMessage}
+                                </p>
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+
                         {/* Name & Family */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           <div className="space-y-1 text-left">
@@ -433,7 +476,10 @@ export default function LoginModal({ isOpen, onClose, onLoginSuccess }: LoginMod
                               required
                               placeholder="John"
                               value={signupName}
-                              onChange={(e) => setSignupName(e.target.value)}
+                              onChange={(e) => {
+                                setSignupName(e.target.value);
+                                setErrorMessage("");
+                              }}
                               className="w-full bg-[#0a0a0f] border border-white/10 hover:border-white/20 focus:border-indigo-500 rounded-xl px-4 py-2 text-sm text-white placeholder-white/20 focus:outline-none transition-all duration-300 font-sans font-normal"
                             />
                           </div>
@@ -444,10 +490,12 @@ export default function LoginModal({ isOpen, onClose, onLoginSuccess }: LoginMod
                             <input
                               id="modal-signup-family"
                               type="text"
-                              required
                               placeholder="Doe"
                               value={signupFamily}
-                              onChange={(e) => setSignupFamily(e.target.value)}
+                              onChange={(e) => {
+                                setSignupFamily(e.target.value);
+                                setErrorMessage("");
+                              }}
                               className="w-full bg-[#0a0a0f] border border-white/10 hover:border-white/20 focus:border-indigo-500 rounded-xl px-4 py-2 text-sm text-white placeholder-white/20 focus:outline-none transition-all duration-300 font-sans font-normal"
                             />
                           </div>
@@ -462,10 +510,12 @@ export default function LoginModal({ isOpen, onClose, onLoginSuccess }: LoginMod
                             <input
                               id="modal-signup-phone"
                               type="tel"
-                              required
                               placeholder="+1 (555) 000-0000"
                               value={signupPhone}
-                              onChange={(e) => setSignupPhone(e.target.value)}
+                              onChange={(e) => {
+                                setSignupPhone(e.target.value);
+                                setErrorMessage("");
+                              }}
                               className="w-full bg-[#0a0a0f] border border-white/10 hover:border-white/20 focus:border-emerald-500 rounded-xl px-4 py-2 text-sm text-white placeholder-white/20 focus:outline-none transition-all duration-300 font-sans font-normal"
                             />
                           </div>
@@ -479,7 +529,10 @@ export default function LoginModal({ isOpen, onClose, onLoginSuccess }: LoginMod
                               required
                               placeholder="john.doe@example.com"
                               value={signupEmail}
-                              onChange={(e) => setSignupEmail(e.target.value)}
+                              onChange={(e) => {
+                                setSignupEmail(e.target.value);
+                                setErrorMessage("");
+                              }}
                               className="w-full bg-[#0a0a0f] border border-white/10 hover:border-white/20 focus:border-emerald-500 rounded-xl px-4 py-2 text-sm text-white placeholder-white/20 focus:outline-none transition-all duration-300 font-sans font-normal"
                             />
                           </div>
@@ -498,7 +551,10 @@ export default function LoginModal({ isOpen, onClose, onLoginSuccess }: LoginMod
                                 required
                                 placeholder="••••••••"
                                 value={signupPassword}
-                                onChange={(e) => setSignupPassword(e.target.value)}
+                                onChange={(e) => {
+                                  setSignupPassword(e.target.value);
+                                  setErrorMessage("");
+                                }}
                                 className="w-full bg-[#0a0a0f] border border-white/10 hover:border-white/20 focus:border-emerald-500 rounded-xl pl-4 pr-10 py-2 text-sm text-white placeholder-white/20 focus:outline-none transition-all duration-300 font-sans font-normal"
                               />
                               <button
@@ -521,7 +577,10 @@ export default function LoginModal({ isOpen, onClose, onLoginSuccess }: LoginMod
                                 required
                                 placeholder="••••••••"
                                 value={signupConfirmPassword}
-                                onChange={(e) => setSignupConfirmPassword(e.target.value)}
+                                onChange={(e) => {
+                                  setSignupConfirmPassword(e.target.value);
+                                  setErrorMessage("");
+                                }}
                                 className="w-full bg-[#0a0a0f] border border-white/10 hover:border-white/20 focus:border-emerald-500 rounded-xl pl-4 pr-10 py-2 text-sm text-white placeholder-white/20 focus:outline-none transition-all duration-300 font-sans font-normal"
                               />
                               <button
