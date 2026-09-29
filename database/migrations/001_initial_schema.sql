@@ -75,7 +75,7 @@ CREATE TABLE IF NOT EXISTS `sessions_tokens` (
 
 CREATE TABLE IF NOT EXISTS `login_history` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
-  `user_id` VARCHAR(50) NOT NULL,
+  `user_id` VARCHAR(50) DEFAULT NULL,
   `ip_address` VARCHAR(45) DEFAULT NULL,
   `user_agent` VARCHAR(255) DEFAULT NULL,
   `status` ENUM('Success', 'Failed') NOT NULL,

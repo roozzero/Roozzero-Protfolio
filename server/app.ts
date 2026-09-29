@@ -19,6 +19,9 @@ import fileRoutes from "./routes/fileRoutes";
 export function createExpressApp() {
   const app = express();
 
+  // Trust reverse proxy for accurate client IP, secure cookies, and protocol inspection
+  app.set("trust proxy", 1);
+
   // HTTP Security Headers with CSP configured so images, fonts, and inline styles are not broken
   app.use(
     helmet({

@@ -17,6 +17,7 @@ export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userRole, setUserRole] = useState<"user" | "admin" | "teacher">("user");
   const [currentUser, setCurrentUser] = useState<any>(null);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isDashboardPage, setIsDashboardPage] = useState(window.location.hash === "#dashboard");
   const [isAdminPage, setIsAdminPage] = useState(window.location.hash === "#admin");
@@ -34,6 +35,10 @@ export default function App() {
           setIsLoggedIn(true);
           setUserRole(role);
           setCurrentUser(u);
+
+          if (window.location.hash === "#login") {
+            window.location.hash = role === "admin" ? "#admin" : "#dashboard";
+          }
         } else {
           setIsLoggedIn(false);
           setUserRole("user");
@@ -45,6 +50,11 @@ export default function App() {
         setIsLoggedIn(false);
         setUserRole("user");
         setCurrentUser(null);
+      })
+      .finally(() => {
+        if (isMounted) {
+          setIsCheckingAuth(false);
+        }
       });
 
     return () => {
@@ -163,16 +173,16 @@ export default function App() {
 
   // Redirect unauthenticated user accessing dashboard/admin back to landing page, keeping modal closed
   useEffect(() => {
-    if ((isDashboardPage || isAdminPage) && !isLoggedIn) {
+    if (!isCheckingAuth && (isDashboardPage || isAdminPage) && !isLoggedIn) {
       setIsDashboardPage(false);
       setIsAdminPage(false);
       window.location.hash = "";
     }
-  }, [isDashboardPage, isAdminPage, isLoggedIn]);
+  }, [isCheckingAuth, isDashboardPage, isAdminPage, isLoggedIn]);
 
   // Redirect to corresponding dashboard if already authenticated user tries to access login when open
   useEffect(() => {
-    if (isLoginModalOpen && isLoggedIn) {
+    if (!isCheckingAuth && isLoginModalOpen && isLoggedIn) {
       setIsLoginModalOpen(false);
       if (userRole === "admin") {
         window.location.hash = "#admin";
@@ -180,7 +190,7 @@ export default function App() {
         window.location.hash = "#dashboard";
       }
     }
-  }, [isLoginModalOpen, isLoggedIn, userRole]);
+  }, [isCheckingAuth, isLoginModalOpen, isLoggedIn, userRole]);
 
   useEffect(() => {
     if (!isDashboardPage && !isAdminPage && window.location.hash) {
@@ -211,7 +221,9 @@ export default function App() {
     setIsLoggedIn(false);
     setUserRole("user");
     setCurrentUser(null);
-    window.location.hash = "#login";
+    setIsDashboardPage(false);
+    setIsAdminPage(false);
+    window.location.hash = "";
   };
 
   if (isDashboardPage && isLoggedIn) {
@@ -267,14 +279,12 @@ export default function App() {
           if (user) {
             setCurrentUser(user);
           }
-          setTimeout(() => {
-            setIsLoginModalOpen(false);
-            if (role === "admin") {
-              window.location.hash = "#admin";
-            } else {
-              window.location.hash = "#dashboard";
-            }
-          }, 1500);
+          setIsLoginModalOpen(false);
+          if (role === "admin") {
+            window.location.hash = "#admin";
+          } else {
+            window.location.hash = "#dashboard";
+          }
         }}
       />
     </>

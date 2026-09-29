@@ -1,13 +1,19 @@
 import fs from "fs";
 import path from "path";
 import bcrypt from "bcryptjs";
-import { getDbPool, query } from "./pool";
+import { getDbPool, query, isMysql } from "./pool";
 import { DEFAULT_CMS_CONFIG, DEFAULT_HOMEPAGE_CLASSES } from "../../src/constants/defaultCms";
 
 export async function runMigrationsAndSeeds() {
   const pool = getDbPool();
   if (!pool) {
-    console.warn("[Migration] MySQL pool is not initialized. Skipping DB migrations.");
+    console.warn("[Migration] Database pool is not initialized. Skipping DB migrations.");
+    return;
+  }
+
+  // SQLite fallback is already initialized and seeded
+  if (!isMysql()) {
+    console.log("[Migration] Embedded persistent database is active and ready.");
     return;
   }
 
@@ -35,6 +41,13 @@ export async function runMigrationsAndSeeds() {
       console.log("[Migration] Schema tables verified successfully.");
     }
 
+    // Ensure login_history.user_id is nullable to support failed unknown logins
+    try {
+      await pool.query("ALTER TABLE `login_history` MODIFY COLUMN `user_id` VARCHAR(50) DEFAULT NULL");
+    } catch {
+      // Ignore if table does not exist yet or already altered
+    }
+
     // Seed Roles
     const [rolesCount]: [any[], any] = await pool.query("SELECT COUNT(*) as count FROM roles");
     if (rolesCount[0].count === 0) {
@@ -56,6 +69,14 @@ export async function runMigrationsAndSeeds() {
         INSERT INTO users (id, username, email, password_hash, role_id, name, title_prefix, department, specialization, bio, status)
         VALUES ('admin-1', 'admin', 'admin@roozzero.dev', ?, 1, 'Roozbeh Tavakoli', 'Mr.', 'LMS Administration', 'System Architect & Super Admin', 'Academy director and full stack software architect.', 'Active')
       `, [hashedPassword]);
+    } else if (process.env.ADMIN_PASSWORD) {
+      const adminUser = adminCheck[0];
+      const match = await bcrypt.compare(process.env.ADMIN_PASSWORD, adminUser.password_hash);
+      if (!match) {
+        const newAdminHash = await bcrypt.hash(process.env.ADMIN_PASSWORD, 10);
+        await pool.query("UPDATE users SET password_hash = ? WHERE id = ?", [newAdminHash, adminUser.id]);
+        console.log("[Migration] Synchronized Administrator password with configured ADMIN_PASSWORD.");
+      }
     }
 
     // Seed Teacher User

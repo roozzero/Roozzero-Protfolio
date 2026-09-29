@@ -175,8 +175,12 @@ router.post(
       );
 
       if (users.length === 0) {
-        // Record failed login attempt
-        await query("INSERT INTO login_history (user_id, ip_address, user_agent, status) VALUES ('unknown', ?, ?, 'Failed')", [ip, userAgent]);
+        // Record failed login attempt for unknown email with NULL user_id
+        try {
+          await query("INSERT INTO login_history (user_id, ip_address, user_agent, status) VALUES (NULL, ?, ?, 'Failed')", [ip, userAgent]);
+        } catch (logErr) {
+          console.warn("[Auth Login] Could not record unknown login attempt:", logErr);
+        }
         return res.status(401).json({
           success: false,
           error: { code: "INVALID_CREDENTIALS", message: "Invalid email or password." }
@@ -195,7 +199,11 @@ router.post(
       // Verify bcrypt password hash
       const isPasswordMatch = await bcrypt.compare(password, user.password_hash);
       if (!isPasswordMatch) {
-        await query("INSERT INTO login_history (user_id, ip_address, user_agent, status) VALUES (?, ?, ?, 'Failed')", [user.id, ip, userAgent]);
+        try {
+          await query("INSERT INTO login_history (user_id, ip_address, user_agent, status) VALUES (?, ?, ?, 'Failed')", [user.id, ip, userAgent]);
+        } catch (logErr) {
+          console.warn("[Auth Login] Could not record failed login attempt:", logErr);
+        }
         return res.status(401).json({
           success: false,
           error: { code: "INVALID_CREDENTIALS", message: "Invalid email or password." }
@@ -206,8 +214,12 @@ router.post(
       await createSession(user.id, req, res, !!rememberMe);
 
       // Record success in login_history and activity_logs
-      await query("INSERT INTO login_history (user_id, ip_address, user_agent, status) VALUES (?, ?, ?, 'Success')", [user.id, ip, userAgent]);
-      await query("INSERT INTO activity_logs (user_id, action, details) VALUES (?, 'Login', 'User authenticated successfully')", [user.id]);
+      try {
+        await query("INSERT INTO login_history (user_id, ip_address, user_agent, status) VALUES (?, ?, ?, 'Success')", [user.id, ip, userAgent]);
+        await query("INSERT INTO activity_logs (user_id, action, details) VALUES (?, 'Login', 'User authenticated successfully')", [user.id]);
+      } catch (logErr) {
+        console.warn("[Auth Login] Could not record success login history:", logErr);
+      }
 
       return res.json({
         success: true,

@@ -50,10 +50,11 @@ export async function createSession(
     );
 
     // Set HttpOnly cookie
-    const isProduction = process.env.NODE_ENV === "production";
+    const isLocalhost = Boolean(req.headers.host?.includes("localhost") || req.headers.host?.includes("127.0.0.1"));
+    const isSecure = !isLocalhost && (req.secure || req.headers["x-forwarded-proto"] === "https" || process.env.NODE_ENV === "production");
     res.cookie(SESSION_COOKIE_NAME, token, {
       httpOnly: true,
-      secure: isProduction,
+      secure: isSecure,
       sameSite: "lax",
       expires: expiresAt,
       path: "/"

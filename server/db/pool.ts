@@ -1,12 +1,14 @@
 import mysql from "mysql2/promise";
 import dotenv from "dotenv";
+import { getSqliteDb, sqlitePool, sqliteQuery } from "./sqliteDb";
 
 dotenv.config();
 
 let pool: mysql.Pool | null = null;
+let isMysqlActive = false;
 let isConnected = false;
 
-export function getDbPool(): mysql.Pool | null {
+export function getMysqlPool(): mysql.Pool | null {
   if (pool) return pool;
 
   const host = process.env.DB_HOST;
@@ -41,20 +43,38 @@ export function getDbPool(): mysql.Pool | null {
   return null;
 }
 
+export function getDbPool(): any {
+  if (isMysqlActive && pool) {
+    return pool;
+  }
+  return sqlitePool;
+}
+
 export async function testConnection(): Promise<boolean> {
-  const p = getDbPool();
-  if (!p) {
-    isConnected = false;
-    return false;
+  const p = getMysqlPool();
+  if (p) {
+    try {
+      const conn = await p.getConnection();
+      isMysqlActive = true;
+      isConnected = true;
+      conn.release();
+      console.log("[Database] Active engine: MySQL");
+      return true;
+    } catch (err: any) {
+      console.warn(`[MySQL Pool] Connection test failed: ${err.message}. Falling back to embedded database.`);
+      isMysqlActive = false;
+    }
   }
 
+  // Fallback to SQLite persistent database
   try {
-    const conn = await p.getConnection();
+    getSqliteDb();
+    isMysqlActive = false;
     isConnected = true;
-    conn.release();
+    console.log("[Database] Active engine: SQLite (persistent embedded)");
     return true;
   } catch (err: any) {
-    console.warn(`[MySQL Pool] Connection test failed: ${err.message}`);
+    console.error(`[Database Error] Failed to initialize embedded database: ${err.message}`);
     isConnected = false;
     return false;
   }
@@ -64,18 +84,21 @@ export function isDbConnected(): boolean {
   return isConnected;
 }
 
+export function isMysql(): boolean {
+  return isMysqlActive;
+}
+
 export async function query<T = any>(sql: string, params?: any[] | Record<string, any>): Promise<[T, any]> {
-  const p = getDbPool();
-  if (!p) {
-    throw new Error("Database not connected. Please configure DB_HOST, DB_USER, DB_NAME in .env");
+  if (isMysqlActive && pool) {
+    return await pool.query(sql, params) as [T, any];
   }
-  return await p.query(sql, params) as [T, any];
+  return sqliteQuery<T>(sql, params);
 }
 
 export async function execute<T = any>(sql: string, params?: any[] | Record<string, any>): Promise<[T, any]> {
-  const p = getDbPool();
-  if (!p) {
-    throw new Error("Database not connected. Please configure DB_HOST, DB_USER, DB_NAME in .env");
+  if (isMysqlActive && pool) {
+    return await pool.execute(sql, params) as [T, any];
   }
-  return await p.execute(sql, params) as [T, any];
+  return sqliteQuery<T>(sql, params);
 }
+

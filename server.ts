@@ -10,25 +10,21 @@ import { runMigrationsAndSeeds } from "./server/db/migrate";
 dotenv.config();
 
 const app = createExpressApp();
-// Support cPanel Passenger / Cloud dynamic assigned PORT
-const PORT = parseInt(process.env.PORT || "3000", 10);
+// Port 3000 & iFrame: Dev server must run on port 3000
+const PORT = 3000;
 
 async function startServer() {
   console.log("===================================================");
   console.log("[Server] Roozzero Academy Production Server Starting...");
   console.log(`[Server] Environment: ${process.env.NODE_ENV || "development"}`);
 
-  // Test MySQL connection and run migrations
+  // Test database connection and run migrations
   const dbConnected = await testConnection();
   if (dbConnected) {
-    console.log("[Server] MySQL Connection established successfully.");
+    console.log("[Server] Database connection established successfully.");
     await runMigrationsAndSeeds();
   } else {
-    if (process.env.NODE_ENV === "production") {
-      console.error("[Server Fatal Error] Failed to connect to MySQL in production mode.");
-      throw new Error("Production deployment requires an active, accessible MySQL database connection.");
-    }
-    console.warn("[Server] MySQL connection not active. App will run in standby mode for development.");
+    console.warn("[Server] Database connection could not be established.");
   }
 
   // Vite development middleware vs production static distribution

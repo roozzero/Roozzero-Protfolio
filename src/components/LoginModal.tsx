@@ -47,6 +47,15 @@ export default function LoginModal({ isOpen, onClose, onLoginSuccess }: LoginMod
     };
   }, [isOpen]);
 
+  // Reset modal state when closed
+  useEffect(() => {
+    if (!isOpen) {
+      setIsSuccess(false);
+      setErrorMessage("");
+      setIsLoading(false);
+    }
+  }, [isOpen]);
+
   // Handle Esc key to close
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -84,12 +93,15 @@ export default function LoginModal({ isOpen, onClose, onLoginSuccess }: LoginMod
       setIsLoading(false);
       setIsSuccess(true);
       const user = res.data.user;
-      const role = user.roleName.toLowerCase() === "administrator" ? "admin" : user.roleName.toLowerCase();
+      const rawRole = (user.roleName || "").toLowerCase();
+      const role = rawRole === "administrator" ? "admin" : (rawRole === "teacher" ? "teacher" : "user");
       setSuccessMessage(`Welcome back, ${user.name}!`);
 
-      if (onLoginSuccess) {
-        onLoginSuccess(role as any, user);
-      }
+      setTimeout(() => {
+        if (onLoginSuccess) {
+          onLoginSuccess(role as any, user);
+        }
+      }, 1500);
     } catch (err: any) {
       setIsLoading(false);
       setErrorMessage(err.message || "Invalid credentials. Please verify your email and password.");
@@ -110,6 +122,11 @@ export default function LoginModal({ isOpen, onClose, onLoginSuccess }: LoginMod
       return;
     }
 
+    if (signupPassword.length < 6) {
+      setErrorMessage("Password must be at least 6 characters.");
+      return;
+    }
+
     setIsLoading(true);
     try {
       const fullName = `${signupName} ${signupFamily}`.trim();
@@ -118,15 +135,19 @@ export default function LoginModal({ isOpen, onClose, onLoginSuccess }: LoginMod
         email: signupEmail,
         password: signupPassword,
         confirmPassword: signupConfirmPassword,
-        phone: signupPhone
+        phone: signupPhone || undefined
       });
 
       setIsLoading(false);
       setIsSuccess(true);
+      const user = res.data.user;
       setSuccessMessage("Account created successfully!");
-      if (onLoginSuccess) {
-        onLoginSuccess("user", res.data.user);
-      }
+
+      setTimeout(() => {
+        if (onLoginSuccess) {
+          onLoginSuccess("user", user);
+        }
+      }, 1500);
     } catch (err: any) {
       setIsLoading(false);
       setErrorMessage(err.message || "Registration failed. Please check your details.");
