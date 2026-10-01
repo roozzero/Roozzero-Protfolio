@@ -57,7 +57,7 @@ export default function AdminDashboard({ onLogout, onGoHome }: AdminDashboardPro
 
   const [profile, setProfile] = useState({
     name: "Jaden Smith",
-    email: "admin@roozzero.dev",
+    email: "admin@roozzero.info",
     phone: "+98 9123456789",
     photo: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=300&auto=format&fit=crop",
     bio: "Super Administrator and Learning Management Architect. Orchestrating system-wide course allocations, credential signing, and academy security operations.",
@@ -126,7 +126,7 @@ export default function AdminDashboard({ onLogout, onGoHome }: AdminDashboardPro
 
   // Admin exclusive states
   const [users, setUsers] = useState<AdminUser[]>([
-    { id: "usr-1", name: "Jaden Smith", email: "admin@roozzero.dev", phone: "+1 (555) 012-3456", role: "super-admin", status: "Active", lastLogin: "Just Now", joinedDate: "2026-01-01" },
+    { id: "usr-1", name: "Jaden Smith", email: "admin@roozzero.info", phone: "+1 (555) 012-3456", role: "super-admin", status: "Active", lastLogin: "Just Now", joinedDate: "2026-01-01" },
     { id: "usr-2", name: "Cody Fisher", email: "cody.f@academy.local", phone: "+1 (555) 019-2834", role: "student", status: "Active", lastLogin: "3 hours ago", joinedDate: "2026-05-10" },
     { id: "usr-3", name: "Sarah Vance", email: "teacher@academy.local", phone: "+1 (555) 021-9876", role: "teacher", status: "Active", lastLogin: "Yesterday", joinedDate: "2026-02-15" }
   ]);

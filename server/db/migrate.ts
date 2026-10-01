@@ -1,8 +1,11 @@
 import fs from "fs";
 import path from "path";
 import bcrypt from "bcryptjs";
+import dotenv from "dotenv";
 import { getDbPool } from "./pool";
 import { DEFAULT_CMS_CONFIG, DEFAULT_HOMEPAGE_CLASSES } from "../../src/constants/defaultCms";
+
+dotenv.config();
 
 export async function runMigrationsAndSeeds() {
   const pool = getDbPool();
@@ -54,28 +57,81 @@ export async function runMigrationsAndSeeds() {
       `);
     }
 
-    // Seed Canonical Master Admin User (Idempotent: Never overwrite or reset existing passwords)
-    const adminEmail = (process.env.ADMIN_EMAIL || "admin@roozzero.com").trim().toLowerCase();
-    const adminPassword = process.env.ADMIN_PASSWORD;
+    // Canonical Master Administrator Synchronization from process.env.ADMIN_EMAIL and process.env.ADMIN_PASSWORD
+    const [adminRoleRows]: [any[], any] = await pool.query(
+      "SELECT id FROM roles WHERE name = 'Administrator' LIMIT 1"
+    );
+    const adminRoleId = adminRoleRows.length > 0 ? adminRoleRows[0].id : 1;
 
-    const [adminCheck]: [any[], any] = await pool.query(
-      "SELECT id, email, password_hash FROM users WHERE email = ? OR email = 'admin@roozzero.dev' OR role_id = 1 LIMIT 1",
-      [adminEmail]
+    const configuredAdminEmail = process.env.ADMIN_EMAIL ? process.env.ADMIN_EMAIL.trim().toLowerCase() : "";
+    const configuredAdminPassword = process.env.ADMIN_PASSWORD;
+
+    // Look up existing Administrator by canonical role, not old email
+    const [adminUsers]: [any[], any] = await pool.query(
+      `SELECT u.id, u.username, u.email, u.password_hash, u.role_id, u.status
+       FROM users u
+       JOIN roles r ON r.id = u.role_id
+       WHERE r.name = 'Administrator'
+       LIMIT 1`
     );
 
-    if (adminCheck.length === 0) {
-      if (adminPassword) {
-        console.log(`[Migration] Initializing canonical Master Administrator account (${adminEmail})...`);
-        const hashedPassword = await bcrypt.hash(adminPassword, 12);
+    if (adminUsers.length === 0) {
+      if (configuredAdminEmail && configuredAdminPassword) {
+        console.log(`[Migration] Initializing canonical Administrator account (${configuredAdminEmail})...`);
+        const hashedPassword = await bcrypt.hash(configuredAdminPassword, 10);
         await pool.query(`
           INSERT INTO users (id, username, email, password_hash, role_id, name, title_prefix, department, specialization, bio, status)
-          VALUES ('admin-1', 'admin', ?, ?, 1, 'Roozbeh Tavakoli', 'Mr.', 'LMS Administration', 'System Architect & Super Admin', 'Academy director and full stack software architect.', 'Active')
-        `, [adminEmail, hashedPassword]);
+          VALUES ('admin-1', 'admin', ?, ?, ?, 'Roozbeh Tavakoli', 'Mr.', 'LMS Administration', 'System Architect & Super Admin', 'Academy director and full stack software architect.', 'Active')
+        `, [configuredAdminEmail, hashedPassword, adminRoleId]);
       } else {
-        console.warn("[Migration] ADMIN_PASSWORD environment variable is not configured. Master Admin account creation deferred.");
+        console.warn("[Migration] ADMIN_EMAIL or ADMIN_PASSWORD is not configured. Master Admin creation deferred.");
       }
     } else {
-      console.log(`[Migration] Master Administrator account already exists (${adminCheck[0].email}). Password preserved.`);
+      const existingAdmin = adminUsers[0];
+      const adminId = existingAdmin.id;
+
+      // Synchronize Email from process.env.ADMIN_EMAIL if configured and different
+      if (configuredAdminEmail && configuredAdminEmail !== (existingAdmin.email || "").trim().toLowerCase()) {
+        const [conflictRows]: [any[], any] = await pool.query(
+          "SELECT id FROM users WHERE email = ? AND id != ? LIMIT 1",
+          [configuredAdminEmail, adminId]
+        );
+        if (conflictRows.length > 0) {
+          console.error(`[Migration Error] Configured ADMIN_EMAIL (${configuredAdminEmail}) is already in use by user ID: ${conflictRows[0].id}. Skipping email update.`);
+        } else {
+          await pool.query("UPDATE users SET email = ? WHERE id = ?", [configuredAdminEmail, adminId]);
+          console.log(`[Migration] Updated Administrator email to configured ADMIN_EMAIL (${configuredAdminEmail}).`);
+        }
+      }
+
+      // Synchronize Password from process.env.ADMIN_PASSWORD if configured
+      if (configuredAdminPassword) {
+        let needsPasswordUpdate = false;
+        const currentHash = existingAdmin.password_hash || "";
+
+        // Check if existing hash is invalid, plaintext, or does not match configured password
+        const isBcryptFormat = currentHash.startsWith("$2a$") || currentHash.startsWith("$2b$") || currentHash.startsWith("$2y$");
+        if (!isBcryptFormat) {
+          needsPasswordUpdate = true;
+        } else {
+          try {
+            const matches = await bcrypt.compare(configuredAdminPassword, currentHash);
+            if (!matches) {
+              needsPasswordUpdate = true;
+            }
+          } catch {
+            needsPasswordUpdate = true;
+          }
+        }
+
+        if (needsPasswordUpdate) {
+          const newHashedPassword = await bcrypt.hash(configuredAdminPassword, 10);
+          await pool.query("UPDATE users SET password_hash = ? WHERE id = ?", [newHashedPassword, adminId]);
+          console.log("[Migration] Synchronized Administrator password with configured ADMIN_PASSWORD.");
+        } else {
+          console.log("[Migration] Administrator password already matches configured ADMIN_PASSWORD. Hash preserved.");
+        }
+      }
     }
 
     // Seed Teacher User
