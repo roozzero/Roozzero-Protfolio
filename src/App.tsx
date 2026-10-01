@@ -31,7 +31,7 @@ export default function App() {
         if (res.success && res.data?.user) {
           const u = res.data.user;
           const rawRole = (u.roleName || "").toLowerCase();
-          const role = rawRole === "administrator" ? "admin" : (rawRole === "teacher" ? "teacher" : "user");
+          const role = (rawRole === "administrator" || rawRole === "admin") ? "admin" : (rawRole === "teacher" ? "teacher" : "user");
           setIsLoggedIn(true);
           setUserRole(role);
           setCurrentUser(u);
@@ -179,6 +179,21 @@ export default function App() {
       window.location.hash = "";
     }
   }, [isCheckingAuth, isDashboardPage, isAdminPage, isLoggedIn]);
+
+  // Route guard: Non-admin users cannot access #admin, admin accessing #dashboard goes to #admin
+  useEffect(() => {
+    if (!isCheckingAuth && isLoggedIn) {
+      if (isAdminPage && userRole !== "admin") {
+        setIsAdminPage(false);
+        setIsDashboardPage(true);
+        window.location.hash = "#dashboard";
+      } else if (isDashboardPage && userRole === "admin") {
+        setIsDashboardPage(false);
+        setIsAdminPage(true);
+        window.location.hash = "#admin";
+      }
+    }
+  }, [isCheckingAuth, isLoggedIn, isAdminPage, isDashboardPage, userRole]);
 
   // Redirect to corresponding dashboard if already authenticated user tries to access login when open
   useEffect(() => {

@@ -1,19 +1,13 @@
 import fs from "fs";
 import path from "path";
 import bcrypt from "bcryptjs";
-import { getDbPool, query, isMysql } from "./pool";
+import { getDbPool } from "./pool";
 import { DEFAULT_CMS_CONFIG, DEFAULT_HOMEPAGE_CLASSES } from "../../src/constants/defaultCms";
 
 export async function runMigrationsAndSeeds() {
   const pool = getDbPool();
   if (!pool) {
     console.warn("[Migration] Database pool is not initialized. Skipping DB migrations.");
-    return;
-  }
-
-  // SQLite fallback is already initialized and seeded
-  if (!isMysql()) {
-    console.log("[Migration] Embedded persistent database is active and ready.");
     return;
   }
 
@@ -60,23 +54,28 @@ export async function runMigrationsAndSeeds() {
       `);
     }
 
-    // Seed Admin User
-    const [adminCheck]: [any[], any] = await pool.query("SELECT * FROM users WHERE email = 'admin@roozzero.dev' OR role_id = 1 LIMIT 1");
+    // Seed Canonical Master Admin User (Idempotent: Never overwrite or reset existing passwords)
+    const adminEmail = (process.env.ADMIN_EMAIL || "admin@roozzero.com").trim().toLowerCase();
+    const adminPassword = process.env.ADMIN_PASSWORD;
+
+    const [adminCheck]: [any[], any] = await pool.query(
+      "SELECT id, email, password_hash FROM users WHERE email = ? OR email = 'admin@roozzero.dev' OR role_id = 1 LIMIT 1",
+      [adminEmail]
+    );
+
     if (adminCheck.length === 0) {
-      console.log("[Migration] Seeding initial Administrator user...");
-      const hashedPassword = await bcrypt.hash(process.env.ADMIN_PASSWORD || "Admin123!", 10);
-      await pool.query(`
-        INSERT INTO users (id, username, email, password_hash, role_id, name, title_prefix, department, specialization, bio, status)
-        VALUES ('admin-1', 'admin', 'admin@roozzero.dev', ?, 1, 'Roozbeh Tavakoli', 'Mr.', 'LMS Administration', 'System Architect & Super Admin', 'Academy director and full stack software architect.', 'Active')
-      `, [hashedPassword]);
-    } else if (process.env.ADMIN_PASSWORD) {
-      const adminUser = adminCheck[0];
-      const match = await bcrypt.compare(process.env.ADMIN_PASSWORD, adminUser.password_hash);
-      if (!match) {
-        const newAdminHash = await bcrypt.hash(process.env.ADMIN_PASSWORD, 10);
-        await pool.query("UPDATE users SET password_hash = ? WHERE id = ?", [newAdminHash, adminUser.id]);
-        console.log("[Migration] Synchronized Administrator password with configured ADMIN_PASSWORD.");
+      if (adminPassword) {
+        console.log(`[Migration] Initializing canonical Master Administrator account (${adminEmail})...`);
+        const hashedPassword = await bcrypt.hash(adminPassword, 12);
+        await pool.query(`
+          INSERT INTO users (id, username, email, password_hash, role_id, name, title_prefix, department, specialization, bio, status)
+          VALUES ('admin-1', 'admin', ?, ?, 1, 'Roozbeh Tavakoli', 'Mr.', 'LMS Administration', 'System Architect & Super Admin', 'Academy director and full stack software architect.', 'Active')
+        `, [adminEmail, hashedPassword]);
+      } else {
+        console.warn("[Migration] ADMIN_PASSWORD environment variable is not configured. Master Admin account creation deferred.");
       }
+    } else {
+      console.log(`[Migration] Master Administrator account already exists (${adminCheck[0].email}). Password preserved.`);
     }
 
     // Seed Teacher User

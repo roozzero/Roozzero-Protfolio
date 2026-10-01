@@ -49,7 +49,7 @@ function sanitizeUser(user: any): Partial<AuthenticatedUser> {
     email: user.email,
     name: user.name,
     roleId: user.role_id,
-    roleName: user.role_name || (user.role_id === 1 ? "Administrator" : user.role_id === 2 ? "Teacher" : "Student"),
+    roleName: user.role_name || "Student",
     status: user.status,
     avatarUrl: user.avatar_url,
     phone: user.phone,

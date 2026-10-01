@@ -95,11 +95,11 @@ router.get("/users", async (req: Request, res: Response) => {
       username: r.username,
       email: r.email,
       phone: r.phone,
-      role: r.role_id === 1 ? "admin" : r.role_id === 2 ? "teacher" : "student",
+      role: (r.role_name || "").toLowerCase() === "administrator" ? "admin" : (r.role_name || "").toLowerCase() === "teacher" ? "teacher" : "student",
       roleId: r.role_id,
       roleName: r.role_name,
       status: r.status,
-      joinedDate: r.created_at ? r.created_at.toISOString().split("T")[0] : "",
+      joinedDate: r.created_at ? (typeof r.created_at === "string" ? r.created_at.split(" ")[0].split("T")[0] : (r.created_at.toISOString ? r.created_at.toISOString().split("T")[0] : String(r.created_at))) : "",
       avatar: r.avatar_url
     }));
 
@@ -304,7 +304,7 @@ router.get("/enrollments", async (req: Request, res: Response) => {
              e.course_id as courseId, c.title as courseTitle,
              e.season_id as seasonId, COALESCE(cs.name, 'Core Cohort') as seasonName,
              e.joined_date as enrollmentDate,
-             COALESCE(e.payment_status, 'Paid') as paymentStatus,
+             'Paid' as paymentStatus,
              e.status as courseStatus
       FROM enrollments e
       INNER JOIN users u ON e.student_id = u.id
