@@ -60,6 +60,13 @@ export const authApi = {
     return request<{ success: boolean; data: { user: any } }>("/auth/me");
   },
 
+  async updateProfile(data: { name?: string; phone?: string; bio?: string; specialization?: string }) {
+    return request<{ success: boolean; data: { user: any } }>("/auth/profile", {
+      method: "PUT",
+      body: JSON.stringify(data)
+    });
+  },
+
   async forgotPassword(email: string) {
     return request<{ success: boolean; message: string }>("/auth/forgot-password", {
       method: "POST",

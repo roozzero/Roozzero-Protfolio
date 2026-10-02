@@ -271,6 +271,39 @@ router.get("/me", requireAuth, async (req: Request, res: Response) => {
 });
 
 // -------------------------------------------------------------
+// PUT /api/auth/profile
+// -------------------------------------------------------------
+router.put("/profile", requireAuth, async (req: Request, res: Response) => {
+  try {
+    const userId = req.user!.id;
+    const { name, phone, bio, specialization } = req.body;
+
+    await query(`
+      UPDATE users
+      SET name = COALESCE(?, name),
+          phone = COALESCE(?, phone),
+          bio = COALESCE(?, bio),
+          specialization = COALESCE(?, specialization)
+      WHERE id = ? AND deleted_at IS NULL
+    `, [name?.trim() || null, phone?.trim() || null, bio?.trim() || null, specialization?.trim() || null, userId]);
+
+    const [rows]: [any[], any] = await query(
+      `SELECT u.*, r.name as role_name FROM users u JOIN roles r ON r.id = u.role_id WHERE u.id = ?`,
+      [userId]
+    );
+
+    return res.json({
+      success: true,
+      data: {
+        user: sanitizeUser(rows[0])
+      }
+    });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: { code: "SERVER_ERROR", message: err.message } });
+  }
+});
+
+// -------------------------------------------------------------
 // POST /api/auth/forgot-password
 // -------------------------------------------------------------
 router.post(

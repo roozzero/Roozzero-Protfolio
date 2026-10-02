@@ -7,8 +7,8 @@ import { uploadSubmission, uploadProfile } from "../middleware/upload";
 
 const router = Router();
 
-// Require Student (or Admin / Teacher) for student portal endpoints
-router.use(requireAuth);
+// Require Student (or Admin) for student portal endpoints
+router.use(requireAuth, requireRole("Student", "Administrator"));
 
 // -------------------------------------------------------------
 // GET /api/student/profile

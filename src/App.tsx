@@ -6,7 +6,8 @@
 import React, { useState, useEffect, useMemo } from "react";
 import LandingView from "./components/LandingView";
 import LoginModal from "./components/LoginModal";
-import UserDashboard from "./components/UserDashboard";
+import NormalUserDashboard from "./components/NormalUserDashboard";
+import StudentDashboard from "./components/StudentDashboard";
 import AdminDashboard from "./components/AdminDashboard";
 import TeacherDashboard from "./components/TeacherDashboard";
 import { loadCmsConfig, saveCmsConfig, DEFAULT_HOMEPAGE_CLASSES } from "./constants/defaultCms";
@@ -15,7 +16,7 @@ import { authApi, cmsApi } from "./lib/api";
 
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [userRole, setUserRole] = useState<"user" | "admin" | "teacher">("user");
+  const [userRole, setUserRole] = useState<"user" | "student" | "admin" | "teacher">("user");
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
@@ -31,7 +32,10 @@ export default function App() {
         if (res.success && res.data?.user) {
           const u = res.data.user;
           const rawRole = (u.roleName || "").toLowerCase();
-          const role = (rawRole === "administrator" || rawRole === "admin") ? "admin" : (rawRole === "teacher" ? "teacher" : "user");
+          const role: "user" | "student" | "admin" | "teacher" = 
+            (rawRole === "administrator" || rawRole === "admin") ? "admin" : 
+            (rawRole === "teacher" ? "teacher" : 
+            (rawRole === "student" ? "student" : "user"));
           setIsLoggedIn(true);
           setUserRole(role);
           setCurrentUser(u);
@@ -245,6 +249,17 @@ export default function App() {
     if (userRole === "teacher") {
       return (
         <TeacherDashboard 
+          currentUser={currentUser}
+          onLogout={handleLogout}
+          onGoHome={() => {
+            window.location.hash = "#";
+          }}
+        />
+      );
+    }
+    if (userRole === "student") {
+      return (
+        <StudentDashboard 
           onLogout={handleLogout}
           onGoHome={() => {
             window.location.hash = "#";
@@ -253,10 +268,14 @@ export default function App() {
       );
     }
     return (
-      <UserDashboard 
+      <NormalUserDashboard 
+        currentUser={currentUser}
         onLogout={handleLogout}
         onGoHome={() => {
           window.location.hash = "#";
+        }}
+        onProfileUpdated={(updatedUser) => {
+          setCurrentUser(updatedUser);
         }}
       />
     );

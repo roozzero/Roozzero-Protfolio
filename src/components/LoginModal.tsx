@@ -6,7 +6,7 @@ import { authApi } from "../lib/api";
 interface LoginModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onLoginSuccess?: (role: "user" | "admin" | "teacher", user?: any) => void;
+  onLoginSuccess?: (role: "user" | "student" | "admin" | "teacher", user?: any) => void;
 }
 
 export default function LoginModal({ isOpen, onClose, onLoginSuccess }: LoginModalProps) {
@@ -95,12 +95,19 @@ export default function LoginModal({ isOpen, onClose, onLoginSuccess }: LoginMod
       setIsSuccess(true);
       const user = res.data.user;
       const rawRole = (user.roleName || "").toLowerCase();
-      const role = rawRole === "administrator" || rawRole === "admin" ? "admin" : (rawRole === "teacher" ? "teacher" : "user");
+      const role: "user" | "student" | "admin" | "teacher" = 
+        rawRole === "administrator" || rawRole === "admin" 
+          ? "admin" 
+          : rawRole === "teacher" 
+            ? "teacher" 
+            : rawRole === "student" 
+              ? "student" 
+              : "user";
       setSuccessMessage(`Welcome back, ${user.name}!`);
 
       setTimeout(() => {
         if (onLoginSuccess) {
-          onLoginSuccess(role as any, user);
+          onLoginSuccess(role, user);
         }
       }, 1500);
     } catch (err: any) {
