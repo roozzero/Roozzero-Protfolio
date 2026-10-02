@@ -312,14 +312,22 @@ export const adminApi = {
     });
   },
 
-  async getUsers(params?: { page?: number; limit?: number; search?: string; roleId?: number }) {
+  async getUsers(params?: { page?: number; limit?: number; search?: string; roleId?: number; role?: string }) {
     const query = new URLSearchParams();
     if (params?.page) query.set("page", params.page.toString());
     if (params?.limit) query.set("limit", params.limit.toString());
     if (params?.search) query.set("search", params.search);
     if (params?.roleId) query.set("roleId", params.roleId.toString());
+    if (params?.role) query.set("role", params.role);
 
     return request<{ success: boolean; data: { users: any[]; total: number; totalPages: number } }>(`/admin/users?${query.toString()}`);
+  },
+
+  async updateUserRole(id: string, role: "User" | "Student" | "Teacher" | string) {
+    return request<{ success: boolean; data: any }>(`/admin/users/${id}/role`, {
+      method: "PATCH",
+      body: JSON.stringify({ role })
+    });
   },
 
   async createUser(data: any) {

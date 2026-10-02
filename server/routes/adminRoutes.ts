@@ -17,15 +17,20 @@ router.get("/dashboard", async (req: Request, res: Response) => {
     const [userStats]: [any[], any] = await query(`
       SELECT
         COUNT(*) as totalUsers,
-        SUM(CASE WHEN role_id = 3 AND status = 'Active' THEN 1 ELSE 0 END) as activeStudents,
-        SUM(CASE WHEN role_id = 2 THEN 1 ELSE 0 END) as totalTeachers,
-        SUM(CASE WHEN role_id = 1 THEN 1 ELSE 0 END) as totalAdmins
-      FROM users WHERE deleted_at IS NULL
+        SUM(CASE WHEN LOWER(r.name) = 'user' THEN 1 ELSE 0 END) as normalUsers,
+        SUM(CASE WHEN LOWER(r.name) = 'student' THEN 1 ELSE 0 END) as students,
+        SUM(CASE WHEN LOWER(r.name) = 'teacher' THEN 1 ELSE 0 END) as teachers,
+        SUM(CASE WHEN LOWER(r.name) = 'administrator' THEN 1 ELSE 0 END) as administrators,
+        SUM(CASE WHEN LOWER(r.name) = 'student' AND u.status = 'Active' THEN 1 ELSE 0 END) as activeStudents
+      FROM users u
+      INNER JOIN roles r ON u.role_id = r.id
+      WHERE u.deleted_at IS NULL
     `);
 
     const [courseStats]: [any[], any] = await query("SELECT COUNT(*) as totalCourses FROM courses WHERE deleted_at IS NULL");
     const [enrollmentStats]: [any[], any] = await query("SELECT COUNT(*) as activeEnrollments FROM enrollments WHERE status = 'Active'");
     const [unreadMessages]: [any[], any] = await query("SELECT COUNT(*) as unreadCount FROM contact_messages WHERE is_read = 0");
+    const [certificatesCount]: [any[], any] = await query("SELECT COUNT(*) as totalCertificates FROM certificates");
     const [recentActivity]: [any[], any] = await query(`
       SELECT a.*, u.name as user_name, u.email as user_email
       FROM activity_logs a
@@ -34,15 +39,24 @@ router.get("/dashboard", async (req: Request, res: Response) => {
       LIMIT 10
     `);
 
+    const stats = {
+      totalUsers: Number(userStats[0]?.totalUsers || 0),
+      normalUsers: Number(userStats[0]?.normalUsers || 0),
+      students: Number(userStats[0]?.students || 0),
+      teachers: Number(userStats[0]?.teachers || 0),
+      administrators: Number(userStats[0]?.administrators || 0),
+      activeStudents: Number(userStats[0]?.activeStudents || 0),
+      totalCourses: Number(courseStats[0]?.totalCourses || 0),
+      activeEnrollments: Number(enrollmentStats[0]?.activeEnrollments || 0),
+      unreadMessages: Number(unreadMessages[0]?.unreadCount || 0),
+      totalCertificates: Number(certificatesCount[0]?.totalCertificates || 0)
+    };
+
     return res.json({
       success: true,
       data: {
-        totalUsers: userStats[0].totalUsers || 0,
-        activeStudents: userStats[0].activeStudents || 0,
-        totalTeachers: userStats[0].totalTeachers || 0,
-        totalCourses: courseStats[0].totalCourses || 0,
-        activeEnrollments: enrollmentStats[0].activeEnrollments || 0,
-        unreadMessages: unreadMessages[0].unreadCount || 0,
+        stats,
+        ...stats,
         recentActivity
       }
     });
@@ -58,9 +72,10 @@ router.get("/dashboard", async (req: Request, res: Response) => {
 router.get("/users", async (req: Request, res: Response) => {
   try {
     const page = parseInt(req.query.page as string || "1", 10);
-    const limit = parseInt(req.query.limit as string || "20", 10);
+    const limit = parseInt(req.query.limit as string || "50", 10);
     const search = req.query.search as string;
     const roleId = req.query.roleId as string;
+    const roleFilter = (req.query.role as string || "").toLowerCase();
     const offset = (page - 1) * limit;
 
     let whereClause = "u.deleted_at IS NULL";
@@ -74,10 +89,25 @@ router.get("/users", async (req: Request, res: Response) => {
     if (roleId) {
       whereClause += " AND u.role_id = ?";
       params.push(roleId);
+    } else if (roleFilter && roleFilter !== "all") {
+      if (roleFilter === "admin" || roleFilter === "administrator") {
+        whereClause += " AND LOWER(r.name) = 'administrator'";
+      } else if (roleFilter === "teacher") {
+        whereClause += " AND LOWER(r.name) = 'teacher'";
+      } else if (roleFilter === "student") {
+        whereClause += " AND LOWER(r.name) = 'student'";
+      } else if (roleFilter === "user" || roleFilter === "normal") {
+        whereClause += " AND LOWER(r.name) = 'user'";
+      }
     }
 
-    const [countRows]: [any[], any] = await query(`SELECT COUNT(*) as count FROM users u WHERE ${whereClause}`, params);
-    const total = countRows[0].count;
+    const [countRows]: [any[], any] = await query(`
+      SELECT COUNT(*) as count 
+      FROM users u 
+      INNER JOIN roles r ON u.role_id = r.id 
+      WHERE ${whereClause}
+    `, params);
+    const total = countRows[0]?.count || 0;
 
     const [rows]: [any[], any] = await query(`
       SELECT u.id, u.name, u.username, u.email, u.phone, u.role_id, u.status, u.created_at, u.avatar_url,
@@ -89,19 +119,23 @@ router.get("/users", async (req: Request, res: Response) => {
       LIMIT ? OFFSET ?
     `, [...params, limit, offset]);
 
-    const users = rows.map(r => ({
-      id: r.id,
-      name: r.name,
-      username: r.username,
-      email: r.email,
-      phone: r.phone,
-      role: (r.role_name || "").toLowerCase() === "administrator" ? "admin" : (r.role_name || "").toLowerCase() === "teacher" ? "teacher" : "student",
-      roleId: r.role_id,
-      roleName: r.role_name,
-      status: r.status,
-      joinedDate: r.created_at ? (typeof r.created_at === "string" ? r.created_at.split(" ")[0].split("T")[0] : (r.created_at.toISOString ? r.created_at.toISOString().split("T")[0] : String(r.created_at))) : "",
-      avatar: r.avatar_url
-    }));
+    const users = rows.map(r => {
+      const lowerRole = (r.role_name || "").toLowerCase();
+      const roleMapped = lowerRole === "administrator" ? "admin" : lowerRole === "teacher" ? "teacher" : lowerRole === "student" ? "student" : "user";
+      return {
+        id: r.id,
+        name: r.name,
+        username: r.username,
+        email: r.email,
+        phone: r.phone,
+        role: roleMapped,
+        roleId: r.role_id,
+        roleName: r.role_name,
+        status: r.status,
+        joinedDate: r.created_at ? (typeof r.created_at === "string" ? r.created_at.split(" ")[0].split("T")[0] : (r.created_at.toISOString ? r.created_at.toISOString().split("T")[0] : String(r.created_at))) : "",
+        avatar: r.avatar_url
+      };
+    });
 
     return res.json({
       success: true,
@@ -115,6 +149,107 @@ router.get("/users", async (req: Request, res: Response) => {
     });
   } catch (err: any) {
     return res.status(500).json({ success: false, error: { code: "SERVER_ERROR", message: err.message } });
+  }
+});
+
+// -------------------------------------------------------------
+// PATCH /api/admin/users/:userId/role
+// -------------------------------------------------------------
+router.patch("/users/:userId/role", async (req: Request, res: Response) => {
+  try {
+    const { userId } = req.params;
+    const { role } = req.body;
+
+    if (!role || typeof role !== "string") {
+      return res.status(400).json({
+        success: false,
+        error: { code: "VALIDATION_ERROR", message: "Role is required." }
+      });
+    }
+
+    const trimmedRole = role.trim();
+    // Allowed target roles: User, Student, Teacher. (Administrator is protected and cannot be assigned)
+    const allowedRoles = ["User", "Student", "Teacher"];
+    const matchedRole = allowedRoles.find(r => r.toLowerCase() === trimmedRole.toLowerCase());
+
+    if (!matchedRole) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: "INVALID_ROLE",
+          message: "Invalid target role. Allowed roles are: User, Student, Teacher. Administrator cannot be assigned."
+        }
+      });
+    }
+
+    // Lookup target user and their current role
+    const [targetRows]: [any[], any] = await query(`
+      SELECT u.id, u.email, u.name, u.role_id, r.name as role_name
+      FROM users u
+      INNER JOIN roles r ON u.role_id = r.id
+      WHERE u.id = ? AND u.deleted_at IS NULL
+    `, [userId]);
+
+    if (targetRows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: { code: "USER_NOT_FOUND", message: "User not found." }
+      });
+    }
+
+    const targetUser = targetRows[0];
+    const canonicalAdminEmail = (process.env.ADMIN_EMAIL || "admin@roozzero.info").trim().toLowerCase();
+
+    // Protect Master Administrator from modification or demotion
+    if (
+      targetUser.id === "admin-1" ||
+      targetUser.role_name.toLowerCase() === "administrator" ||
+      targetUser.email.toLowerCase() === canonicalAdminEmail
+    ) {
+      return res.status(403).json({
+        success: false,
+        error: {
+          code: "PROTECTED_ADMIN",
+          message: "The Master Administrator account is protected and cannot be modified or demoted."
+        }
+      });
+    }
+
+    // Find target role ID in MySQL roles table
+    const [roleRows]: [any[], any] = await query("SELECT id FROM roles WHERE name = ? LIMIT 1", [matchedRole]);
+    if (roleRows.length === 0) {
+      return res.status(500).json({
+        success: false,
+        error: { code: "ROLE_NOT_CONFIGURED", message: `Role '${matchedRole}' is not configured in the database.` }
+      });
+    }
+
+    const newRoleId = roleRows[0].id;
+
+    // Update user role in MySQL
+    await query("UPDATE users SET role_id = ? WHERE id = ?", [newRoleId, userId]);
+
+    // Log administrative activity
+    await query(`
+      INSERT INTO activity_logs (user_id, action, details)
+      VALUES (?, 'RoleChange', ?)
+    `, [req.user!.id, `Changed role of ${targetUser.name} (${targetUser.email}) from ${targetUser.role_name} to ${matchedRole}`]);
+
+    return res.json({
+      success: true,
+      data: {
+        userId,
+        previousRole: targetUser.role_name,
+        newRole: matchedRole,
+        message: `User role successfully updated to ${matchedRole}.`
+      }
+    });
+  } catch (err: any) {
+    console.error("[Role Update Error]:", err);
+    return res.status(500).json({
+      success: false,
+      error: { code: "SERVER_ERROR", message: err.message }
+    });
   }
 });
 
@@ -172,6 +307,16 @@ router.put("/users/:id", async (req: Request, res: Response) => {
     const targetUserId = req.params.id;
     const { name, phone, status, roleId, department, specialization } = req.body;
 
+    const canonicalAdminEmail = (process.env.ADMIN_EMAIL || "admin@roozzero.info").trim().toLowerCase();
+    if (targetUserId === "admin-1") {
+      if (roleId && roleId !== 1) {
+        return res.status(403).json({ success: false, error: { code: "PROTECTED_ADMIN", message: "The Master Administrator role cannot be modified." } });
+      }
+      if (status && status !== "Active") {
+        return res.status(403).json({ success: false, error: { code: "PROTECTED_ADMIN", message: "The Master Administrator cannot be deactivated." } });
+      }
+    }
+
     await query(`
       UPDATE users
       SET name = COALESCE(?, name),
@@ -195,8 +340,17 @@ router.put("/users/:id", async (req: Request, res: Response) => {
 router.delete("/users/:id", async (req: Request, res: Response) => {
   try {
     const targetUserId = req.params.id;
-    if (targetUserId === req.user!.id) {
-      return res.status(400).json({ success: false, error: { code: "CANNOT_DELETE_SELF", message: "You cannot delete your own account." } });
+    const canonicalAdminEmail = (process.env.ADMIN_EMAIL || "admin@roozzero.info").trim().toLowerCase();
+    if (targetUserId === "admin-1" || targetUserId === req.user!.id) {
+      return res.status(403).json({ success: false, error: { code: "PROTECTED_ADMIN", message: "The Master Administrator account cannot be deleted." } });
+    }
+
+    // Also check if target is an Administrator by role
+    const [targetRows]: [any[], any] = await query("SELECT u.id, u.email, r.name as role_name FROM users u JOIN roles r ON r.id = u.role_id WHERE u.id = ? LIMIT 1", [targetUserId]);
+    if (targetRows.length > 0) {
+      if (targetRows[0].role_name === "Administrator" || targetRows[0].email.toLowerCase() === canonicalAdminEmail) {
+        return res.status(403).json({ success: false, error: { code: "PROTECTED_ADMIN", message: "Administrator accounts cannot be deleted." } });
+      }
     }
 
     await query("UPDATE users SET deleted_at = NOW(), status = 'Inactive' WHERE id = ?", [targetUserId]);

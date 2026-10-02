@@ -1,13 +1,29 @@
 export interface AdminUser {
   id: string;
   name: string;
+  username?: string;
   email: string;
   phone: string;
-  role: "super-admin" | "admin" | "teacher" | "student" | string;
+  role: "super-admin" | "admin" | "teacher" | "student" | "user" | string;
+  roleId?: number;
+  roleName?: string;
   status: "Active" | "Inactive" | "Suspended" | string;
   lastLogin?: string;
   joinedDate?: string;
   avatar?: string;
+}
+
+export interface DashboardStats {
+  totalUsers: number;
+  normalUsers: number;
+  students: number;
+  teachers: number;
+  administrators: number;
+  activeStudents: number;
+  totalCourses: number;
+  activeEnrollments: number;
+  unreadMessages: number;
+  totalCertificates: number;
 }
 
 export interface CourseRequest {

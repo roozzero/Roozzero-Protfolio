@@ -19,11 +19,16 @@ export async function runMigrationsAndSeeds() {
     const migrationPath = path.join(process.cwd(), "database", "migrations", "001_initial_schema.sql");
     if (fs.existsSync(migrationPath)) {
       const sqlContent = fs.readFileSync(migrationPath, "utf-8");
-      // Split by semicolon statements, avoiding empty lines
-      const statements = sqlContent
+      // Strip line comments before splitting into statements
+      const cleanSql = sqlContent
+        .split("\n")
+        .filter(line => !line.trim().startsWith("--"))
+        .join("\n");
+
+      const statements = cleanSql
         .split(";")
         .map(s => s.trim())
-        .filter(s => s.length > 0 && !s.startsWith("--"));
+        .filter(s => s.length > 0);
 
       for (const statement of statements) {
         try {
@@ -45,7 +50,7 @@ export async function runMigrationsAndSeeds() {
       // Ignore if table does not exist yet or already altered
     }
 
-    // Seed Roles
+    // Seed Roles (RBAC: Administrator, Teacher, Student, User)
     const [rolesCount]: [any[], any] = await pool.query("SELECT COUNT(*) as count FROM roles");
     if (rolesCount[0].count === 0) {
       console.log("[Migration] Seeding standard RBAC roles...");
@@ -53,8 +58,16 @@ export async function runMigrationsAndSeeds() {
         INSERT INTO roles (id, name, description) VALUES
         (1, 'Administrator', 'Full system access and LMS management'),
         (2, 'Teacher', 'Manage assigned courses, students, grading and sessions'),
-        (3, 'Student', 'Enroll in courses, view lessons, submit assignments')
+        (3, 'Student', 'Enroll in courses, view lessons, submit assignments'),
+        (4, 'User', 'Standard registered academy user with public portal access')
       `);
+    } else {
+      // Ensure 'User' role exists in existing databases
+      const [userRoleExists]: [any[], any] = await pool.query("SELECT id FROM roles WHERE name = 'User' LIMIT 1");
+      if (userRoleExists.length === 0) {
+        console.log("[Migration] Adding missing 'User' role to roles table...");
+        await pool.query("INSERT INTO roles (name, description) VALUES ('User', 'Standard registered academy user with public portal access')");
+      }
     }
 
     // Canonical Master Administrator Synchronization from process.env.ADMIN_EMAIL and process.env.ADMIN_PASSWORD

@@ -2,10 +2,10 @@ import React from "react";
 import { motion } from "motion/react";
 import {
   Users, BookOpen, Calendar, Award, CheckCircle2, XCircle, ArrowRight,
-  Clock, ShieldAlert, Sparkles, TrendingUp, AlertCircle, FileText
+  Clock, ShieldAlert, Sparkles, TrendingUp, AlertCircle, FileText, UserCheck, Shield, GraduationCap
 } from "lucide-react";
 import { Course, Student, Session, Certificate, Assignment, CourseSeason } from "../../types/teacher";
-import { CourseRequest, AdminUser } from "./types";
+import { CourseRequest, AdminUser, DashboardStats } from "./types";
 
 interface OverviewTabProps {
   courses: Course[];
@@ -16,6 +16,7 @@ interface OverviewTabProps {
   assignments?: Assignment[];
   seasons?: CourseSeason[];
   users?: AdminUser[];
+  stats?: DashboardStats;
   onQuickAction?: (tabId: string) => void;
   onNavigateTab?: (tabId: string) => void;
   onApproveRequest: (id: string) => void;
@@ -34,6 +35,7 @@ export default function OverviewTab({
   assignments = [],
   seasons = [],
   users = [],
+  stats,
   onQuickAction,
   onNavigateTab,
   onApproveRequest,
@@ -57,15 +59,19 @@ export default function OverviewTab({
   const scheduledSessions = sessions.filter((s) => s.status === "Scheduled");
 
   const statCards = [
-    { label: "Active Courses", value: courses.length, icon: BookOpen, actionId: "courses", color: "text-emerald-400" },
-    { label: "Enrolled Students", value: students.length, icon: Users, actionId: "users", color: "text-emerald-300" },
-    { label: "Live Sessions", value: scheduledSessions.length, icon: Calendar, actionId: "courses", color: "text-teal-400" },
-    { label: "Pending Approvals", value: pendingRequests.length + pendingCertificates.length, icon: Award, actionId: "certificates", color: "text-amber-400" },
+    { label: "کل کاربران (Total Users)", value: stats?.totalUsers ?? users.length, icon: Users, actionId: "users", color: "text-indigo-400" },
+    { label: "کاربران عادی (Normal Users)", value: stats?.normalUsers ?? users.filter(u => u.role === "user").length, icon: UserCheck, actionId: "users", color: "text-blue-400" },
+    { label: "دانشجویان (Students)", value: stats?.students ?? users.filter(u => u.role === "student").length, icon: GraduationCap, actionId: "users", color: "text-emerald-400" },
+    { label: "اساتید (Teachers)", value: stats?.teachers ?? users.filter(u => u.role === "teacher").length, icon: Award, actionId: "users", color: "text-amber-400" },
+    { label: "مدیران (Administrators)", value: stats?.administrators ?? users.filter(u => u.role === "admin" || u.role === "super-admin").length, icon: Shield, actionId: "users", color: "text-purple-400" },
+    { label: "دوره‌های فعال (Courses)", value: stats?.totalCourses ?? courses.length, icon: BookOpen, actionId: "courses", color: "text-teal-400" },
+    { label: "نشست‌های زنده (Live Sessions)", value: scheduledSessions.length, icon: Calendar, actionId: "courses", color: "text-cyan-400" },
+    { label: "تأییدیه‌ها (Pending Approvals)", value: pendingRequests.length + pendingCertificates.length, icon: AlertCircle, actionId: "certificates", color: "text-rose-400" },
   ];
 
   return (
     <div className="space-y-6">
-      {/* Metric Cards */}
+      {/* Metric Cards - Real Data from Database */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {statCards.map((stat, idx) => {
           const Icon = stat.icon;
@@ -227,27 +233,33 @@ export default function OverviewTab({
           </span>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-          {sessions.slice(0, 3).map((sess) => (
-            <div
-              key={sess.id}
-              className="p-4 rounded-xl bg-black/40 border border-white/[0.04] space-y-2 hover:border-white/10 transition-colors"
-            >
-              <div className="flex items-center justify-between">
-                <span className="text-[9px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full">
-                  {sess.status}
-                </span>
-                <span className="text-[10px] text-white/40 font-mono">{sess.date}</span>
+        {sessions.length === 0 ? (
+          <div className="py-8 text-center text-white/30 text-xs font-mono">
+            هیچ کلاس یا نشست زنده‌ای برنامه‌ریزی نشده است.
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {sessions.slice(0, 3).map((sess) => (
+              <div
+                key={sess.id}
+                className="p-4 rounded-xl bg-black/40 border border-white/[0.04] space-y-2 hover:border-white/10 transition-colors"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-[9px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full">
+                    {sess.status}
+                  </span>
+                  <span className="text-[10px] text-white/40 font-mono">{sess.date}</span>
+                </div>
+                <h4 className="text-xs font-bold text-white truncate">{sess.title}</h4>
+                <p className="text-[10px] text-white/50 font-mono truncate">{sess.courseTitle}</p>
+                <div className="pt-2 flex items-center justify-between text-[10px] text-white/40 font-mono border-t border-white/[0.04]">
+                  <span>{sess.time} ({sess.duration})</span>
+                  <span>{sess.studentCount} Students</span>
+                </div>
               </div>
-              <h4 className="text-xs font-bold text-white truncate">{sess.title}</h4>
-              <p className="text-[10px] text-white/50 font-mono truncate">{sess.courseTitle}</p>
-              <div className="pt-2 flex items-center justify-between text-[10px] text-white/40 font-mono border-t border-white/[0.04]">
-                <span>{sess.time} ({sess.duration})</span>
-                <span>{sess.studentCount} Students</span>
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

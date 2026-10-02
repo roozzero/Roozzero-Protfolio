@@ -49,7 +49,7 @@ function sanitizeUser(user: any): Partial<AuthenticatedUser> {
     email: user.email,
     name: user.name,
     roleId: user.role_id,
-    roleName: user.role_name || "Student",
+    roleName: user.role_name || "User",
     status: user.status,
     avatarUrl: user.avatar_url,
     phone: user.phone,
@@ -105,20 +105,24 @@ router.post(
 
       // Hash password securely with bcrypt
       const passwordHash = await bcrypt.hash(password, 10);
-      const newUserId = `stu-${crypto.randomBytes(8).toString("hex")}`;
+      const newUserId = `usr-${crypto.randomBytes(8).toString("hex")}`;
 
-      // Insert Student user (role_id = 3)
+      // Canonical 'User' role ID (public registrations are always normal users)
+      const [userRoleRows]: [any[], any] = await query("SELECT id FROM roles WHERE name = 'User' LIMIT 1");
+      const userRoleId = userRoleRows.length > 0 ? userRoleRows[0].id : 4;
+
+      // Insert User (role = User)
       await query(
         `INSERT INTO users (id, username, email, password_hash, role_id, name, phone, status, provider)
-         VALUES (?, ?, ?, ?, 3, ?, ?, 'Active', 'local')`,
-        [newUserId, finalUsername, normalizedEmail, passwordHash, name, phone || null]
+         VALUES (?, ?, ?, ?, ?, ?, ?, 'Active', 'local')`,
+        [newUserId, finalUsername, normalizedEmail, passwordHash, userRoleId, name, phone || null]
       );
 
       // Create login session & HttpOnly cookie
       await createSession(newUserId, req, res, false);
 
       // Log activity
-      await query("INSERT INTO activity_logs (user_id, action, details) VALUES (?, 'Registration', 'Student registered account')", [newUserId]);
+      await query("INSERT INTO activity_logs (user_id, action, details) VALUES (?, 'Registration', 'New user registered account')", [newUserId]);
 
       const [createdRows]: [any[], any] = await query(
         `SELECT u.*, r.name as role_name FROM users u INNER JOIN roles r ON u.role_id = r.id WHERE u.id = ?`,
