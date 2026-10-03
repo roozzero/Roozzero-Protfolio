@@ -12,6 +12,9 @@ import OverviewTab from "./AdminDashboard/OverviewTab";
 import UsersTab from "./AdminDashboard/UsersTab";
 import AcademicTab from "./AcademicTab";
 import LmsTab from "./LmsTab";
+import CertificatesView from "./AdminDashboard/CertificatesView";
+import ExamsView from "./AdminDashboard/ExamsView";
+import DiscussionsView from "./AdminDashboard/DiscussionsView";
 import ServicesTab from "./ServicesTab";
 import AdminSettingsTab from "./AdminDashboard/SettingsTab";
 import SecurityTab from "./AdminDashboard/SecurityTab";
@@ -31,7 +34,9 @@ interface AdminDashboardProps {
 export default function AdminDashboard({ onLogout, onGoHome }: AdminDashboardProps) {
   // Sidebar expand state
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [activeTab, setActiveTab] = useState<"overview" | "users" | "academic" | "lms" | "services" | "settings" | "security" | "inbox" | "homepage-management">("overview");
+  const [activeTab, setActiveTab] = useState<
+    "overview" | "users" | "academic" | "assignments" | "exams" | "certificates" | "discussions" | "resources" | "lms" | "services" | "settings" | "security" | "inbox" | "homepage-management"
+  >("overview");
   const [activeSubTab, setActiveSubTab] = useState("all");
 
   const [profile, setProfile] = useState({
@@ -57,9 +62,13 @@ export default function AdminDashboard({ onLogout, onGoHome }: AdminDashboardPro
         }
       })
       .catch((err) => {
-        console.error("Failed to load admin profile from backend:", err);
+        if (err?.status === 401 || err?.message?.includes("Authentication required") || err?.message?.includes("expired")) {
+          onLogout();
+        } else {
+          console.warn("Could not load admin profile from backend:", err?.message || err);
+        }
       });
-  }, []);
+  }, [onLogout]);
 
   const handleSaveProfile = (newProfile: any) => {
     setProfile(newProfile);
@@ -188,7 +197,7 @@ export default function AdminDashboard({ onLogout, onGoHome }: AdminDashboardPro
   const handleUpdateUserRole = async (id: string, newRole: "User" | "Student" | "Teacher") => {
     const res = await adminApi.updateUserRole(id, newRole);
     if (!res.success) {
-      const errMsg = (res as any).error?.message || "تغییر نقش کاربر انجام نشد.";
+      const errMsg = (res as any).error?.message || "Failed to update user role.";
       dispatchAlert(errMsg);
       throw new Error(errMsg);
     }
@@ -204,7 +213,7 @@ export default function AdminDashboard({ onLogout, onGoHome }: AdminDashboardPro
       }
       return u;
     }));
-    dispatchAlert("نقش کاربر با موفقیت تغییر کرد.");
+    dispatchAlert("User role updated successfully.");
     // Refresh dashboard stats from MySQL
     adminApi.getDashboard().then(dashRes => {
       if (dashRes.success && dashRes.data) {
@@ -237,7 +246,7 @@ export default function AdminDashboard({ onLogout, onGoHome }: AdminDashboardPro
     // Search Certificates
     certificates.forEach(cert => {
       if (cert.studentName.toLowerCase().includes(query)) {
-        results.push({ category: "Certificate", title: `Cert: ${cert.studentName}`, tab: "lms", sub: "certificates" });
+        results.push({ category: "Certificate", title: `Cert: ${cert.studentName}`, tab: "certificates", sub: "all" });
       }
     });
 
@@ -391,27 +400,16 @@ export default function AdminDashboard({ onLogout, onGoHome }: AdminDashboardPro
               { id: "homepageManagement", label: "Home Page", icon: Globe, tab: "homepage-management", sub: "all" },
               { id: "inbox", label: "Inbox", icon: Mail, tab: "inbox", sub: "all" },
               { id: "users", label: "Users", icon: Users, tab: "users", sub: "all" },
-              { id: "students", label: "Students", icon: GraduationCap, tab: "users", sub: "students" },
-              { id: "teachers", label: "Teachers", icon: Users, tab: "users", sub: "teachers" },
               { id: "courses", label: "Courses", icon: BookOpen, tab: "academic", sub: "catalog" },
-              { id: "courseSeasons", label: "Course Seasons", icon: Calendar, tab: "academic", sub: "seasons" },
-              { id: "courseRequests", label: "Course Requests", icon: HelpCircle, tab: "academic", sub: "requests" },
-              { id: "enrollments", label: "Enrollments", icon: Key, tab: "academic", sub: "enrollments" },
-              { id: "assignments", label: "Assignments", icon: FileText, tab: "lms", sub: "assignments" },
-              { id: "exams", label: "Exams", icon: Sliders, tab: "lms", sub: "exams" },
-              { id: "certificates", label: "Certificates", icon: Award, tab: "lms", sub: "certificates" },
-              { id: "discussions", label: "Discussions", icon: MessageSquare, tab: "lms", sub: "discussions" },
-              { id: "resources", label: "Resources", icon: FolderOpen, tab: "lms", sub: "resources" },
+              { id: "certificates", label: "Certificates", icon: Award, tab: "certificates", sub: "all" },
+              { id: "exams", label: "Exams", icon: Sliders, tab: "exams", sub: "all" },
+              { id: "discussions", label: "Discussions", icon: MessageSquare, tab: "discussions", sub: "all" },
               { id: "announcements", label: "Announcements", icon: Megaphone, tab: "services", sub: "announcements" },
-              { id: "calendar", label: "Calendar", icon: Calendar, tab: "services", sub: "calendar" },
-              { id: "analytics", label: "Reports & Analytics", icon: BarChart3, tab: "services", sub: "analytics" },
-              { id: "permissions", label: "Roles & Permissions", icon: Shield, tab: "services", sub: "permissions" },
-              { id: "logs", label: "Activity Logs", icon: Activity, tab: "services", sub: "logs" },
               { id: "systemSettings", label: "Settings", icon: Settings, tab: "settings", sub: "system" },
               { id: "security", label: "Security", icon: Shield, tab: "security", sub: "directory", isSecurity: true }
             ].map((menu) => {
               const isSec = menu.isSecurity;
-              const active = isSec ? activeTab === "security" : (activeTab === menu.tab && activeSubTab === menu.sub);
+              const active = isSec ? activeTab === "security" : activeTab === menu.tab;
               return (
                 <button
                   key={menu.id}
@@ -589,8 +587,8 @@ export default function AdminDashboard({ onLogout, onGoHome }: AdminDashboardPro
                       setActiveTab("academic");
                       setActiveSubTab("catalog");
                     } else if (tabId === "certificates") {
-                      setActiveTab("lms");
-                      setActiveSubTab("certificates");
+                      setActiveTab("certificates");
+                      setActiveSubTab("all");
                     } else if (tabId === "reports") {
                       setActiveTab("services");
                       setActiveSubTab("analytics");
@@ -645,6 +643,96 @@ export default function AdminDashboard({ onLogout, onGoHome }: AdminDashboardPro
                 />
               )}
 
+              {/* Standalone Modules: Certificates, Exams, Discussions */}
+              {activeTab === "certificates" && (
+                <CertificatesView 
+                  certificates={certificates}
+                  onApproveCertificate={handleApproveCertificate}
+                  onRejectCertificate={handleRejectCertificate}
+                />
+              )}
+
+              {activeTab === "exams" && (
+                <ExamsView 
+                  exams={exams}
+                  courses={courses}
+                  onAddExam={(exam) => setExams(prev => [exam, ...prev])}
+                  onPublishExamResults={(id) => {
+                    setExams(prev => prev.map(e => e.id === id ? { ...e, status: "Published", passRate: 92, avgScore: 78 } : e));
+                    dispatchAlert(`Results for Examination ${id} published.`);
+                  }}
+                />
+              )}
+
+              {activeTab === "discussions" && (
+                <DiscussionsView 
+                  discussions={discussions}
+                  adminName={profile.name || "Administrator"}
+                  onAddDiscussionReply={(tid, content) => {
+                    setDiscussions(prev => prev.map(d => {
+                      if (d.id === tid) {
+                        return {
+                          ...d,
+                          replies: [...(d.replies || []), {
+                            id: "rep-" + Date.now(),
+                            authorName: profile.name || "Administrator",
+                            authorRole: "super-admin",
+                            date: new Date().toISOString().split("T")[0],
+                            content
+                          }],
+                          status: "Replied"
+                        };
+                      }
+                      return d;
+                    }));
+                  }}
+                  onCloseDiscussionThread={(tid) => {
+                    setDiscussions(prev => prev.map(d => d.id === tid ? { ...d, status: "Closed" } : d));
+                    dispatchAlert(`Discussion thread ${tid} set to resolved and archived.`);
+                  }}
+                />
+              )}
+
+              {activeTab === "assignments" && (
+                <LmsTab 
+                  assignments={assignments}
+                  exams={exams}
+                  certificates={certificates}
+                  discussions={discussions}
+                  resources={resources}
+                  defaultSection="assignments"
+                  hideSubNavigation={true}
+                  onAddExam={(exam) => setExams(prev => [exam, ...prev])}
+                  onPublishExamResults={(id) => {}}
+                  onApproveCertificate={handleApproveCertificate}
+                  onRejectCertificate={handleRejectCertificate}
+                  onAddDiscussionReply={(tid, content) => {}}
+                  onCloseDiscussionThread={(tid) => {}}
+                  onAddResource={(res) => setResources(prev => [res, ...prev])}
+                  onDeleteResource={(id) => setResources(prev => prev.filter(r => r.id !== id))}
+                />
+              )}
+
+              {activeTab === "resources" && (
+                <LmsTab 
+                  assignments={assignments}
+                  exams={exams}
+                  certificates={certificates}
+                  discussions={discussions}
+                  resources={resources}
+                  defaultSection="resources"
+                  hideSubNavigation={true}
+                  onAddExam={(exam) => setExams(prev => [exam, ...prev])}
+                  onPublishExamResults={(id) => {}}
+                  onApproveCertificate={handleApproveCertificate}
+                  onRejectCertificate={handleRejectCertificate}
+                  onAddDiscussionReply={(tid, content) => {}}
+                  onCloseDiscussionThread={(tid) => {}}
+                  onAddResource={(res) => setResources(prev => [res, ...prev])}
+                  onDeleteResource={(id) => setResources(prev => prev.filter(r => r.id !== id))}
+                />
+              )}
+
               {activeTab === "lms" && (
                 <LmsTab 
                   assignments={assignments}
@@ -667,7 +755,7 @@ export default function AdminDashboard({ onLogout, onGoHome }: AdminDashboardPro
                           ...d,
                           replies: [...d.replies, {
                             id: "rep-" + Date.now(),
-                            authorName: "Jaden Smith",
+                            authorName: profile.name || "Administrator",
                             authorRole: "super-admin",
                             date: new Date().toISOString().split("T")[0],
                             content

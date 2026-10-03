@@ -1,8 +1,7 @@
-import React, { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "motion/react";
-import { 
-  User, Mail, Phone, Shield, ArrowRight, LogOut, Home, 
-  Settings, Key, CheckCircle2, AlertCircle, Edit3, Save, X, Sparkles, Clock
+import React, { useState } from "react";
+import {
+  User, Shield, Lock, Key, Edit3, Save, CheckCircle2, AlertCircle,
+  LogOut, Home, Sparkles, BookOpen, Clock, Mail, Phone, Calendar
 } from "lucide-react";
 import { authApi } from "../lib/api";
 
@@ -10,7 +9,7 @@ interface NormalUserDashboardProps {
   currentUser?: any;
   onLogout: () => void;
   onGoHome: () => void;
-  onProfileUpdated?: (updatedUser: any) => void;
+  onProfileUpdated?: (updated: any) => void;
 }
 
 export default function NormalUserDashboard({
@@ -20,48 +19,23 @@ export default function NormalUserDashboard({
   onProfileUpdated
 }: NormalUserDashboardProps) {
   const [profile, setProfile] = useState<any>(currentUser || null);
-  const [isLoading, setIsLoading] = useState(!currentUser);
   const [activeTab, setActiveTab] = useState<"overview" | "edit-profile" | "security">("overview");
 
-  // Edit profile form state
-  const [editName, setEditName] = useState("");
-  const [editPhone, setEditPhone] = useState("");
-  const [editBio, setEditBio] = useState("");
+  // Edit Profile Form State
+  const [editName, setEditName] = useState(currentUser?.name || "");
+  const [editPhone, setEditPhone] = useState(currentUser?.phone || "");
+  const [editBio, setEditBio] = useState(currentUser?.bio || "");
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [profileSuccessMsg, setProfileSuccessMsg] = useState<string | null>(null);
   const [profileErrorMsg, setProfileErrorMsg] = useState<string | null>(null);
 
-  // Change password form state
+  // Change Password Form State
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [passwordSuccessMsg, setPasswordSuccessMsg] = useState<string | null>(null);
   const [passwordErrorMsg, setPasswordErrorMsg] = useState<string | null>(null);
-
-  // Load real authenticated user data on mount
-  useEffect(() => {
-    let isMounted = true;
-    authApi.getMe()
-      .then((res) => {
-        if (!isMounted) return;
-        if (res.success && res.data?.user) {
-          const u = res.data.user;
-          setProfile(u);
-          setEditName(u.name || "");
-          setEditPhone(u.phone || "");
-          setEditBio(u.bio || "");
-        }
-      })
-      .catch((err) => {
-        console.error("Failed to fetch user profile:", err);
-      })
-      .finally(() => {
-        if (isMounted) setIsLoading(false);
-      });
-
-    return () => { isMounted = false; };
-  }, []);
 
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -79,16 +53,16 @@ export default function NormalUserDashboard({
       if (res.success && res.data?.user) {
         const updated = res.data.user;
         setProfile(updated);
-        setProfileSuccessMsg("اطلاعات حساب کاربری با موفقیت به‌روزرسانی شد.");
+        setProfileSuccessMsg("Profile information updated successfully.");
         if (onProfileUpdated) {
           onProfileUpdated(updated);
         }
         setTimeout(() => setProfileSuccessMsg(null), 4000);
       } else {
-        setProfileErrorMsg("خطا در ذخیره‌سازی اطلاعات حساب.");
+        setProfileErrorMsg("Failed to update profile information.");
       }
     } catch (err: any) {
-      setProfileErrorMsg(err.message || "خطا در برقراری ارتباط با سرور.");
+      setProfileErrorMsg(err.message || "Failed to communicate with the server.");
     } finally {
       setIsSavingProfile(false);
     }
@@ -100,11 +74,11 @@ export default function NormalUserDashboard({
     setPasswordSuccessMsg(null);
 
     if (newPassword.length < 6) {
-      setPasswordErrorMsg("رمز عبور جدید باید حداقل ۶ کاراکتر باشد.");
+      setPasswordErrorMsg("New password must be at least 6 characters.");
       return;
     }
     if (newPassword !== confirmPassword) {
-      setPasswordErrorMsg("تکرار رمز عبور جدید مطابقت ندارد.");
+      setPasswordErrorMsg("Password confirmation does not match.");
       return;
     }
 
@@ -118,26 +92,26 @@ export default function NormalUserDashboard({
       });
       const data = await res.json();
       if (res.ok && data.success) {
-        setPasswordSuccessMsg("رمز عبور با موفقیت تغییر یافت.");
+        setPasswordSuccessMsg("Password changed successfully.");
         setCurrentPassword("");
         setNewPassword("");
         setConfirmPassword("");
         setTimeout(() => setPasswordSuccessMsg(null), 4000);
       } else {
-        setPasswordErrorMsg(data?.error?.message || "رمز عبور فعلی نادرست است.");
+        setPasswordErrorMsg(data?.error?.message || "Current password is incorrect.");
       }
     } catch (err: any) {
-      setPasswordErrorMsg(err.message || "خطا در تغییر رمز عبور.");
+      setPasswordErrorMsg(err.message || "Failed to change password.");
     } finally {
       setIsChangingPassword(false);
     }
   };
 
-  const displayName = profile?.name || "کاربر گرامی";
+  const displayName = profile?.name || "Standard User";
   const userInitial = displayName.trim().charAt(0).toUpperCase();
 
   return (
-    <div className="min-h-screen bg-[#030304] text-white font-sans selection:bg-emerald-500 selection:text-black" dir="rtl">
+    <div className="min-h-screen bg-[#030304] text-white font-sans selection:bg-emerald-500 selection:text-black text-left" dir="ltr">
       {/* Top Header */}
       <header className="sticky top-0 z-30 border-b border-white/[0.05] bg-[#060609]/90 backdrop-blur-md px-6 py-4">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
@@ -149,7 +123,7 @@ export default function NormalUserDashboard({
               <div className="flex items-center gap-2">
                 <span className="text-sm font-bold text-white">{displayName}</span>
                 <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-500/15 text-blue-400 border border-blue-500/30 font-bold">
-                  کاربر عادی
+                  Standard User
                 </span>
               </div>
               <p className="text-[11px] text-white/40 font-mono mt-0.5">{profile?.email || ""}</p>
@@ -162,14 +136,14 @@ export default function NormalUserDashboard({
               className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.06] text-white/70 hover:text-white text-xs border border-white/5 transition-colors cursor-pointer"
             >
               <Home size={14} />
-              <span>صفحه اصلی</span>
+              <span>Back to Home</span>
             </button>
             <button
               onClick={onLogout}
               className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs border border-red-500/20 transition-colors cursor-pointer"
             >
               <LogOut size={14} />
-              <span>خروج</span>
+              <span>Sign Out</span>
             </button>
           </div>
         </div>
@@ -179,19 +153,19 @@ export default function NormalUserDashboard({
       <main className="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-6">
         {/* Welcome & Role Explanation Notice */}
         <div className="p-6 rounded-3xl bg-gradient-to-br from-indigo-500/10 via-purple-500/5 to-emerald-500/10 border border-white/[0.08] backdrop-blur-xl relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
           <div className="relative z-10 space-y-2">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/[0.04] border border-white/[0.08] text-[11px] text-emerald-400 font-bold">
               <Sparkles size={13} />
-              <span>حساب کاربری فعال</span>
+              <span>Active Account Portal</span>
             </div>
             <h1 className="text-xl md:text-2xl font-black text-white tracking-tight">
-              به حساب کاربری خود خوش آمدید، {displayName}
+              Welcome to your account, {displayName}
             </h1>
             <p className="text-xs md:text-sm text-white/70 leading-relaxed max-w-3xl pt-1">
-              حساب شما در حال حاضر به‌عنوان <strong className="text-blue-400">کاربر عادی</strong> فعال است.
-              بخش‌های آموزشی از قبیل دوره‌ها، تمرین‌ها، نمرات و گواهینامه‌ها مختص نقش‌های <strong className="text-emerald-400">دانشجو</strong> و <strong className="text-amber-400">استاد</strong> می‌باشند.
-              به محض تایید و ارتقای حساب شما توسط مدیر آکادمی، دسترسی‌های آموزشی مربوطه در داشبورد شما فعال خواهند شد.
+              Your account is currently registered as a <strong className="text-blue-400">Standard User</strong>.
+              Educational modules such as active course enrollments, interactive quizzes, assignments, and certificates are reserved for <strong className="text-emerald-400">Student</strong> and <strong className="text-amber-400">Teacher</strong> roles.
+              Upon enrollment approval and role assignment by academy administrators, the full LMS features will appear in your portal.
             </p>
           </div>
         </div>
@@ -207,7 +181,7 @@ export default function NormalUserDashboard({
             }`}
           >
             <User size={14} />
-            <span>مشخصات حساب</span>
+            <span>Profile Overview</span>
           </button>
           <button
             onClick={() => setActiveTab("edit-profile")}
@@ -218,7 +192,7 @@ export default function NormalUserDashboard({
             }`}
           >
             <Edit3 size={14} />
-            <span>ویرایش مشخصات</span>
+            <span>Edit Profile</span>
           </button>
           <button
             onClick={() => setActiveTab("security")}
@@ -229,7 +203,7 @@ export default function NormalUserDashboard({
             }`}
           >
             <Key size={14} />
-            <span>امنیت و رمز عبور</span>
+            <span>Security &amp; Password</span>
           </button>
         </div>
 
@@ -246,17 +220,17 @@ export default function NormalUserDashboard({
                 <p className="text-xs text-white/40 font-mono mt-0.5">@{profile?.username || "user"}</p>
               </div>
 
-              <div className="pt-3 border-t border-white/[0.04] space-y-2 text-xs text-right">
+              <div className="pt-3 border-t border-white/[0.04] space-y-2 text-xs">
                 <div className="flex justify-between items-center">
-                  <span className="text-white/40">نقش سیستم:</span>
+                  <span className="text-white/40">System Role:</span>
                   <span className="px-2 py-0.5 rounded-full bg-blue-500/15 text-blue-400 border border-blue-500/30 text-[10px] font-bold">
-                    کاربر عادی (User)
+                    Standard User
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-white/40">وضعیت حساب:</span>
+                  <span className="text-white/40">Account Status:</span>
                   <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-[10px] font-bold">
-                    {profile?.status === "Active" ? "فعال" : profile?.status || "فعال"}
+                    {profile?.status || "Active"}
                   </span>
                 </div>
               </div>
@@ -266,34 +240,34 @@ export default function NormalUserDashboard({
             <div className="md:col-span-2 p-6 rounded-2xl bg-white/[0.02] border border-white/[0.06] backdrop-blur-md space-y-5">
               <h3 className="text-sm font-bold text-white flex items-center gap-2 border-b border-white/[0.06] pb-3">
                 <Shield size={16} className="text-emerald-400" />
-                <span>اطلاعات ثبت‌شده در آکادمی</span>
+                <span>Registered Account Details</span>
               </h3>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
                 <div className="p-3.5 rounded-xl bg-white/[0.015] border border-white/[0.04] space-y-1">
-                  <span className="text-[11px] text-white/40 block">نام و نام خانوادگی</span>
+                  <span className="text-[11px] text-white/40 block">Full Name</span>
                   <span className="text-white font-bold block">{displayName}</span>
                 </div>
 
                 <div className="p-3.5 rounded-xl bg-white/[0.015] border border-white/[0.04] space-y-1">
-                  <span className="text-[11px] text-white/40 block">آدرس ایمیل</span>
+                  <span className="text-[11px] text-white/40 block">Email Address</span>
                   <span className="text-white font-mono text-[11px] block">{profile?.email || "-"}</span>
                 </div>
 
                 <div className="p-3.5 rounded-xl bg-white/[0.015] border border-white/[0.04] space-y-1">
-                  <span className="text-[11px] text-white/40 block">شماره تلفن همراه</span>
-                  <span className="text-white font-mono text-[11px] block">{profile?.phone || "ثبت نشده"}</span>
+                  <span className="text-[11px] text-white/40 block">Phone Number</span>
+                  <span className="text-white font-mono text-[11px] block">{profile?.phone || "Not provided"}</span>
                 </div>
 
                 <div className="p-3.5 rounded-xl bg-white/[0.015] border border-white/[0.04] space-y-1">
-                  <span className="text-[11px] text-white/40 block">شناسه کاربری</span>
+                  <span className="text-[11px] text-white/40 block">Account Identifier</span>
                   <span className="text-white/60 font-mono text-[10px] block">{profile?.id || "-"}</span>
                 </div>
               </div>
 
               {profile?.bio && (
                 <div className="p-3.5 rounded-xl bg-white/[0.015] border border-white/[0.04] space-y-1 text-xs">
-                  <span className="text-[11px] text-white/40 block">درباره کاربر</span>
+                  <span className="text-[11px] text-white/40 block">About / Biography</span>
                   <p className="text-white/80 leading-relaxed">{profile.bio}</p>
                 </div>
               )}
@@ -304,7 +278,7 @@ export default function NormalUserDashboard({
                   className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-xs font-bold border border-emerald-500/20 transition-all cursor-pointer"
                 >
                   <Edit3 size={13} />
-                  <span>ویرایش مشخصات</span>
+                  <span>Edit Profile</span>
                 </button>
               </div>
             </div>
@@ -316,7 +290,7 @@ export default function NormalUserDashboard({
           <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/[0.06] backdrop-blur-md max-w-2xl space-y-5">
             <h3 className="text-sm font-bold text-white flex items-center gap-2 border-b border-white/[0.06] pb-3">
               <Edit3 size={16} className="text-emerald-400" />
-              <span>ویرایش مشخصات فردی</span>
+              <span>Update Profile Information</span>
             </h3>
 
             {profileSuccessMsg && (
@@ -335,36 +309,36 @@ export default function NormalUserDashboard({
 
             <form onSubmit={handleUpdateProfile} className="space-y-4 text-xs">
               <div>
-                <label className="text-white/70 block mb-1.5 font-bold">نام و نام خانوادگی</label>
+                <label className="text-white/70 block mb-1.5 font-bold">Full Name</label>
                 <input
                   type="text"
                   value={editName}
                   onChange={(e) => setEditName(e.target.value)}
                   required
                   className="w-full bg-white/[0.03] border border-white/10 rounded-xl px-3.5 py-2.5 text-white placeholder-white/30 focus:outline-none focus:border-emerald-500/50"
-                  placeholder="مثال: علی رضایی"
+                  placeholder="e.g. John Doe"
                 />
               </div>
 
               <div>
-                <label className="text-white/70 block mb-1.5 font-bold">شماره تماس (اختیاری)</label>
+                <label className="text-white/70 block mb-1.5 font-bold">Phone Number (Optional)</label>
                 <input
                   type="text"
                   value={editPhone}
                   onChange={(e) => setEditPhone(e.target.value)}
                   className="w-full bg-white/[0.03] border border-white/10 rounded-xl px-3.5 py-2.5 text-white placeholder-white/30 focus:outline-none focus:border-emerald-500/50 font-mono"
-                  placeholder="09123456789"
+                  placeholder="+1 555-0199"
                 />
               </div>
 
               <div>
-                <label className="text-white/70 block mb-1.5 font-bold">درباره کاربر (بیوگرافی مختصر)</label>
+                <label className="text-white/70 block mb-1.5 font-bold">Biography (Brief Summary)</label>
                 <textarea
                   value={editBio}
                   onChange={(e) => setEditBio(e.target.value)}
                   rows={3}
                   className="w-full bg-white/[0.03] border border-white/10 rounded-xl px-3.5 py-2.5 text-white placeholder-white/30 focus:outline-none focus:border-emerald-500/50 leading-relaxed"
-                  placeholder="توضیحات مختصر در مورد خودتان..."
+                  placeholder="Tell us a little about your background and interests..."
                 />
               </div>
 
@@ -375,7 +349,7 @@ export default function NormalUserDashboard({
                   className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-bold transition-all shadow-md shadow-emerald-500/20 cursor-pointer disabled:opacity-50"
                 >
                   <Save size={14} />
-                  <span>{isSavingProfile ? "در حال ذخیره..." : "ذخیره تغییرات"}</span>
+                  <span>{isSavingProfile ? "Saving Changes..." : "Save Changes"}</span>
                 </button>
               </div>
             </form>
@@ -387,7 +361,7 @@ export default function NormalUserDashboard({
           <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/[0.06] backdrop-blur-md max-w-xl space-y-5">
             <h3 className="text-sm font-bold text-white flex items-center gap-2 border-b border-white/[0.06] pb-3">
               <Key size={16} className="text-indigo-400" />
-              <span>تغییر رمز عبور حساب</span>
+              <span>Change Account Password</span>
             </h3>
 
             {passwordSuccessMsg && (
@@ -406,38 +380,38 @@ export default function NormalUserDashboard({
 
             <form onSubmit={handleChangePassword} className="space-y-4 text-xs">
               <div>
-                <label className="text-white/70 block mb-1.5 font-bold">رمز عبور فعلی</label>
+                <label className="text-white/70 block mb-1.5 font-bold">Current Password</label>
                 <input
                   type="password"
                   value={currentPassword}
                   onChange={(e) => setCurrentPassword(e.target.value)}
                   required
                   className="w-full bg-white/[0.03] border border-white/10 rounded-xl px-3.5 py-2.5 text-white placeholder-white/30 focus:outline-none focus:border-indigo-500/50"
-                  placeholder="رمز عبور فعلی خود را وارد کنید"
+                  placeholder="Enter current password"
                 />
               </div>
 
               <div>
-                <label className="text-white/70 block mb-1.5 font-bold">رمز عبور جدید</label>
+                <label className="text-white/70 block mb-1.5 font-bold">New Password</label>
                 <input
                   type="password"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   required
                   className="w-full bg-white/[0.03] border border-white/10 rounded-xl px-3.5 py-2.5 text-white placeholder-white/30 focus:outline-none focus:border-indigo-500/50"
-                  placeholder="حداقل ۶ کاراکتر"
+                  placeholder="At least 6 characters"
                 />
               </div>
 
               <div>
-                <label className="text-white/70 block mb-1.5 font-bold">تکرار رمز عبور جدید</label>
+                <label className="text-white/70 block mb-1.5 font-bold">Confirm New Password</label>
                 <input
                   type="password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required
                   className="w-full bg-white/[0.03] border border-white/10 rounded-xl px-3.5 py-2.5 text-white placeholder-white/30 focus:outline-none focus:border-indigo-500/50"
-                  placeholder="تکرار رمز عبور جدید را وارد کنید"
+                  placeholder="Re-enter new password"
                 />
               </div>
 
@@ -448,7 +422,7 @@ export default function NormalUserDashboard({
                   className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-500 hover:bg-indigo-400 text-white font-bold transition-all shadow-md shadow-indigo-500/20 cursor-pointer disabled:opacity-50"
                 >
                   <Key size={14} />
-                  <span>{isChangingPassword ? "در حال ثبت..." : "تغییر رمز عبور"}</span>
+                  <span>{isChangingPassword ? "Updating Password..." : "Change Password"}</span>
                 </button>
               </div>
             </form>

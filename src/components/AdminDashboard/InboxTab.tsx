@@ -77,98 +77,8 @@ export default function InboxTab({
 }: InboxTabProps) {
   const [activeTab, setActiveTab] = useState<"inbox" | "compose" | "announcements" | "sent">("inbox");
 
-  // Backend-backed conversations state
-  const [conversations, setConversations] = useState<Conversation[]>(() => [
-    {
-      id: "conv-1",
-      subject: "Medical Leave Request Extension",
-      senderId: "stu-1",
-      senderName: "Cody Fisher",
-      senderRole: "student",
-      senderAvatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=150&auto=format&fit=crop",
-      isRead: false,
-      isArchived: false,
-      status: "open",
-      courseId: "react-adv",
-      courseTitle: "Advanced React & Architecture",
-      lastUpdated: "2026-07-04T10:15:00Z",
-      messages: [
-        {
-          id: "msg-1-1",
-          senderId: "stu-1",
-          senderName: "Cody Fisher",
-          senderRole: "student",
-          senderAvatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=150&auto=format&fit=crop",
-          subject: "Medical Leave Request Extension",
-          content: "Dear Admin, I have been advised bed rest due to severe flu. I would like to request an extension of my medical leave for another 3 days until July 8. Attached is my diagnostic certificate. Thank you.",
-          timestamp: "2026-07-04T10:15:00Z",
-          attachments: [{ name: "medical_report_signed.pdf", size: "1.4 MB", type: "pdf" }]
-        }
-      ]
-    },
-    {
-      id: "conv-2",
-      subject: "Swiss Typography Reference Books Allocations",
-      senderId: "usr-3",
-      senderName: "Sarah Vance",
-      senderRole: "teacher",
-      senderAvatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=150&auto=format&fit=crop",
-      isRead: true,
-      isArchived: false,
-      status: "open",
-      courseId: "swiss-typo",
-      courseTitle: "Swiss Typography & Editorial Layout",
-      lastUpdated: "2026-07-03T14:30:00Z",
-      messages: [
-        {
-          id: "msg-2-1",
-          senderId: "usr-3",
-          senderName: "Sarah Vance",
-          senderRole: "teacher",
-          senderAvatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=150&auto=format&fit=crop",
-          subject: "Swiss Typography Reference Books Allocations",
-          content: "Hello Jaden, we have an influx of students registering for the Autumn Typography season. We need to allocate 5 more physical reference copies of Josef Müller-Brockmann's 'Grid Systems in Graphic Design' to the digital reserve archive. Let me know if we have the system licenses.",
-          timestamp: "2026-07-03T14:30:00Z"
-        },
-        {
-          id: "msg-2-2",
-          senderId: "usr-1",
-          senderName: "Jaden Smith",
-          senderRole: "super-admin",
-          senderAvatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=300&auto=format&fit=crop",
-          subject: "Re: Swiss Typography Reference Books Allocations",
-          content: "Hi Sarah, I will look into licensing codes and dispatch an approval notice to the library reserve department today.",
-          timestamp: "2026-07-03T16:00:00Z"
-        }
-      ]
-    },
-    {
-      id: "conv-3",
-      subject: "Framer Motion custom canvas engine evaluation criteria",
-      senderId: "stu-2",
-      senderName: "Esther Howard",
-      senderRole: "student",
-      senderAvatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=150&auto=format&fit=crop",
-      isRead: false,
-      isArchived: false,
-      status: "open",
-      courseId: "react-adv",
-      courseTitle: "Advanced React & Architecture",
-      lastUpdated: "2026-07-02T09:45:00Z",
-      messages: [
-        {
-          id: "msg-3-1",
-          senderId: "stu-2",
-          senderName: "Esther Howard",
-          senderRole: "student",
-          senderAvatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=150&auto=format&fit=crop",
-          subject: "Framer Motion custom canvas engine evaluation criteria",
-          content: "Hello, regarding our Framer Motion Canvas assignment, is GPU acceleration layout constraints weighted in the final marks? I want to optimize my matrix transforms beforehand. Thanks!",
-          timestamp: "2026-07-02T09:45:00Z"
-        }
-      ]
-    }
-  ]);
+  // Backend-backed conversations state (strictly empty by default, loaded from MySQL)
+  const [conversations, setConversations] = useState<Conversation[]>([]);
 
   // Load authoritative messages from backend API
   useEffect(() => {
@@ -176,7 +86,7 @@ export default function InboxTab({
     adminApi.getMessages()
       .then((res) => {
         if (!isMounted) return;
-        if (res.success && Array.isArray(res.data) && res.data.length > 0) {
+        if (res.success && Array.isArray(res.data)) {
           const loaded: Conversation[] = res.data.map((r: any) => ({
             id: `conv-msg-${r.id}`,
             backendId: r.id,
@@ -211,10 +121,15 @@ export default function InboxTab({
             lastUpdated: (r.replied_at || r.created_at || new Date().toISOString())
           }));
           setConversations(loaded);
+        } else {
+          setConversations([]);
         }
       })
       .catch((err) => {
-        console.error("Failed to load messages from backend", err);
+        if (err?.status !== 401 && !err?.message?.includes("Authentication required")) {
+          console.warn("Could not load messages from backend:", err?.message || err);
+        }
+        if (isMounted) setConversations([]);
       });
 
     return () => {
@@ -222,30 +137,7 @@ export default function InboxTab({
     };
   }, []);
 
-  const [sentMessages, setSentMessages] = useState<SentMessage[]>([
-    {
-      id: "sent-1",
-      recipients: ["Sarah Vance"],
-      recipientRole: "Teacher",
-      subject: "Dispatched Library Reserve License Keys",
-      content: "Hi Sarah, the library reserve licenses for Swiss Typography have been issued. 5 extra digital keys are now fully live on the student dashboards.",
-      timestamp: "2026-07-03T18:00:00Z",
-      attachments: [{ name: "digital_reserve_keys.zip", size: "2.8 MB", type: "zip" }],
-      deliveryStats: { delivered: 1, read: 1, unread: 0 },
-      isRead: true
-    },
-    {
-      id: "sent-2",
-      recipients: ["Cody Fisher", "Esther Howard"],
-      recipientRole: "Multiple Students (Advanced React)",
-      subject: "Pre-Midterm Study Guides Dispatch",
-      content: "Hello team, please find attached the layout study guides covering modern rendering cycles and custom GPU matrix optimization tips.",
-      timestamp: "2026-07-01T11:00:00Z",
-      attachments: [{ name: "react_gpu_rendering.pdf", size: "4.5 MB", type: "pdf" }],
-      deliveryStats: { delivered: 2, read: 1, unread: 1 },
-      isRead: false
-    }
-  ]);
+  const [sentMessages, setSentMessages] = useState<SentMessage[]>([]);
 
   // --- INBOX SUBTAB STATE ---
   const [selectedConv, setSelectedConv] = useState<Conversation | null>(null);
@@ -282,8 +174,8 @@ export default function InboxTab({
 
       const newMsg: AdminMessage = {
         id: "msg-rep-" + Date.now(),
-        senderId: "usr-1",
-        senderName: "Jaden Smith",
+        senderId: "admin-1",
+        senderName: "Administrator",
         senderRole: "super-admin",
         senderAvatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=300&auto=format&fit=crop",
         subject: `Re: ${selectedConv?.subject}`,
@@ -1130,7 +1022,7 @@ export default function InboxTab({
                                         type: f.name.split(".").pop() || "doc"
                                       }
                                     ]);
-                                    showCustomToast(`Attached ${f.name} mock payload.`, "info");
+                                    showCustomToast(`Attached ${f.name} successfully.`, "info");
                                   }
                                 }}
                               />

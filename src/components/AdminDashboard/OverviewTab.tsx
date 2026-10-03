@@ -59,14 +59,14 @@ export default function OverviewTab({
   const scheduledSessions = sessions.filter((s) => s.status === "Scheduled");
 
   const statCards = [
-    { label: "کل کاربران (Total Users)", value: stats?.totalUsers ?? users.length, icon: Users, actionId: "users", color: "text-indigo-400" },
-    { label: "کاربران عادی (Normal Users)", value: stats?.normalUsers ?? users.filter(u => u.role === "user").length, icon: UserCheck, actionId: "users", color: "text-blue-400" },
-    { label: "دانشجویان (Students)", value: stats?.students ?? users.filter(u => u.role === "student").length, icon: GraduationCap, actionId: "users", color: "text-emerald-400" },
-    { label: "اساتید (Teachers)", value: stats?.teachers ?? users.filter(u => u.role === "teacher").length, icon: Award, actionId: "users", color: "text-amber-400" },
-    { label: "مدیران (Administrators)", value: stats?.administrators ?? users.filter(u => u.role === "admin" || u.role === "super-admin").length, icon: Shield, actionId: "users", color: "text-purple-400" },
-    { label: "دوره‌های فعال (Courses)", value: stats?.totalCourses ?? courses.length, icon: BookOpen, actionId: "courses", color: "text-teal-400" },
-    { label: "نشست‌های زنده (Live Sessions)", value: scheduledSessions.length, icon: Calendar, actionId: "courses", color: "text-cyan-400" },
-    { label: "تأییدیه‌ها (Pending Approvals)", value: pendingRequests.length + pendingCertificates.length, icon: AlertCircle, actionId: "certificates", color: "text-rose-400" },
+    { label: "Total Users", value: stats?.totalUsers ?? users.length, icon: Users, actionId: "users", color: "text-indigo-400" },
+    { label: "Normal Users", value: stats?.normalUsers ?? users.filter(u => u.role === "user").length, icon: UserCheck, actionId: "users", color: "text-blue-400" },
+    { label: "Students", value: stats?.students ?? users.filter(u => u.role === "student").length, icon: GraduationCap, actionId: "users", color: "text-emerald-400" },
+    { label: "Teachers", value: stats?.teachers ?? users.filter(u => u.role === "teacher").length, icon: Award, actionId: "users", color: "text-amber-400" },
+    { label: "Administrators", value: stats?.administrators ?? users.filter(u => u.role === "admin" || u.role === "super-admin").length, icon: Shield, actionId: "users", color: "text-purple-400" },
+    { label: "Active Courses", value: stats?.totalCourses ?? courses.length, icon: BookOpen, actionId: "courses", color: "text-teal-400" },
+    { label: "Live Sessions", value: scheduledSessions.length, icon: Calendar, actionId: "courses", color: "text-cyan-400" },
+    { label: "Pending Approvals", value: pendingRequests.length + pendingCertificates.length, icon: AlertCircle, actionId: "certificates", color: "text-rose-400" },
   ];
 
   return (
@@ -235,7 +235,7 @@ export default function OverviewTab({
 
         {sessions.length === 0 ? (
           <div className="py-8 text-center text-white/30 text-xs font-mono">
-            هیچ کلاس یا نشست زنده‌ای برنامه‌ریزی نشده است.
+            No live sessions or classes scheduled.
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">

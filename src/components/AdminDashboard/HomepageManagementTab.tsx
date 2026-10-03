@@ -211,7 +211,7 @@ export default function HomepageManagementTab({ showCustomToast }: HomepageManag
   ) => {
     if (!file) return;
     if (file.size > 15 * 1024 * 1024) {
-      showCustomToast("حجم فایل بیشتر از ۱۵ مگابایت است. لطفاً فایل کوچک‌تری انتخاب کنید.", "warning");
+      showCustomToast("File size exceeds 15MB. Please choose a smaller file.", "warning");
       return;
     }
     const formData = new FormData();
@@ -497,7 +497,7 @@ export default function HomepageManagementTab({ showCustomToast }: HomepageManag
                       className="hidden"
                       onChange={(e) => {
                         const file = e.target.files?.[0];
-                        if (file) handleDirectFileUpload("hero.heroImage", file, "تصویر بنر هدر با موفقیت از سیستم بارگذاری شد!");
+                        if (file) handleDirectFileUpload("hero.heroImage", file, "Header banner image uploaded successfully!");
                       }}
                     />
                   </label>
@@ -697,7 +697,7 @@ export default function HomepageManagementTab({ showCustomToast }: HomepageManag
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[11px] font-mono uppercase tracking-wider text-white/50 mb-1.5">
-                    CV Download Link / File (رزومه یا فایل دانلودی)
+                    CV Download Link / File
                   </label>
                   <div className="flex gap-2">
                     <input
@@ -721,7 +721,7 @@ export default function HomepageManagementTab({ showCustomToast }: HomepageManag
                         className="hidden"
                         onChange={(e) => {
                           const file = e.target.files?.[0];
-                          if (file) handleDirectFileUpload("aboutMe.cvUrl", file, "فایل رزومه با موفقیت از سیستم بارگذاری شد!");
+                          if (file) handleDirectFileUpload("aboutMe.cvUrl", file, "CV file uploaded successfully!");
                         }}
                       />
                     </label>
@@ -770,7 +770,7 @@ export default function HomepageManagementTab({ showCustomToast }: HomepageManag
                       className="hidden"
                       onChange={(e) => {
                         const file = e.target.files?.[0];
-                        if (file) handleDirectFileUpload("aboutMe.portraitImage", file, "تصویر پروفایل با موفقیت از سیستم بارگذاری شد!");
+                        if (file) handleDirectFileUpload("aboutMe.portraitImage", file, "Profile portrait uploaded successfully!");
                       }}
                     />
                   </label>
@@ -1462,7 +1462,7 @@ export default function HomepageManagementTab({ showCustomToast }: HomepageManag
                           className="hidden"
                           onChange={(e) => {
                             const file = e.target.files?.[0];
-                            if (file) handleDirectFileUpload(`projects.projects.${idx}.coverImage`, file, "تصویر کاور پروژه با موفقیت بارگذاری شد!");
+                            if (file) handleDirectFileUpload(`projects.projects.${idx}.coverImage`, file, "Project cover image uploaded successfully!");
                           }}
                         />
                       </label>
@@ -1820,7 +1820,7 @@ export default function HomepageManagementTab({ showCustomToast }: HomepageManag
                                 className="hidden"
                                 onChange={(e) => {
                                   const file = e.target.files?.[0];
-                                  if (file) handleDirectFileUpload(`classes.${idx}.courseImage`, file, "تصویر دوره با موفقیت بارگذاری شد!");
+                                  if (file) handleDirectFileUpload(`classes.${idx}.courseImage`, file, "Course image uploaded successfully!");
                                 }}
                               />
                             </label>
@@ -2178,7 +2178,7 @@ export default function HomepageManagementTab({ showCustomToast }: HomepageManag
                       className="hidden"
                       onChange={(e) => {
                         const file = e.target.files?.[0];
-                        if (file) handleDirectFileUpload(`testimonials.testimonials.${idx}.avatar`, file, "تصویر کاربر با موفقیت بارگذاری شد!");
+                        if (file) handleDirectFileUpload(`testimonials.testimonials.${idx}.avatar`, file, "User avatar uploaded successfully!");
                       }}
                     />
                   </label>
@@ -2595,17 +2595,17 @@ export default function HomepageManagementTab({ showCustomToast }: HomepageManag
                     <span className="p-1.5 rounded-lg bg-emerald-500/15 text-emerald-400">
                       <Upload size={14} />
                     </span>
-                    <span className="text-xs font-bold text-white">آپلود از کامپیوتر (Upload from Computer)</span>
+                    <span className="text-xs font-bold text-white">Upload from Computer</span>
                   </div>
                   <span className="text-[10px] font-mono text-emerald-400">PNG, JPG, WEBP, SVG, PDF</span>
                 </div>
                 <label className="flex flex-col items-center justify-center p-4 border border-dashed border-white/15 hover:border-emerald-400 rounded-xl bg-black/50 hover:bg-emerald-500/[0.04] cursor-pointer transition-all group">
                   <Upload size={22} className="text-white/40 group-hover:text-emerald-400 group-hover:scale-110 transition-all mb-1.5" />
                   <span className="text-xs font-semibold text-white/90 group-hover:text-emerald-300">
-                    انتخاب فایل از سیستم (Browse Local File)
+                    Browse Local File
                   </span>
                   <span className="text-[10px] font-mono text-white/40 mt-0.5">
-                    فایل‌های تصویر و اسناد تا حداکثر ۱۵ مگابایت
+                    Images and document files up to 15MB
                   </span>
                   <input
                     type="file"
@@ -2614,7 +2614,7 @@ export default function HomepageManagementTab({ showCustomToast }: HomepageManag
                     onChange={(e) => {
                       const file = e.target.files?.[0];
                       if (file && imagePickerTarget) {
-                        handleDirectFileUpload(imagePickerTarget.fieldPath, file, "فایل با موفقیت از سیستم انتخاب و بارگذاری شد!");
+                        handleDirectFileUpload(imagePickerTarget.fieldPath, file, "File selected and uploaded successfully!");
                         setImagePickerTarget(null);
                       }
                     }}
@@ -2624,7 +2624,7 @@ export default function HomepageManagementTab({ showCustomToast }: HomepageManag
 
               {/* Current URL Input */}
               <div className="space-y-1.5">
-                <label className="text-[10px] font-mono uppercase text-white/50">Custom URL (یا لینک مستقیم)</label>
+                <label className="text-[10px] font-mono uppercase text-white/50">Custom URL</label>
                 <div className="flex gap-2">
                   <input
                     type="text"

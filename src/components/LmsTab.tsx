@@ -14,6 +14,8 @@ interface LmsTabProps {
   discussions: DiscussionThread[];
   resources: Resource[];
   activeSubTab?: string;
+  defaultSection?: "certificates" | "exams" | "assignments" | "discussions" | "resources";
+  hideSubNavigation?: boolean;
   onAddExam: (exam: Exam) => void;
   onPublishExamResults: (id: string) => void;
   onApproveCertificate: (id: string) => void;
@@ -31,6 +33,8 @@ export default function LmsTab({
   discussions,
   resources,
   activeSubTab = "all",
+  defaultSection,
+  hideSubNavigation = false,
   onAddExam,
   onPublishExamResults,
   onApproveCertificate,
@@ -41,8 +45,16 @@ export default function LmsTab({
   onDeleteResource,
 }: LmsTabProps) {
   const [currentSection, setCurrentSection] = useState<"certificates" | "exams" | "assignments" | "discussions" | "resources">(
-    activeSubTab === "exams" ? "exams" : "certificates"
+    defaultSection || (["certificates", "exams", "assignments", "discussions", "resources"].includes(activeSubTab) ? (activeSubTab as any) : "certificates")
   );
+
+  React.useEffect(() => {
+    if (defaultSection) {
+      setCurrentSection(defaultSection);
+    } else if (["certificates", "exams", "assignments", "discussions", "resources"].includes(activeSubTab)) {
+      setCurrentSection(activeSubTab as any);
+    }
+  }, [defaultSection, activeSubTab]);
 
   // New Exam state
   const [showAddExamModal, setShowAddExamModal] = useState(false);
@@ -97,39 +109,41 @@ export default function LmsTab({
   return (
     <div className="space-y-6">
       {/* Sub Navigation */}
-      <div className="flex flex-wrap items-center gap-2 p-1.5 rounded-2xl bg-white/[0.02] border border-white/[0.06] backdrop-blur-md">
-        {[
-          { id: "certificates", label: "Certificates", count: certificates.length, icon: Award },
-          { id: "exams", label: "Examinations", count: exams.length, icon: Sliders },
-          { id: "assignments", label: "Assignments", count: assignments.length, icon: FileText },
-          { id: "discussions", label: "Discussions", count: discussions.length, icon: MessageSquare },
-          { id: "resources", label: "Library Resources", count: resources.length, icon: FolderOpen },
-        ].map((tab) => {
-          const Icon = tab.icon;
-          const isActive = currentSection === tab.id;
-          return (
-            <button
-              key={tab.id}
-              onClick={() => setCurrentSection(tab.id as any)}
-              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-mono font-medium transition-all cursor-pointer ${
-                isActive
-                  ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shadow-sm"
-                  : "text-white/50 hover:text-white hover:bg-white/[0.02]"
-              }`}
-            >
-              <Icon size={14} />
-              <span>{tab.label}</span>
-              <span
-                className={`px-1.5 py-0.2 rounded-full text-[10px] ${
-                  isActive ? "bg-emerald-500/20 text-emerald-300" : "bg-white/10 text-white/40"
+      {!hideSubNavigation && (
+        <div className="flex flex-wrap items-center gap-2 p-1.5 rounded-2xl bg-white/[0.02] border border-white/[0.06] backdrop-blur-md">
+          {[
+            { id: "certificates", label: "Certificates", count: certificates.length, icon: Award },
+            { id: "exams", label: "Examinations", count: exams.length, icon: Sliders },
+            { id: "assignments", label: "Assignments", count: assignments.length, icon: FileText },
+            { id: "discussions", label: "Discussions", count: discussions.length, icon: MessageSquare },
+            { id: "resources", label: "Library Resources", count: resources.length, icon: FolderOpen },
+          ].map((tab) => {
+            const Icon = tab.icon;
+            const isActive = currentSection === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setCurrentSection(tab.id as any)}
+                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-mono font-medium transition-all cursor-pointer ${
+                  isActive
+                    ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shadow-sm"
+                    : "text-white/50 hover:text-white hover:bg-white/[0.02]"
                 }`}
               >
-                {tab.count}
-              </span>
-            </button>
-          );
-        })}
-      </div>
+                <Icon size={14} />
+                <span>{tab.label}</span>
+                <span
+                  className={`px-1.5 py-0.2 rounded-full text-[10px] ${
+                    isActive ? "bg-emerald-500/20 text-emerald-300" : "bg-white/10 text-white/40"
+                  }`}
+                >
+                  {tab.count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {/* Certificates Section */}
       {currentSection === "certificates" && (

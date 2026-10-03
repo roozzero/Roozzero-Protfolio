@@ -2,6 +2,32 @@
 // Handles all communication with the Express + MySQL backend
 
 const API_BASE = "/api";
+const TOKEN_KEY = "roozzero_auth_token";
+
+export function getAuthToken(): string | null {
+  try {
+    return localStorage.getItem(TOKEN_KEY) || sessionStorage.getItem(TOKEN_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function setAuthToken(token: string, rememberMe = true) {
+  try {
+    if (rememberMe) {
+      localStorage.setItem(TOKEN_KEY, token);
+    } else {
+      sessionStorage.setItem(TOKEN_KEY, token);
+    }
+  } catch {}
+}
+
+export function clearAuthToken() {
+  try {
+    localStorage.removeItem(TOKEN_KEY);
+    sessionStorage.removeItem(TOKEN_KEY);
+  } catch {}
+}
 
 async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const url = `${API_BASE}${endpoint}`;
@@ -10,6 +36,12 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
   // Do not set Content-Type if sending FormData (browser sets boundary automatically)
   if (!(options.body instanceof FormData) && !headers.has("Content-Type")) {
     headers.set("Content-Type", "application/json");
+  }
+
+  // Attach session token in Authorization Bearer header for iframe compatibility
+  const token = getAuthToken();
+  if (token && !headers.has("Authorization")) {
+    headers.set("Authorization", `Bearer ${token}`);
   }
 
   const response = await fetch(url, {
@@ -37,20 +69,29 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
 // -------------------------------------------------------------
 export const authApi = {
   async register(data: { name: string; email: string; password: string; confirmPassword?: string; phone?: string }) {
-    return request<{ success: boolean; data: { user: any } }>("/auth/register", {
+    const res = await request<{ success: boolean; data: { user: any; token?: string } }>("/auth/register", {
       method: "POST",
       body: JSON.stringify(data)
     });
+    if (res.data?.token) {
+      setAuthToken(res.data.token, false);
+    }
+    return res;
   },
 
   async login(data: { email: string; password: string; rememberMe?: boolean }) {
-    return request<{ success: boolean; data: { user: any } }>("/auth/login", {
+    const res = await request<{ success: boolean; data: { user: any; token?: string } }>("/auth/login", {
       method: "POST",
       body: JSON.stringify(data)
     });
+    if (res.data?.token) {
+      setAuthToken(res.data.token, !!data.rememberMe);
+    }
+    return res;
   },
 
   async logout() {
+    clearAuthToken();
     return request<{ success: boolean; message: string }>("/auth/logout", {
       method: "POST"
     });

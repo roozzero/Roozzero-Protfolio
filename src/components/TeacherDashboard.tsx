@@ -161,9 +161,9 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
       const res = await teacherApi.replyDiscussion(threadId, text.trim());
       const newReply = res.data || {
         id: `rep-${Date.now()}`,
-        sender: profile?.name || "استاد",
+        sender: profile?.name || "Instructor",
         role: "Instructor",
-        time: "هم‌اکنون",
+        time: "Just Now",
         text: text.trim()
       };
 
@@ -175,9 +175,9 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
         )
       );
       setReplyInputs((prev) => ({ ...prev, [threadId]: "" }));
-      showToast("پاسخ شما با موفقیت ارسال شد.");
+      showToast("Your reply was submitted successfully.");
     } catch (err: any) {
-      showToast(err.message || "خطا در ارسال پاسخ.", "error");
+      showToast(err.message || "Failed to send reply.", "error");
     } finally {
       setIsSubmittingReply(null);
     }
@@ -187,14 +187,14 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
   const handleCreateSession = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newSessionData.courseId || !newSessionData.title || !newSessionData.date) {
-      showToast("لطفاً اطلاعات ضروری جلسه را تکمیل کنید.", "error");
+      showToast("Please fill in all required session fields.", "error");
       return;
     }
 
     try {
       const res = await teacherApi.createSession(newSessionData.courseId, newSessionData);
       if (res.success) {
-        showToast("جلسه آنلاین با موفقیت ایجاد شد.");
+        showToast("Online session scheduled successfully.");
         setShowCreateSessionModal(false);
         setNewSessionData({
           courseId: courses[0]?.id || "",
@@ -207,7 +207,7 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
         loadTeacherData();
       }
     } catch (err: any) {
-      showToast(err.message || "خطا در ایجاد جلسه آنلاین.", "error");
+      showToast(err.message || "Failed to schedule session.", "error");
     }
   };
 
@@ -216,9 +216,9 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
     try {
       await teacherApi.deleteSession(id);
       setSessions((prev) => prev.filter((s) => s.id !== id));
-      showToast("جلسه با موفقیت حذف شد.");
+      showToast("Session deleted successfully.");
     } catch (err: any) {
-      showToast(err.message || "خطا در حذف جلسه.", "error");
+      showToast(err.message || "Failed to delete session.", "error");
     }
   };
 
@@ -226,14 +226,14 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
   const handleCreateAssignment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newAssignmentData.courseId || !newAssignmentData.title || !newAssignmentData.dueDate) {
-      showToast("لطفاً فیلدهای الزامی را پر کنید.", "error");
+      showToast("Please complete all required fields.", "error");
       return;
     }
 
     try {
       const res = await teacherApi.createAssignment(newAssignmentData.courseId, newAssignmentData);
       if (res.success) {
-        showToast("تکلیف جدید با موفقیت ایجاد شد.");
+        showToast("New assignment created successfully.");
         setShowCreateAssignmentModal(false);
         setNewAssignmentData({
           courseId: courses[0]?.id || "",
@@ -245,7 +245,7 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
         loadTeacherData();
       }
     } catch (err: any) {
-      showToast(err.message || "خطا در ایجاد تکلیف.", "error");
+      showToast(err.message || "Failed to create assignment.", "error");
     }
   };
 
@@ -261,12 +261,12 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
         gradingSubmission.feedback
       );
       if (res.success) {
-        showToast("نمره و بازخورد با موفقیت ثبت شد.");
+        showToast("Grade and feedback saved successfully.");
         setGradingSubmission(null);
         loadTeacherData();
       }
     } catch (err: any) {
-      showToast(err.message || "خطا در ثبت نمره.", "error");
+      showToast(err.message || "Failed to record grade.", "error");
     }
   };
 
@@ -283,29 +283,29 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
       });
       if (res.success && res.data?.user) {
         setProfile(res.data.user);
-        showToast("اطلاعات پروفایل با موفقیت ذخیره شد.");
+        showToast("Profile settings saved successfully.");
       }
     } catch (err: any) {
-      showToast(err.message || "خطا در به‌روزرسانی پروفایل.", "error");
+      showToast(err.message || "Failed to update profile.", "error");
     } finally {
       setIsSavingProfile(false);
     }
   };
 
-  // Teacher display identity: neutral fallback "استاد" if name is missing (zero fake personal names!)
-  const teacherDisplayName = (profile?.name && profile.name.trim().length > 0) ? profile.name.trim() : "استاد";
+  // Teacher display identity: neutral fallback "Instructor" if name is missing (zero fake personal names!)
+  const teacherDisplayName = (profile?.name && profile.name.trim().length > 0) ? profile.name.trim() : "Instructor";
   const teacherAvatarInitial = teacherDisplayName.charAt(0).toUpperCase();
 
   // Sidebar navigation menu items
   const sidebarItems = [
-    { id: "overview", label: "داشبورد", icon: LayoutDashboard },
-    { id: "courses", label: "دوره‌های من", icon: BookOpen, badge: courses.length },
-    { id: "students", label: "دانشجویان", icon: Users, badge: students.length },
-    { id: "sessions", label: "جلسات آنلاین", icon: Calendar, badge: sessions.length },
-    { id: "assignments", label: "تکالیف و تصحیح", icon: FileText, badge: assignments.length },
-    { id: "discussions", label: "پرسش و پاسخ", icon: MessageSquare, badge: discussions.filter(d => d.status !== "Replied").length },
-    { id: "resources", label: "منابع آموزشی", icon: FolderOpen, badge: resources.length },
-    { id: "settings", label: "تنظیمات حساب", icon: Settings },
+    { id: "overview", label: "Overview", icon: LayoutDashboard },
+    { id: "courses", label: "My Courses", icon: BookOpen, badge: courses.length },
+    { id: "students", label: "Students", icon: Users, badge: students.length },
+    { id: "sessions", label: "Live Sessions", icon: Calendar, badge: sessions.length },
+    { id: "assignments", label: "Assignments", icon: FileText, badge: assignments.length },
+    { id: "discussions", label: "Discussions", icon: MessageSquare, badge: discussions.filter(d => d.status !== "Replied").length },
+    { id: "resources", label: "Resources", icon: FolderOpen, badge: resources.length },
+    { id: "settings", label: "Account Settings", icon: Settings },
   ] as const;
 
   // Filtered students by search
@@ -320,7 +320,7 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
   });
 
   return (
-    <div className="min-h-screen w-full bg-[#030304] text-white flex relative overflow-hidden font-sans" dir="rtl">
+    <div className="min-h-screen w-full bg-[#030304] text-white flex relative overflow-hidden font-sans" dir="ltr">
       {/* Toast Alert */}
       <AnimatePresence>
         {toastMsg && (
@@ -360,7 +360,7 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
                   {teacherDisplayName}
                 </span>
                 <span className="font-sans text-[9px] text-amber-400 font-bold tracking-wider uppercase leading-none mt-1">
-                  استاد آکادمی
+                  Academy Instructor
                 </span>
               </div>
             </div>
@@ -368,7 +368,7 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
             <button
               onClick={onLogout}
               className="p-2 rounded-xl text-white/40 hover:text-red-400 hover:bg-white/[0.04] transition-all border border-transparent hover:border-white/[0.05] cursor-pointer"
-              title="خروج از حساب کاربری"
+              title="Sign Out"
             >
               <LogOut size={14} />
             </button>
@@ -377,7 +377,7 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
           {/* Navigation Items */}
           <div className="space-y-1">
             <span className="px-2 text-[9px] font-bold text-white/30 tracking-widest uppercase block mb-3">
-              منوی پنل اساتید
+              Instructor Menu
             </span>
 
             {sidebarItems.map((item) => {
@@ -419,7 +419,7 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
               className="flex items-center gap-3 w-full px-3.5 py-2.5 rounded-xl font-sans text-xs font-semibold text-white/40 hover:text-white/80 hover:bg-white/[0.02] transition-all cursor-pointer"
             >
               <Home size={14} className="opacity-70" />
-              <span>صفحه اصلی آکادمی</span>
+              <span>Academy Home</span>
             </button>
           </div>
         </div>
@@ -431,7 +431,7 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
               ROOZZERO ACADEMY
             </span>
             <p className="font-sans text-[10px] text-white/35 leading-relaxed font-normal">
-              سامانه جامع آموزشی و هدایت کلاس‌های آکادمی.
+              Comprehensive Learning Management & Instructor Portal.
             </p>
           </div>
         </div>
@@ -457,7 +457,7 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
             >
               <div className="space-y-6">
                 <div className="flex items-center justify-between">
-                  <span className="font-sans text-[10px] font-black tracking-widest text-white/40 uppercase">منوی اساتید</span>
+                  <span className="font-sans text-[10px] font-black tracking-widest text-white/40 uppercase">Instructor Menu</span>
                   <button
                     onClick={() => setIsMobileMenuOpen(false)}
                     className="p-1 rounded-lg border border-white/10 bg-white/[0.02] text-white/60 hover:text-white"
@@ -472,7 +472,7 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
                   </div>
                   <div>
                     <span className="font-sans text-xs font-bold text-white block truncate max-w-[140px]">{teacherDisplayName}</span>
-                    <span className="font-sans text-[9px] text-amber-400 font-bold uppercase block">استاد</span>
+                    <span className="font-sans text-[9px] text-amber-400 font-bold uppercase block">Instructor</span>
                   </div>
                 </div>
 
@@ -500,7 +500,7 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
                 className="flex items-center gap-2 w-full p-3 rounded-xl bg-red-500/10 text-red-400 text-xs font-bold border border-red-500/20"
               >
                 <LogOut size={14} />
-                <span>خروج از حساب</span>
+                <span>Sign Out</span>
               </button>
             </motion.div>
           </div>
@@ -520,7 +520,7 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
             </button>
             <div>
               <h2 className="text-sm font-bold text-white flex items-center gap-2">
-                <span>{sidebarItems.find(t => t.id === activeTab)?.label || "داشبورد استاد"}</span>
+                <span>{sidebarItems.find(t => t.id === activeTab)?.label || "Instructor Dashboard"}</span>
                 <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/30">
                   Faculty
                 </span>
@@ -534,7 +534,7 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
               className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 border border-white/10 hover:bg-white/5 rounded-xl text-xs text-white/70 hover:text-white font-bold transition-all cursor-pointer"
             >
               <Home size={13} />
-              <span>صفحه اصلی</span>
+              <span>Home</span>
             </button>
 
             <div className="flex items-center gap-2 text-right">
@@ -543,7 +543,7 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
               </div>
               <div className="hidden sm:block text-right">
                 <p className="text-xs font-bold leading-tight truncate max-w-[120px]">{teacherDisplayName}</p>
-                <p className="text-[9px] text-white/40 font-mono">استاد آکادمی</p>
+                <p className="text-[9px] text-white/40 font-mono">Academy Instructor</p>
               </div>
             </div>
           </div>
@@ -559,13 +559,13 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
                 <div className="relative z-10 space-y-2">
                   <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/[0.04] border border-white/[0.08] text-[11px] text-amber-400 font-bold">
                     <Sparkles size={13} />
-                    <span>پنل مدیریت آموزش اساتید</span>
+                    <span>Instructor Portal</span>
                   </div>
                   <h1 className="text-xl md:text-2xl font-black text-white tracking-tight">
-                    خوش آمدید، {teacherDisplayName}
+                    Welcome back, {teacherDisplayName}
                   </h1>
                   <p className="text-xs md:text-sm text-white/70 leading-relaxed max-w-2xl">
-                    سامانه مدیریت تدریس، نظارت بر پیشرفت دانشجویان، زمان‌بندی جلسات آنلاین و تصحیح تمرین‌ها.
+                    Teaching management system for monitoring student progress, scheduling online sessions, and grading coursework.
                   </p>
                 </div>
               </div>
@@ -577,14 +577,14 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
                   className="p-5 rounded-2xl bg-white/[0.02] border border-white/[0.06] hover:border-amber-500/30 transition-all cursor-pointer backdrop-blur-md"
                 >
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-white/40">دوره‌های من</span>
+                    <span className="text-xs text-white/40">My Courses</span>
                     <div className="p-2 rounded-xl bg-amber-500/10 text-amber-400">
                       <BookOpen size={16} />
                     </div>
                   </div>
                   <div className="mt-3 flex items-baseline justify-between">
                     <span className="text-3xl font-black text-white font-mono">{courses.length}</span>
-                    <span className="text-[10px] text-amber-400">مشاهده دوره‌ها</span>
+                    <span className="text-[10px] text-amber-400">View Courses</span>
                   </div>
                 </div>
 
@@ -593,14 +593,14 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
                   className="p-5 rounded-2xl bg-white/[0.02] border border-white/[0.06] hover:border-emerald-500/30 transition-all cursor-pointer backdrop-blur-md"
                 >
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-white/40">دانشجویان فعال</span>
+                    <span className="text-xs text-white/40">Active Students</span>
                     <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400">
                       <Users size={16} />
                     </div>
                   </div>
                   <div className="mt-3 flex items-baseline justify-between">
                     <span className="text-3xl font-black text-white font-mono">{students.length}</span>
-                    <span className="text-[10px] text-emerald-400">مشاهده لیست</span>
+                    <span className="text-[10px] text-emerald-400">View Roster</span>
                   </div>
                 </div>
 
@@ -609,14 +609,14 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
                   className="p-5 rounded-2xl bg-white/[0.02] border border-white/[0.06] hover:border-cyan-500/30 transition-all cursor-pointer backdrop-blur-md"
                 >
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-white/40">جلسات کلاس آنلاین</span>
+                    <span className="text-xs text-white/40">Live Sessions</span>
                     <div className="p-2 rounded-xl bg-cyan-500/10 text-cyan-400">
                       <Calendar size={16} />
                     </div>
                   </div>
                   <div className="mt-3 flex items-baseline justify-between">
                     <span className="text-3xl font-black text-white font-mono">{sessions.length}</span>
-                    <span className="text-[10px] text-cyan-400">برنامه جلسات</span>
+                    <span className="text-[10px] text-cyan-400">Session Schedule</span>
                   </div>
                 </div>
 
@@ -625,14 +625,14 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
                   className="p-5 rounded-2xl bg-white/[0.02] border border-white/[0.06] hover:border-indigo-500/30 transition-all cursor-pointer backdrop-blur-md"
                 >
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-white/40">تمرین‌های تعریف‌شده</span>
+                    <span className="text-xs text-white/40">Assignments</span>
                     <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-400">
                       <FileText size={16} />
                     </div>
                   </div>
                   <div className="mt-3 flex items-baseline justify-between">
                     <span className="text-3xl font-black text-white font-mono">{assignments.length}</span>
-                    <span className="text-[10px] text-indigo-400">تصحیح و بررسی</span>
+                    <span className="text-[10px] text-indigo-400">Review & Grade</span>
                   </div>
                 </div>
               </div>
@@ -644,16 +644,16 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
                   <div className="flex items-center justify-between border-b border-white/[0.04] pb-3">
                     <h3 className="text-sm font-bold text-white flex items-center gap-2">
                       <BookOpen size={16} className="text-amber-400" />
-                      <span>دوره‌های در حال برگزاری</span>
+                      <span>Active Teaching Courses</span>
                     </h3>
                     <button onClick={() => setActiveTab("courses")} className="text-xs text-amber-400 hover:underline">
-                      مشاهده همه
+                      View All
                     </button>
                   </div>
 
                   {courses.length === 0 ? (
                     <p className="text-center py-8 text-xs text-white/30 font-mono">
-                      هنوز دوره‌ای به شما تخصیص نیافته است.
+                      No courses have been assigned to your account yet.
                     </p>
                   ) : (
                     <div className="space-y-3">
@@ -664,7 +664,7 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
                             <h4 className="text-xs font-bold text-white mt-1">{c.title}</h4>
                           </div>
                           <div className="text-left font-mono text-xs text-white/60">
-                            <span>{c.studentsCount} دانشجو</span>
+                            <span>{c.studentsCount} Students</span>
                           </div>
                         </div>
                       ))}
@@ -677,16 +677,16 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
                   <div className="flex items-center justify-between border-b border-white/[0.04] pb-3">
                     <h3 className="text-sm font-bold text-white flex items-center gap-2">
                       <Calendar size={16} className="text-cyan-400" />
-                      <span>جلسات آنلاین پیش‌رو</span>
+                      <span>Upcoming Live Sessions</span>
                     </h3>
                     <button onClick={() => setActiveTab("sessions")} className="text-xs text-cyan-400 hover:underline">
-                      برنامه کامل
+                      Full Schedule
                     </button>
                   </div>
 
                   {sessions.length === 0 ? (
                     <p className="text-center py-8 text-xs text-white/30 font-mono">
-                      هیچ جلسه آنلاینی زمان‌بندی نشده است.
+                      No live sessions scheduled.
                     </p>
                   ) : (
                     <div className="space-y-3">
@@ -715,14 +715,14 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
             <div className="space-y-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-base font-bold text-white">دوره‌های تدریس من</h3>
-                  <p className="text-xs text-white/40 mt-0.5">لیست کامل دوره‌های اختصاص یافته به شما در آکادمی</p>
+                  <h3 className="text-base font-bold text-white">My Teaching Courses</h3>
+                  <p className="text-xs text-white/40 mt-0.5">Comprehensive roster of courses assigned to your instruction</p>
                 </div>
               </div>
 
               {courses.length === 0 ? (
                 <div className="p-12 text-center rounded-2xl bg-white/[0.02] border border-white/[0.06] text-white/40 text-xs font-mono">
-                  هنوز دوره‌ای به شما تخصیص داده نشده است.
+                  No courses have been assigned to your account yet.
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -743,7 +743,7 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
 
                       <div className="space-y-1.5 pt-2">
                         <div className="flex justify-between text-xs font-mono text-white/50">
-                          <span>پیشرفت سرفصل‌ها</span>
+                          <span>Curriculum Progress</span>
                           <span className="text-white">{course.progress}%</span>
                         </div>
                         <div className="w-full h-1.5 rounded-full bg-white/5 overflow-hidden">
@@ -755,8 +755,8 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
                       </div>
 
                       <div className="flex items-center justify-between text-xs font-mono text-white/40 pt-4 border-t border-white/[0.04]">
-                        <span>{course.studentsCount} دانشجو</span>
-                        <span>{course.sessionsCount} جلسه کل</span>
+                        <span>{course.studentsCount} Students</span>
+                        <span>{course.sessionsCount} Total Sessions</span>
                       </div>
                     </div>
                   ))}
@@ -770,8 +770,8 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
             <div className="space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
-                  <h3 className="text-base font-bold text-white">دانشجویان دوره‌ها</h3>
-                  <p className="text-xs text-white/40 mt-0.5">مشاهده وضعیت تحصیلی، حضور و غیاب و نمرات دانشجویان</p>
+                  <h3 className="text-base font-bold text-white">Course Students</h3>
+                  <p className="text-xs text-white/40 mt-0.5">Monitor academic standing, attendance rates, and progress</p>
                 </div>
 
                 <div className="relative w-full sm:w-64">
@@ -780,7 +780,7 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="جستجوی دانشجو یا دوره..."
+                    placeholder="Search student or course..."
                     className="w-full bg-white/[0.03] border border-white/10 rounded-xl pr-9 pl-3 py-1.5 text-xs text-white placeholder-white/30 focus:outline-none focus:border-emerald-500/50"
                   />
                 </div>
@@ -788,7 +788,7 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
 
               {filteredStudents.length === 0 ? (
                 <div className="p-12 text-center rounded-2xl bg-white/[0.02] border border-white/[0.06] text-white/40 text-xs font-mono">
-                  {students.length === 0 ? "هنوز دانشجویی در دوره‌های شما ثبت‌نام نکرده است." : "هیچ دانشجویی با این مشخصات یافت نشد."}
+                  {students.length === 0 ? "No students enrolled in your courses yet." : "No students match your search criteria."}
                 </div>
               ) : (
                 <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] backdrop-blur-md overflow-hidden">
@@ -796,11 +796,11 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
                     <table className="w-full text-right text-xs text-white/80">
                       <thead className="bg-white/[0.02] border-b border-white/[0.06] text-white/40 uppercase font-mono text-[10px]">
                         <tr>
-                          <th className="py-3 px-4">نام دانشجو</th>
-                          <th className="py-3 px-4">دوره ثبت‌نامی</th>
-                          <th className="py-3 px-4">میزان حضور</th>
-                          <th className="py-3 px-4">میانگین نمره</th>
-                          <th className="py-3 px-4">پیشرفت</th>
+                          <th className="py-3 px-4">Student Name</th>
+                          <th className="py-3 px-4">Enrolled Course</th>
+                          <th className="py-3 px-4">Attendance</th>
+                          <th className="py-3 px-4">Avg Score</th>
+                          <th className="py-3 px-4">Progress</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-white/[0.04]">
@@ -829,21 +829,21 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
             <div className="space-y-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-base font-bold text-white">جلسات کلاس آنلاین</h3>
-                  <p className="text-xs text-white/40 mt-0.5">زمان‌بندی و مدیریت کلاس‌های آنلاین و وبینارها</p>
+                  <h3 className="text-base font-bold text-white">Live Classroom Sessions</h3>
+                  <p className="text-xs text-white/40 mt-0.5">Schedule and manage online webinars and interactive lectures</p>
                 </div>
                 <button
                   onClick={() => setShowCreateSessionModal(true)}
                   className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-bold transition-all shadow-md shadow-emerald-500/20 cursor-pointer"
                 >
                   <Plus size={14} />
-                  <span>تعریف جلسه جدید</span>
+                  <span>Schedule Session</span>
                 </button>
               </div>
 
               {sessions.length === 0 ? (
                 <div className="p-12 text-center rounded-2xl bg-white/[0.02] border border-white/[0.06] text-white/40 text-xs font-mono">
-                  هیچ جلسه آنلاینی زمان‌بندی نشده است.
+                  No live sessions scheduled.
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -861,7 +861,7 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
                           <button
                             onClick={() => handleDeleteSession(sess.id)}
                             className="text-white/30 hover:text-red-400 transition-colors p-1 cursor-pointer"
-                            title="حذف جلسه"
+                            title="Delete Session"
                           >
                             <Trash2 size={13} />
                           </button>
@@ -871,7 +871,7 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
                       <p className="text-xs text-white/50 font-mono">{sess.courseTitle}</p>
 
                       <div className="flex items-center justify-between text-xs font-mono text-white/40 pt-2 border-t border-white/[0.04]">
-                        <span>ساعت: {sess.time} ({sess.duration})</span>
+                        <span>Time: {sess.time} ({sess.duration})</span>
                         {sess.link ? (
                           <a
                             href={sess.link}
@@ -879,11 +879,11 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
                             rel="noopener noreferrer"
                             className="text-cyan-400 hover:underline flex items-center gap-1 text-[11px]"
                           >
-                            <span>لینک کلاس</span>
+                            <span>Classroom Link</span>
                             <ExternalLink size={10} />
                           </a>
                         ) : (
-                          <span>{sess.studentCount || 0} دانشجو</span>
+                          <span>{sess.studentCount || 0} Students</span>
                         )}
                       </div>
                     </div>
@@ -898,21 +898,21 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
             <div className="space-y-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-base font-bold text-white">تکالیف و تصحیح نمرات</h3>
-                  <p className="text-xs text-white/40 mt-0.5">تعریف تکالیف جدید، مشاهده پاسخ‌های ارسال‌شده و ثبت نمره و بازخورد</p>
+                  <h3 className="text-base font-bold text-white">Assignments & Grading</h3>
+                  <p className="text-xs text-white/40 mt-0.5">Create coursework, review student submissions, and assign grades</p>
                 </div>
                 <button
                   onClick={() => setShowCreateAssignmentModal(true)}
                   className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-black text-xs font-bold transition-all shadow-md shadow-amber-500/20 cursor-pointer"
                 >
                   <Plus size={14} />
-                  <span>تعریف تکلیف جدید</span>
+                  <span>Create Assignment</span>
                 </button>
               </div>
 
               {assignments.length === 0 ? (
                 <div className="p-12 text-center rounded-2xl bg-white/[0.02] border border-white/[0.06] text-white/40 text-xs font-mono">
-                  هنوز تکلیفی تعریف نشده است.
+                  No assignments created yet.
                 </div>
               ) : (
                 <div className="space-y-4">
@@ -925,21 +925,21 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
                         <div>
                           <div className="flex items-center gap-2">
                             <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400">
-                              مهلت تحویل: {ass.dueDate}
+                              Due Date: {ass.dueDate}
                             </span>
                             <span className="text-[10px] text-white/40 font-mono">{ass.courseTitle}</span>
                           </div>
                           <h4 className="text-sm font-bold text-white mt-1.5">{ass.title}</h4>
                           <p className="text-xs text-white/70 mt-1 leading-relaxed">{ass.description}</p>
                         </div>
-                        <span className="text-xs font-mono text-white/40">{ass.maxPoints} امتیاز</span>
+                        <span className="text-xs font-mono text-white/40">{ass.maxPoints} Pts</span>
                       </div>
 
                       {/* Submissions Section */}
                       {ass.submissions && ass.submissions.length > 0 && (
                         <div className="pt-3 border-t border-white/[0.04] space-y-2">
                           <span className="text-xs font-bold text-white/70 block">
-                            پاسخ‌های ارسال‌شده دانشجویان ({ass.submissions.length}):
+                            Student Submissions ({ass.submissions.length}):
                           </span>
                           <div className="space-y-2">
                             {ass.submissions.map((sub) => (
@@ -949,7 +949,7 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
                               >
                                 <div>
                                   <span className="font-bold text-white block">{sub.studentName}</span>
-                                  <span className="text-[10px] text-white/40 font-mono block">تحویل در: {sub.submittedAt}</span>
+                                  <span className="text-[10px] text-white/40 font-mono block">Submitted on: {sub.submittedAt}</span>
                                   {sub.githubUrl && (
                                     <a
                                       href={sub.githubUrl}
@@ -957,7 +957,7 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
                                       rel="noopener noreferrer"
                                       className="text-cyan-400 hover:underline text-[10px] font-mono flex items-center gap-1 mt-0.5"
                                     >
-                                      <span>مشاهده ریپازیتوری</span>
+                                      <span>View Repository</span>
                                       <ExternalLink size={9} />
                                     </a>
                                   )}
@@ -966,10 +966,10 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
                                 <div className="flex items-center gap-3">
                                   {sub.grade !== null && sub.grade !== undefined ? (
                                     <span className="font-mono text-emerald-400 font-bold text-xs">
-                                      نمره: {sub.grade} / {ass.maxPoints}
+                                      Grade: {sub.grade} / {ass.maxPoints}
                                     </span>
                                   ) : (
-                                    <span className="text-amber-400 text-[10px] font-mono">در انتظار تصحیح</span>
+                                    <span className="text-amber-400 text-[10px] font-mono">Pending Review</span>
                                   )}
 
                                   <button
@@ -984,7 +984,7 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
                                     }
                                     className="px-3 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-xs font-bold border border-emerald-500/30 transition-all cursor-pointer"
                                   >
-                                    ثبت نمره
+                                    Grade
                                   </button>
                                 </div>
                               </div>
@@ -1003,13 +1003,13 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
           {activeTab === "discussions" && (
             <div className="space-y-4">
               <div>
-                <h3 className="text-base font-bold text-white">پرسش و پاسخ‌های دانشجویان</h3>
-                <p className="text-xs text-white/40 mt-0.5">پاسخ به سوالات علمی و رفع اشکال دانشجویان دوره‌ها</p>
+                <h3 className="text-base font-bold text-white">Student QA & Inquiries</h3>
+                <p className="text-xs text-white/40 mt-0.5">Answer student inquiries and provide academic guidance</p>
               </div>
 
               {discussions.length === 0 ? (
                 <div className="p-12 text-center rounded-2xl bg-white/[0.02] border border-white/[0.06] text-white/40 text-xs font-mono">
-                  هیچ پرسشی از سوی دانشجویان ثبت نشده است.
+                  No student questions recorded yet.
                 </div>
               ) : (
                 <div className="space-y-4">
@@ -1022,7 +1022,7 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
                         <div>
                           <h4 className="text-sm font-bold text-white">{disc.title}</h4>
                           <p className="text-[10px] text-white/40 font-mono mt-0.5">
-                            از {disc.studentName} · {disc.courseTitle} · {disc.time}
+                            By {disc.studentName} · {disc.courseTitle} · {disc.time}
                           </p>
                         </div>
                         <span
@@ -1032,7 +1032,7 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
                               : "bg-amber-500/10 text-amber-400 border border-amber-500/20"
                           }`}
                         >
-                          {disc.status === "Replied" ? "پاسخ داده شده" : "در انتظار پاسخ"}
+                          {disc.status === "Replied" ? "Answered" : "Pending Reply"}
                         </span>
                       </div>
 
@@ -1045,7 +1045,7 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
                           {disc.replies.map((rep) => (
                             <div key={rep.id} className="text-xs">
                               <span className="text-emerald-400 font-mono text-[10px] font-bold">
-                                {rep.sender || rep.authorName || "استاد"}:
+                                {rep.sender || rep.authorName || "Instructor"}:
                               </span>
                               <p className="text-white/70 mt-0.5">{rep.text || rep.content}</p>
                             </div>
@@ -1060,7 +1060,7 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
                           onChange={(e) =>
                             setReplyInputs((prev) => ({ ...prev, [disc.id]: e.target.value }))
                           }
-                          placeholder="پاسخ استاد را بنویسید..."
+                          placeholder="Write instructor answer..."
                           className="flex-1 bg-white/[0.03] border border-white/10 rounded-xl px-3.5 py-2 text-xs text-white placeholder-white/30 focus:outline-none focus:border-emerald-500/50"
                         />
                         <button
@@ -1069,7 +1069,7 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
                           className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
                         >
                           <Send size={12} />
-                          <span>{isSubmittingReply === disc.id ? "در حال ارسال..." : "ارسال پاسخ"}</span>
+                          <span>{isSubmittingReply === disc.id ? "Sending..." : "Send Reply"}</span>
                         </button>
                       </div>
                     </div>
@@ -1083,13 +1083,13 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
           {activeTab === "resources" && (
             <div className="space-y-6">
               <div>
-                <h3 className="text-base font-bold text-white">منابع و فایل‌های آموزشی</h3>
-                <p className="text-xs text-white/40 mt-0.5">فایل‌ها، کدهای نمونه و اسلایدهای آموزشی بارگذاری‌شده در دوره‌ها</p>
+                <h3 className="text-base font-bold text-white">Course Resources & Files</h3>
+                <p className="text-xs text-white/40 mt-0.5">Curriculum documents, sample code, and presentation slides</p>
               </div>
 
               {resources.length === 0 ? (
                 <div className="p-12 text-center rounded-2xl bg-white/[0.02] border border-white/[0.06] text-white/40 text-xs font-mono">
-                  هنوز فایلی در منابع آموزشی بارگذاری نشده است.
+                  No learning resources uploaded yet.
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -1104,7 +1104,7 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
                       <h4 className="text-xs font-bold text-white mt-1">{res.title}</h4>
                       <p className="text-[10px] text-white/40 font-mono">{res.courseTitle}</p>
                       <p className="text-[10px] text-white/30 font-mono pt-2 border-t border-white/[0.04]">
-                        بارگذاری شده در {res.uploadedAt}
+                        Uploaded on {res.uploadedAt}
                       </p>
                     </div>
                   ))}
@@ -1118,12 +1118,12 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
             <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/[0.06] backdrop-blur-md max-w-2xl space-y-5">
               <h3 className="text-sm font-bold text-white flex items-center gap-2 border-b border-white/[0.06] pb-3">
                 <Settings size={16} className="text-amber-400" />
-                <span>تنظیمات و اطلاعات کاربری استاد</span>
+                <span>Instructor Profile Settings</span>
               </h3>
 
               <form onSubmit={handleUpdateProfile} className="space-y-4 text-xs">
                 <div>
-                  <label className="text-white/70 block mb-1.5 font-bold">نام و نام خانوادگی</label>
+                  <label className="text-white/70 block mb-1.5 font-bold">Full Name</label>
                   <input
                     type="text"
                     value={editName}
@@ -1134,18 +1134,18 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
                 </div>
 
                 <div>
-                  <label className="text-white/70 block mb-1.5 font-bold">حوزه تخصصی / رشته</label>
+                  <label className="text-white/70 block mb-1.5 font-bold">Specialization / Field</label>
                   <input
                     type="text"
                     value={editSpecialization}
                     onChange={(e) => setEditSpecialization(e.target.value)}
                     className="w-full bg-white/[0.03] border border-white/10 rounded-xl px-3.5 py-2.5 text-white placeholder-white/30 focus:outline-none focus:border-amber-500/50"
-                    placeholder="مثال: مهندسی نرم‌افزار و معماری سیستم"
+                    placeholder="e.g. Software Engineering & Distributed Systems"
                   />
                 </div>
 
                 <div>
-                  <label className="text-white/70 block mb-1.5 font-bold">شماره تماس (اختیاری)</label>
+                  <label className="text-white/70 block mb-1.5 font-bold">Phone Number (Optional)</label>
                   <input
                     type="text"
                     value={editPhone}
@@ -1156,7 +1156,7 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
                 </div>
 
                 <div>
-                  <label className="text-white/70 block mb-1.5 font-bold">بیوگرافی و سوابق علمی</label>
+                  <label className="text-white/70 block mb-1.5 font-bold">Biography & Academic Background</label>
                   <textarea
                     value={editBio}
                     onChange={(e) => setEditBio(e.target.value)}
@@ -1172,7 +1172,7 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
                     className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-bold transition-all shadow-md shadow-amber-500/20 cursor-pointer disabled:opacity-50"
                   >
                     <Save size={14} />
-                    <span>{isSavingProfile ? "در حال ذخیره..." : "ذخیره تغییرات"}</span>
+                    <span>{isSavingProfile ? "Saving..." : "Save Changes"}</span>
                   </button>
                 </div>
               </form>
@@ -1184,7 +1184,7 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
       {/* CREATE SESSION MODAL */}
       <AnimatePresence>
         {showCreateSessionModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" dir="rtl">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" dir="ltr">
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -1194,7 +1194,7 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
               <div className="flex items-center justify-between border-b border-white/[0.08] pb-3">
                 <h3 className="text-sm font-bold text-white flex items-center gap-2">
                   <Calendar size={16} className="text-cyan-400" />
-                  <span>تعریف جلسه آنلاین جدید</span>
+                  <span>Schedule New Live Session</span>
                 </h3>
                 <button onClick={() => setShowCreateSessionModal(false)} className="text-white/40 hover:text-white">
                   <X size={16} />
@@ -1203,7 +1203,7 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
 
               <form onSubmit={handleCreateSession} className="space-y-3 text-xs">
                 <div>
-                  <label className="text-white/70 block mb-1">دوره مربوطه</label>
+                  <label className="text-white/70 block mb-1">Associated Course</label>
                   <select
                     value={newSessionData.courseId}
                     onChange={(e) => setNewSessionData({ ...newSessionData, courseId: e.target.value })}
@@ -1218,12 +1218,12 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
                 </div>
 
                 <div>
-                  <label className="text-white/70 block mb-1">عنوان جلسه</label>
+                  <label className="text-white/70 block mb-1">Session Title</label>
                   <input
                     type="text"
                     value={newSessionData.title}
                     onChange={(e) => setNewSessionData({ ...newSessionData, title: e.target.value })}
-                    placeholder="مثال: بررسی معماری هوک‌ها در React"
+                    placeholder="e.g. React Architecture & Custom Hooks Deep Dive"
                     required
                     className="w-full bg-white/[0.03] border border-white/10 rounded-xl px-3 py-2 text-white"
                   />
@@ -1231,7 +1231,7 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
 
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="text-white/70 block mb-1">تاریخ</label>
+                    <label className="text-white/70 block mb-1">Date</label>
                     <input
                       type="date"
                       value={newSessionData.date}
@@ -1241,7 +1241,7 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
                     />
                   </div>
                   <div>
-                    <label className="text-white/70 block mb-1">ساعت برگزاری</label>
+                    <label className="text-white/70 block mb-1">Scheduled Time</label>
                     <input
                       type="time"
                       value={newSessionData.time}
@@ -1253,7 +1253,7 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
                 </div>
 
                 <div>
-                  <label className="text-white/70 block mb-1">لینک جلسه (Google Meet یا پلتفرم آنلاین)</label>
+                  <label className="text-white/70 block mb-1">Session URL (Google Meet, Zoom, etc.)</label>
                   <input
                     type="url"
                     value={newSessionData.link}
@@ -1269,13 +1269,13 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
                     onClick={() => setShowCreateSessionModal(false)}
                     className="px-4 py-2 rounded-xl text-xs text-white/60 hover:text-white"
                   >
-                    انصراف
+                    Cancel
                   </button>
                   <button
                     type="submit"
                     className="px-5 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-bold text-xs"
                   >
-                    ثبت جلسه
+                    Save Session
                   </button>
                 </div>
               </form>
@@ -1287,7 +1287,7 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
       {/* CREATE ASSIGNMENT MODAL */}
       <AnimatePresence>
         {showCreateAssignmentModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" dir="rtl">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" dir="ltr">
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -1297,7 +1297,7 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
               <div className="flex items-center justify-between border-b border-white/[0.08] pb-3">
                 <h3 className="text-sm font-bold text-white flex items-center gap-2">
                   <FileText size={16} className="text-amber-400" />
-                  <span>تعریف تکلیف جدید</span>
+                  <span>Create Assignment</span>
                 </h3>
                 <button onClick={() => setShowCreateAssignmentModal(false)} className="text-white/40 hover:text-white">
                   <X size={16} />
@@ -1306,7 +1306,7 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
 
               <form onSubmit={handleCreateAssignment} className="space-y-3 text-xs">
                 <div>
-                  <label className="text-white/70 block mb-1">دوره مربوطه</label>
+                  <label className="text-white/70 block mb-1">Associated Course</label>
                   <select
                     value={newAssignmentData.courseId}
                     onChange={(e) => setNewAssignmentData({ ...newAssignmentData, courseId: e.target.value })}
@@ -1321,31 +1321,31 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
                 </div>
 
                 <div>
-                  <label className="text-white/70 block mb-1">عنوان تکلیف</label>
+                  <label className="text-white/70 block mb-1">Assignment Title</label>
                   <input
                     type="text"
                     value={newAssignmentData.title}
                     onChange={(e) => setNewAssignmentData({ ...newAssignmentData, title: e.target.value })}
-                    placeholder="مثال: پیاده‌سازی سیستم مدیریت وضعیت"
+                    placeholder="e.g. Full-Stack State Management Project"
                     required
                     className="w-full bg-white/[0.03] border border-white/10 rounded-xl px-3 py-2 text-white"
                   />
                 </div>
 
                 <div>
-                  <label className="text-white/70 block mb-1">شرح و جزئیات تکلیف</label>
+                  <label className="text-white/70 block mb-1">Assignment Instructions</label>
                   <textarea
                     value={newAssignmentData.description}
                     onChange={(e) => setNewAssignmentData({ ...newAssignmentData, description: e.target.value })}
                     rows={3}
-                    placeholder="دستورالعمل‌های انجام تمرین..."
+                    placeholder="Detailed project guidelines and rubric..."
                     className="w-full bg-white/[0.03] border border-white/10 rounded-xl px-3 py-2 text-white leading-relaxed"
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="text-white/70 block mb-1">مهلت تحویل</label>
+                    <label className="text-white/70 block mb-1">Due Date</label>
                     <input
                       type="date"
                       value={newAssignmentData.dueDate}
@@ -1355,7 +1355,7 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
                     />
                   </div>
                   <div>
-                    <label className="text-white/70 block mb-1">حداکثر نمره</label>
+                    <label className="text-white/70 block mb-1">Maximum Score</label>
                     <input
                       type="number"
                       value={newAssignmentData.maxPoints}
@@ -1374,13 +1374,13 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
                     onClick={() => setShowCreateAssignmentModal(false)}
                     className="px-4 py-2 rounded-xl text-xs text-white/60 hover:text-white"
                   >
-                    انصراف
+                    Cancel
                   </button>
                   <button
                     type="submit"
                     className="px-5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs"
                   >
-                    ثبت تکلیف
+                    Create Assignment
                   </button>
                 </div>
               </form>
@@ -1392,7 +1392,7 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
       {/* GRADING SUBMISSION MODAL */}
       <AnimatePresence>
         {gradingSubmission && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" dir="rtl">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" dir="ltr">
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -1402,7 +1402,7 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
               <div className="flex items-center justify-between border-b border-white/[0.08] pb-3">
                 <h3 className="text-sm font-bold text-white flex items-center gap-2">
                   <Award size={16} className="text-emerald-400" />
-                  <span>ثبت نمره و بازخورد</span>
+                  <span>Grade & Feedback</span>
                 </h3>
                 <button onClick={() => setGradingSubmission(null)} className="text-white/40 hover:text-white">
                   <X size={16} />
@@ -1411,16 +1411,16 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
 
               <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.05] text-xs space-y-1">
                 <p className="text-white/60">
-                  دانشجو: <span className="text-white font-bold">{gradingSubmission.studentName}</span>
+                  Student: <span className="text-white font-bold">{gradingSubmission.studentName}</span>
                 </p>
                 <p className="text-white/60">
-                  تکلیف: <span className="text-white">{gradingSubmission.assignmentTitle}</span>
+                  Assignment: <span className="text-white">{gradingSubmission.assignmentTitle}</span>
                 </p>
               </div>
 
               <form onSubmit={handleSaveGrade} className="space-y-3 text-xs">
                 <div>
-                  <label className="text-white/70 block mb-1">نمره داده شده (از ۱۰۰)</label>
+                  <label className="text-white/70 block mb-1">Grade Assigned (out of 100)</label>
                   <input
                     type="number"
                     min={0}
@@ -1438,7 +1438,7 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
                 </div>
 
                 <div>
-                  <label className="text-white/70 block mb-1">بازخورد و توضیحات استاد</label>
+                  <label className="text-white/70 block mb-1">Instructor Feedback</label>
                   <textarea
                     rows={3}
                     value={gradingSubmission.feedback}
@@ -1448,7 +1448,7 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
                         feedback: e.target.value
                       })
                     }
-                    placeholder="نکات اصلاحی، نقاط قوت و ضعف..."
+                    placeholder="Constructive feedback, highlights, and improvements..."
                     className="w-full bg-white/[0.03] border border-white/10 rounded-xl px-3 py-2 text-white leading-relaxed"
                   />
                 </div>
@@ -1459,13 +1459,13 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
                     onClick={() => setGradingSubmission(null)}
                     className="px-4 py-2 rounded-xl text-xs text-white/60 hover:text-white"
                   >
-                    انصراف
+                    Cancel
                   </button>
                   <button
                     type="submit"
                     className="px-5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-xs"
                   >
-                    ذخیره نمره
+                    Save Grade
                   </button>
                 </div>
               </form>

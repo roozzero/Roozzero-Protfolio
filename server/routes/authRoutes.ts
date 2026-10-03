@@ -119,7 +119,7 @@ router.post(
       );
 
       // Create login session & HttpOnly cookie
-      await createSession(newUserId, req, res, false);
+      const sessionToken = await createSession(newUserId, req, res, false);
 
       // Log activity
       await query("INSERT INTO activity_logs (user_id, action, details) VALUES (?, 'Registration', 'New user registered account')", [newUserId]);
@@ -132,7 +132,8 @@ router.post(
       return res.status(201).json({
         success: true,
         data: {
-          user: sanitizeUser(createdRows[0])
+          user: sanitizeUser(createdRows[0]),
+          token: sessionToken
         }
       });
     } catch (err: any) {
@@ -215,7 +216,7 @@ router.post(
       }
 
       // Successful login: create session token in DB and set cookie
-      await createSession(user.id, req, res, !!rememberMe);
+      const sessionToken = await createSession(user.id, req, res, !!rememberMe);
 
       // Record success in login_history and activity_logs
       try {
@@ -228,7 +229,8 @@ router.post(
       return res.json({
         success: true,
         data: {
-          user: sanitizeUser(user)
+          user: sanitizeUser(user),
+          token: sessionToken
         }
       });
     } catch (err: any) {

@@ -55,7 +55,7 @@ export async function createSession(
     res.cookie(SESSION_COOKIE_NAME, token, {
       httpOnly: true,
       secure: isSecure,
-      sameSite: "lax",
+      sameSite: isSecure ? "none" : "lax",
       expires: expiresAt,
       path: "/"
     });
@@ -67,15 +67,20 @@ export async function createSession(
   }
 }
 
-export async function destroySession(sessionToken: string, res: Response): Promise<void> {
+export async function destroySession(sessionToken: string, res: Response, req?: Request): Promise<void> {
   try {
     await query("DELETE FROM sessions_tokens WHERE session_token = ?", [sessionToken]);
   } catch (err: any) {
     console.warn(`[Session Warning] Failed to delete session token from DB: ${err.message}`);
   }
 
+  const isLocalhost = req ? Boolean(req.headers.host?.includes("localhost") || req.headers.host?.includes("127.0.0.1")) : false;
+  const isSecure = req ? (!isLocalhost && (req.secure || req.headers["x-forwarded-proto"] === "https" || process.env.NODE_ENV === "production")) : true;
+
   res.clearCookie(SESSION_COOKIE_NAME, {
     httpOnly: true,
+    secure: isSecure,
+    sameSite: isSecure ? "none" : "lax",
     path: "/"
   });
 }

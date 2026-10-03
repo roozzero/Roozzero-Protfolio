@@ -885,7 +885,7 @@ export default function LandingView({
               .map((cls, idx) => {
                 const isOpen = openSyllabus[cls.id] || false;
                 const isEnrolled = registeredCourseIds.includes(cls.id);
-                const isWp = cls.id === "wordpress" || cls.courseName?.toLowerCase().includes("wordpress") || cls.courseName?.includes("وردپرس");
+                const isWp = cls.id === "wordpress" || cls.courseName?.toLowerCase().includes("wordpress");
                 const syllabusItems = isWp ? FALLBACK_COURSE_SYLLABUS.wordpress : getCourseSyllabus(cls);
                 const tagsList = isWp
                   ? ["WordPress", "Elementor", "WooCommerce", "Web Design"]

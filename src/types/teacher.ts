@@ -137,6 +137,7 @@ export interface Certificate {
   gpa: number;
   status: "Approved" | "Waiting for Admin Approval" | "Draft" | "Rejected" | string;
   issueDate?: string;
+  verificationCode?: string;
 }
 
 export interface CalendarEvent {
