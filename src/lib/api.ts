@@ -254,6 +254,30 @@ export const studentApi = {
     return request<{ success: boolean }>(`/student/notifications/${id}/read`, {
       method: "PATCH"
     });
+  },
+
+  async getMessages() {
+    return request<{ success: boolean; data: any[] }>("/student/messages");
+  },
+
+  async markMessageRead(id: string | number) {
+    return request<{ success: boolean }>(`/student/messages/${id}/read`, {
+      method: "PATCH"
+    });
+  },
+
+  async replyMessage(id: string | number, replyText: string) {
+    return request<{ success: boolean }>(`/student/messages/${id}/reply`, {
+      method: "POST",
+      body: JSON.stringify({ replyText })
+    });
+  },
+
+  async sendMessage(data: { targetUserId?: string; subject: string; content: string }) {
+    return request<{ success: boolean; data: any }>("/student/messages/send", {
+      method: "POST",
+      body: JSON.stringify(data)
+    });
   }
 };
 
@@ -338,6 +362,30 @@ export const teacherApi = {
       method: "POST",
       body: formData
     });
+  },
+
+  async getMessages() {
+    return request<{ success: boolean; data: any[] }>("/teacher/messages");
+  },
+
+  async markMessageRead(id: string | number) {
+    return request<{ success: boolean }>(`/teacher/messages/${id}/read`, {
+      method: "PATCH"
+    });
+  },
+
+  async replyMessage(id: string | number, replyText: string) {
+    return request<{ success: boolean }>(`/teacher/messages/${id}/reply`, {
+      method: "POST",
+      body: JSON.stringify({ replyText })
+    });
+  },
+
+  async sendMessage(data: { targetUserId?: string; subject: string; content: string }) {
+    return request<{ success: boolean; data: any }>("/teacher/messages/send", {
+      method: "POST",
+      body: JSON.stringify(data)
+    });
   }
 };
 
@@ -357,6 +405,26 @@ export const adminApi = {
     return request<{ success: boolean; data: any }>("/admin/profile", {
       method: "PUT",
       body: JSON.stringify(data)
+    });
+  },
+
+  async uploadAvatar(formData: FormData) {
+    return request<{ success: boolean; data: { avatarUrl: string } }>("/admin/profile/avatar", {
+      method: "POST",
+      body: formData
+    });
+  },
+
+  async removeAvatar() {
+    return request<{ success: boolean; message: string }>("/admin/profile/avatar", {
+      method: "DELETE"
+    });
+  },
+
+  async changePassword(currentPassword: string, newPassword: string) {
+    return request<{ success: boolean; message: string }>("/admin/profile/change-password", {
+      method: "POST",
+      body: JSON.stringify({ currentPassword, newPassword })
     });
   },
 
@@ -402,17 +470,37 @@ export const adminApi = {
     return request<{ success: boolean; data: any[] }>("/admin/messages");
   },
 
-  async markMessageRead(id: number) {
+  async markMessageRead(id: string | number) {
     return request<{ success: boolean }>(`/admin/messages/${id}/read`, {
       method: "PATCH"
     });
   },
 
-  async replyMessage(id: number, replyText: string) {
+  async replyMessage(id: string | number, replyText: string) {
     return request<{ success: boolean }>(`/admin/messages/${id}/reply`, {
       method: "POST",
       body: JSON.stringify({ replyText })
     });
+  },
+
+  async sendMessage(data: {
+    recipientType: string;
+    targetUserId?: string;
+    targetUserIds?: string[];
+    courseId?: string;
+    seasonId?: string;
+    subject: string;
+    content: string;
+    attachments?: any[];
+  }) {
+    return request<{ success: boolean; data: any }>("/admin/messages/send", {
+      method: "POST",
+      body: JSON.stringify(data)
+    });
+  },
+
+  async getSentMessages() {
+    return request<{ success: boolean; data: any[] }>("/admin/messages/sent");
   },
 
   async getActivityLogs() {

@@ -5,7 +5,7 @@ import {
   FolderOpen, Settings, LogOut, Home, CheckCircle2, Clock, Plus,
   Search, Filter, Bell, ChevronRight, FileText, Check, X, Shield,
   Sparkles, Send, Trash2, Edit3, Save, ExternalLink, HelpCircle,
-  Menu, User, Upload, ArrowRight, Eye, AlertCircle
+  Menu, User, Upload, ArrowRight, Eye, AlertCircle, Mail
 } from "lucide-react";
 import { Course, Student, Session, Assignment, DiscussionThread, Resource } from "../types/teacher";
 import { teacherApi, authApi } from "../lib/api";
@@ -19,7 +19,7 @@ interface TeacherDashboardProps {
 export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: TeacherDashboardProps) {
   // Navigation tabs
   const [activeTab, setActiveTab] = useState<
-    "overview" | "courses" | "students" | "sessions" | "assignments" | "discussions" | "resources" | "settings"
+    "overview" | "courses" | "students" | "sessions" | "assignments" | "discussions" | "messages" | "resources" | "settings"
   >("overview");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -33,6 +33,11 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
   const [sessions, setSessions] = useState<Session[]>([]);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [discussions, setDiscussions] = useState<DiscussionThread[]>([]);
+  const [messages, setMessages] = useState<any[]>([]);
+  const [selectedMessageId, setSelectedMessageId] = useState<string | null>(null);
+  const [teacherReplyText, setTeacherReplyText] = useState("");
+  const [isSendingTeacherReply, setIsSendingTeacherReply] = useState(false);
+  const [messageSearch, setMessageSearch] = useState("");
   const [resources, setResources] = useState<Resource[]>([]);
   const [dashboardStats, setDashboardStats] = useState<any>(null);
   const [isLoadingData, setIsLoadingData] = useState(true);
@@ -115,14 +120,15 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
   const loadTeacherData = async () => {
     setIsLoadingData(true);
     try {
-      const [dashRes, cRes, sRes, sessRes, aRes, dRes, rRes] = await Promise.all([
+      const [dashRes, cRes, sRes, sessRes, aRes, dRes, rRes, msgRes] = await Promise.all([
         teacherApi.getDashboard().catch(() => ({ success: false, data: null })),
         teacherApi.getCourses().catch(() => ({ success: false, data: [] })),
         teacherApi.getStudents().catch(() => ({ success: false, data: [] })),
         teacherApi.getSessions().catch(() => ({ success: false, data: [] })),
         teacherApi.getAssignments().catch(() => ({ success: false, data: [] })),
         teacherApi.getDiscussions().catch(() => ({ success: false, data: [] })),
-        teacherApi.getResources().catch(() => ({ success: false, data: [] }))
+        teacherApi.getResources().catch(() => ({ success: false, data: [] })),
+        teacherApi.getMessages().catch(() => ({ success: false, data: [] }))
       ]);
 
       if (dashRes.success && dashRes.data) {
@@ -140,10 +146,34 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
       if (aRes.success && Array.isArray(aRes.data)) setAssignments(aRes.data);
       if (dRes.success && Array.isArray(dRes.data)) setDiscussions(dRes.data);
       if (rRes.success && Array.isArray(rRes.data)) setResources(rRes.data);
+      if (msgRes.success && Array.isArray(msgRes.data)) {
+        setMessages(msgRes.data);
+        if (msgRes.data.length > 0 && !selectedMessageId) {
+          setSelectedMessageId(msgRes.data[0].id);
+        }
+      }
     } catch (err) {
       console.error("Failed to load teacher data from backend API", err);
     } finally {
       setIsLoadingData(false);
+    }
+  };
+
+  const handleSendTeacherReply = async (msgId: string) => {
+    if (!teacherReplyText.trim()) return;
+    setIsSendingTeacherReply(true);
+    try {
+      await teacherApi.replyMessage(msgId, teacherReplyText.trim());
+      showToast("Reply sent safely and stored in database.", "success");
+      setTeacherReplyText("");
+      const mRes = await teacherApi.getMessages();
+      if (mRes.success && Array.isArray(mRes.data)) {
+        setMessages(mRes.data);
+      }
+    } catch (err: any) {
+      showToast(err.message || "Failed to send reply.", "error");
+    } finally {
+      setIsSendingTeacherReply(false);
     }
   };
 
@@ -304,6 +334,7 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
     { id: "sessions", label: "Live Sessions", icon: Calendar, badge: sessions.length },
     { id: "assignments", label: "Assignments", icon: FileText, badge: assignments.length },
     { id: "discussions", label: "Discussions", icon: MessageSquare, badge: discussions.filter(d => d.status !== "Replied").length },
+    { id: "messages", label: "Messages & Inbox", icon: Mail, badge: messages.filter(m => !m.read).length },
     { id: "resources", label: "Resources", icon: FolderOpen, badge: resources.length },
     { id: "settings", label: "Account Settings", icon: Settings },
   ] as const;
@@ -1076,6 +1107,143 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
                   ))}
                 </div>
               )}
+            </div>
+          )}
+
+          {/* TAB: MESSAGES & INBOX */}
+          {activeTab === "messages" && (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Mail list */}
+              <div className="lg:col-span-1 bg-[#08080c] border border-white/[0.06] rounded-3xl p-5 space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-sans text-base font-extrabold text-white">Instructor Messages</h3>
+                  <span className="bg-amber-500/20 border border-amber-500/30 text-amber-400 text-[10px] px-2 py-0.5 rounded-full font-bold">
+                    {messages.filter(m => !m.read).length} Unread
+                  </span>
+                </div>
+                <div className="relative">
+                  <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30" />
+                  <input 
+                    type="text"
+                    placeholder="Search messages..."
+                    value={messageSearch}
+                    onChange={(e) => setMessageSearch(e.target.value)}
+                    className="w-full bg-white/[0.02] border border-white/10 rounded-xl pl-9 pr-4 py-2 text-xs text-white placeholder-white/30 focus:outline-none focus:border-amber-500/40 transition-all font-sans"
+                  />
+                </div>
+                <div className="space-y-2">
+                  {(() => {
+                    const filtered = messages.filter(m => 
+                      (m.subject && m.subject.toLowerCase().includes(messageSearch.toLowerCase())) ||
+                      (m.from && m.from.toLowerCase().includes(messageSearch.toLowerCase())) ||
+                      (m.body && m.body.toLowerCase().includes(messageSearch.toLowerCase()))
+                    );
+                    if (filtered.length === 0) {
+                      return (
+                        <div className="text-center py-8 text-white/30 text-xs font-sans">
+                          No messages in instructor inbox.
+                        </div>
+                      );
+                    }
+                    return filtered.map((msg) => (
+                      <button
+                        key={msg.id}
+                        onClick={() => {
+                          setSelectedMessageId(msg.id);
+                          setMessages(messages.map(m => m.id === msg.id ? { ...m, read: true } : m));
+                          teacherApi.markMessageRead(msg.id).catch(() => {});
+                        }}
+                        className={`w-full p-3.5 rounded-2xl text-left border transition-all cursor-pointer ${
+                          selectedMessageId === msg.id
+                            ? "bg-white/[0.04] border-amber-500/30"
+                            : "bg-transparent border-transparent hover:bg-white/[0.02]"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-1.5">
+                          <span className="font-sans text-xs font-bold text-white block truncate max-w-[130px]">{msg.from}</span>
+                          <span className="font-mono text-[9px] text-white/40">{msg.date}</span>
+                        </div>
+                        <span className={`font-sans text-xs block truncate ${msg.read ? "text-white/60 font-normal" : "text-white font-bold"}`}>
+                          {msg.subject}
+                        </span>
+                      </button>
+                    ));
+                  })()}
+                </div>
+              </div>
+
+              {/* Message Details */}
+              <div className="lg:col-span-2 bg-[#08080c] border border-white/[0.06] rounded-3xl p-6 space-y-6 text-left">
+                {(() => {
+                  const currentMsg = messages.find(m => m.id === selectedMessageId) || messages[0];
+                  if (!currentMsg) return <div className="text-white/40 text-sm text-left">No message selected.</div>;
+                  return (
+                    <>
+                      <div className="border-b border-white/[0.05] pb-4 space-y-2 text-left animate-fade-in">
+                        <div className="flex items-center justify-between">
+                          <span className="font-sans text-xs text-white/40">From: <strong className="text-white">{currentMsg.from}</strong></span>
+                          <span className="font-mono text-[10px] text-white/40">{currentMsg.date}</span>
+                        </div>
+                        <h2 className="font-sans text-lg font-black text-white leading-tight">{currentMsg.subject}</h2>
+                      </div>
+                      <div className="bg-white/[0.01] border border-white/[0.03] p-5 rounded-2xl min-h-[160px] text-left animate-fade-in">
+                        <p className="font-sans text-xs text-white/80 leading-relaxed whitespace-pre-line">{currentMsg.body || currentMsg.content}</p>
+                      </div>
+
+                      {/* Attachments rendering */}
+                      {currentMsg.attachments && currentMsg.attachments.length > 0 && (
+                        <div className="pt-4 border-t border-white/[0.05] space-y-2.5 mt-4 text-left animate-fade-in">
+                          <span className="text-[10px] text-white/40 font-mono uppercase tracking-wider block font-bold">Attachments ({currentMsg.attachments.length})</span>
+                          <div className="flex flex-wrap gap-2.5">
+                            {currentMsg.attachments.map((att: any, i: number) => (
+                              <button
+                                type="button"
+                                key={i}
+                                onClick={() => showToast(`Downloading "${att.name}"...`)}
+                                className="flex items-center gap-2 text-xs text-amber-400 hover:text-amber-300 font-sans transition-colors bg-white/[0.02] hover:bg-white/[0.04] border border-white/10 rounded-xl px-3.5 py-2 cursor-pointer"
+                              >
+                                <FileText size={13} className="text-amber-400" />
+                                <span className="underline font-medium">{att.name}</span>
+                                {att.size && <span className="text-[10px] text-white/30 font-mono font-normal">({att.size})</span>}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Reply to Sender form */}
+                      <div className="pt-4 border-t border-white/[0.05] space-y-2.5 mt-4 text-left animate-fade-in">
+                        <span className="text-[10px] text-white/40 font-mono uppercase tracking-wider block font-bold">
+                          Direct Reply to Academy
+                        </span>
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            value={teacherReplyText}
+                            onChange={(e) => setTeacherReplyText(e.target.value)}
+                            placeholder="Type your response to the sender..."
+                            className="flex-1 bg-white/[0.02] border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white placeholder-white/30 focus:outline-none focus:border-amber-500/50 transition-all font-sans"
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" && teacherReplyText.trim()) {
+                                handleSendTeacherReply(currentMsg.id);
+                              }
+                            }}
+                          />
+                          <button
+                            type="button"
+                            disabled={isSendingTeacherReply || !teacherReplyText.trim()}
+                            onClick={() => handleSendTeacherReply(currentMsg.id)}
+                            className="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-black text-xs font-bold transition-all shadow-md shadow-amber-500/20 cursor-pointer flex items-center gap-1.5"
+                          >
+                            <Send size={13} />
+                            <span>{isSendingTeacherReply ? "Sending..." : "Reply"}</span>
+                          </button>
+                        </div>
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
             </div>
           )}
 

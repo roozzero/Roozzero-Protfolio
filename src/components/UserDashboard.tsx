@@ -1385,6 +1385,24 @@ export default function UserDashboard({ onLogout, onGoHome }: UserDashboardProps
         setCalendarEvents([]);
       });
 
+    // 9. Messages / Inbox from authoritative MySQL backend
+    studentApi.getMessages()
+      .then((res) => {
+        if (!isMounted) return;
+        if (res.success && Array.isArray(res.data)) {
+          setEmailList(res.data);
+          if (res.data.length > 0) {
+            setSelectedEmailId(res.data[0].id);
+          }
+        } else {
+          setEmailList([]);
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to load student messages:", err);
+        setEmailList([]);
+      });
+
     return () => {
       isMounted = false;
     };
@@ -2259,6 +2277,22 @@ export default function UserDashboard({ onLogout, onGoHome }: UserDashboardProps
 
   const [selectedEmailId, setSelectedEmailId] = useState("1");
   const [inboxSearch, setInboxSearch] = useState("");
+  const [studentReplyText, setStudentReplyText] = useState("");
+  const [isSubmittingStudentReply, setIsSubmittingStudentReply] = useState(false);
+
+  const handleSendStudentReply = async (emailId: string) => {
+    if (!studentReplyText.trim()) return;
+    setIsSubmittingStudentReply(true);
+    try {
+      await studentApi.replyMessage(emailId, studentReplyText.trim());
+      showCustomToast("Reply sent safely and stored in database!", "success");
+      setStudentReplyText("");
+    } catch (err: any) {
+      showCustomToast(err.message || "Failed to send reply.", "warning");
+    } finally {
+      setIsSubmittingStudentReply(false);
+    }
+  };
 
   const handleAdvanceCourse = (courseId: string) => {
     setCourses(courses.map(c => {
@@ -3297,6 +3331,7 @@ export default function UserDashboard({ onLogout, onGoHome }: UserDashboardProps
                         onClick={() => {
                           setSelectedEmailId(email.id);
                           setEmailList(emails.map(e => e.id === email.id ? { ...e, read: true } : e));
+                          studentApi.markMessageRead(email.id).catch(() => {});
                         }}
                         className={`w-full p-3.5 rounded-2xl text-left border transition-all ${
                           selectedEmailId === email.id
@@ -3359,6 +3394,36 @@ export default function UserDashboard({ onLogout, onGoHome }: UserDashboardProps
                           </div>
                         </div>
                       )}
+
+                      {/* Reply to Message form */}
+                      <div className="pt-4 border-t border-white/[0.05] space-y-2.5 mt-4 text-left animate-fade-in">
+                        <span className="text-[10px] text-white/40 font-mono uppercase tracking-wider block font-bold">
+                          Direct Reply to Academy
+                        </span>
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            value={studentReplyText}
+                            onChange={(e) => setStudentReplyText(e.target.value)}
+                            placeholder="Type your reply to administrator..."
+                            className="flex-1 bg-white/[0.02] border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white placeholder-white/30 focus:outline-none focus:border-indigo-500/50 transition-all font-sans"
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" && studentReplyText.trim()) {
+                                handleSendStudentReply(currentEmail.id);
+                              }
+                            }}
+                          />
+                          <button
+                            type="button"
+                            disabled={isSubmittingStudentReply || !studentReplyText.trim()}
+                            onClick={() => handleSendStudentReply(currentEmail.id)}
+                            className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white text-xs font-bold transition-all shadow-md shadow-indigo-600/20 cursor-pointer flex items-center gap-1.5"
+                          >
+                            <Send size={13} />
+                            <span>{isSubmittingStudentReply ? "Sending..." : "Reply"}</span>
+                          </button>
+                        </div>
+                      </div>
                     </>
                   );
                 })()}

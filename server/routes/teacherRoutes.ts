@@ -864,4 +864,167 @@ router.post("/discussions/:id/replies", async (req: Request, res: Response) => {
   }
 });
 
+// -------------------------------------------------------------
+// GET /api/teacher/messages (Teacher Inbox Messages from MySQL)
+// -------------------------------------------------------------
+router.get("/messages", async (req: Request, res: Response) => {
+  try {
+    const teacherId = req.user!.id;
+
+    const [rows]: [any[], any] = await query(`
+      SELECT 
+        m.id,
+        m.reply_to_id,
+        m.sender_id,
+        m.sender_name,
+        m.sender_role,
+        m.recipient_type,
+        m.subject,
+        m.content,
+        m.attachments_json,
+        m.created_at,
+        COALESCE(r.is_read, 0) as is_read
+      FROM internal_messages m
+      LEFT JOIN internal_message_recipients r ON m.id = r.message_id AND r.recipient_id = ?
+      WHERE (r.recipient_id = ? OR m.recipient_type = 'AllTeachers' OR (m.recipient_type = 'Individual' AND m.recipient_id = ?))
+        AND m.reply_to_id IS NULL
+      ORDER BY m.created_at DESC
+      LIMIT 100
+    `, [teacherId, teacherId, teacherId]);
+
+    const formatted = rows.map((r: any) => {
+      const d = new Date(r.created_at);
+      const dateStr = d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+      const roleSuffix = r.sender_role === "admin" ? " (Academy Admin)" : r.sender_role === "student" ? " (Student)" : "";
+
+      return {
+        id: r.id,
+        from: `${r.sender_name}${roleSuffix}`,
+        senderId: r.sender_id,
+        senderName: r.sender_name,
+        senderRole: r.sender_role,
+        subject: r.subject,
+        body: r.content,
+        content: r.content,
+        date: dateStr,
+        timestamp: r.created_at instanceof Date ? r.created_at.toISOString() : String(r.created_at),
+        read: Boolean(r.is_read),
+        attachments: r.attachments_json ? JSON.parse(r.attachments_json) : []
+      };
+    });
+
+    return res.json({ success: true, data: formatted });
+  } catch (err: any) {
+    console.error("[Teacher Get Messages Error]:", err);
+    return res.status(500).json({ success: false, error: { code: "SERVER_ERROR", message: err.message } });
+  }
+});
+
+// -------------------------------------------------------------
+// PATCH /api/teacher/messages/:id/read
+// -------------------------------------------------------------
+router.patch("/messages/:id/read", async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const teacherId = req.user!.id;
+
+    const [existing]: [any[], any] = await query("SELECT id FROM internal_message_recipients WHERE message_id = ? AND recipient_id = ?", [id, teacherId]);
+    if (existing.length > 0) {
+      await query("UPDATE internal_message_recipients SET is_read = 1, read_at = NOW() WHERE message_id = ? AND recipient_id = ?", [id, teacherId]);
+    } else {
+      await query("INSERT INTO internal_message_recipients (message_id, recipient_id, is_read, read_at) VALUES (?, ?, 1, NOW())", [id, teacherId]);
+    }
+
+    return res.json({ success: true, message: "Message marked as read." });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: { code: "SERVER_ERROR", message: err.message } });
+  }
+});
+
+// -------------------------------------------------------------
+// POST /api/teacher/messages/:id/reply
+// -------------------------------------------------------------
+router.post("/messages/:id/reply", async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { replyText } = req.body;
+    const teacherId = req.user!.id;
+    const teacherName = req.user!.name || "Instructor";
+
+    if (!replyText || !replyText.trim()) {
+      return res.status(400).json({ success: false, error: { code: "REPLY_EMPTY", message: "Reply text is required." } });
+    }
+
+    const [parent]: [any[], any] = await query("SELECT * FROM internal_messages WHERE id = ?", [id]);
+    if (parent.length === 0) {
+      return res.status(404).json({ success: false, error: { code: "NOT_FOUND", message: "Original message not found." } });
+    }
+
+    const orig = parent[0];
+    const replyId = `rep_${Date.now()}_${crypto.randomBytes(3).toString("hex")}`;
+    const targetUserId = orig.sender_id;
+
+    await query(`
+      INSERT INTO internal_messages (id, reply_to_id, sender_id, sender_name, sender_role, recipient_type, recipient_id, recipient_name, subject, content)
+      VALUES (?, ?, ?, ?, 'teacher', 'Individual', ?, ?, ?, ?)
+    `, [replyId, id, teacherId, teacherName, targetUserId, orig.sender_name, `Re: ${orig.subject}`, replyText.trim()]);
+
+    await query(`
+      INSERT INTO internal_message_recipients (message_id, recipient_id, is_read)
+      VALUES (?, ?, 0)
+    `, [replyId, targetUserId]);
+
+    await query(`
+      INSERT INTO notifications (user_id, type, title, message)
+      VALUES (?, 'message', ?, ?)
+    `, [targetUserId, `Instructor Reply: ${orig.subject}`, `${teacherName} replied: "${replyText.trim().substring(0, 100)}"`]);
+
+    return res.json({ success: true, message: "Reply dispatched successfully." });
+  } catch (err: any) {
+    console.error("[Teacher Reply Error]:", err);
+    return res.status(500).json({ success: false, error: { code: "SERVER_ERROR", message: err.message } });
+  }
+});
+
+// -------------------------------------------------------------
+// POST /api/teacher/messages/send
+// -------------------------------------------------------------
+router.post("/messages/send", async (req: Request, res: Response) => {
+  try {
+    const teacherId = req.user!.id;
+    const teacherName = req.user!.name || "Instructor";
+    const { targetUserId, subject, content } = req.body;
+
+    if (!subject || !subject.trim() || !content || !content.trim()) {
+      return res.status(400).json({ success: false, error: { code: "VALIDATION_ERROR", message: "Subject and message are required." } });
+    }
+
+    const targetRecipientId = targetUserId || "admin-1";
+    const [recipientUser]: [any[], any] = await query("SELECT name FROM users WHERE id = ?", [targetRecipientId]);
+    const recipientName = recipientUser.length > 0 ? recipientUser[0].name : "Administrator";
+
+    const messageId = `msg_${Date.now()}_${crypto.randomBytes(3).toString("hex")}`;
+
+    await query(`
+      INSERT INTO internal_messages (id, sender_id, sender_name, sender_role, recipient_type, recipient_id, recipient_name, subject, content)
+      VALUES (?, ?, ?, 'teacher', 'Individual', ?, ?, ?, ?)
+    `, [messageId, teacherId, teacherName, targetRecipientId, recipientName, subject.trim(), content.trim()]);
+
+    await query(`
+      INSERT INTO internal_message_recipients (message_id, recipient_id, is_read)
+      VALUES (?, ?, 0)
+    `, [messageId, targetRecipientId]);
+
+    await query(`
+      INSERT INTO notifications (user_id, type, title, message)
+      VALUES (?, 'message', ?, ?)
+    `, [targetRecipientId, `Instructor Message: ${subject.trim()}`, `${teacherName}: "${content.trim().substring(0, 100)}"`]);
+
+    return res.json({ success: true, data: { id: messageId, message: "Message sent successfully." } });
+  } catch (err: any) {
+    console.error("[Teacher Send Message Error]:", err);
+    return res.status(500).json({ success: false, error: { code: "SERVER_ERROR", message: err.message } });
+  }
+});
+
 export default router;

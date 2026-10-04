@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import { query } from "../db/pool";
 import { requireAuth, requireRole } from "../middleware/auth";
+import { uploadProfile } from "../middleware/upload";
 
 const router = Router();
 
@@ -168,16 +169,19 @@ router.patch("/users/:userId/role", async (req: Request, res: Response) => {
     }
 
     const trimmedRole = role.trim();
-    // Allowed target roles: User, Student, Teacher. (Administrator is protected and cannot be assigned)
-    const allowedRoles = ["User", "Student", "Teacher"];
-    const matchedRole = allowedRoles.find(r => r.toLowerCase() === trimmedRole.toLowerCase());
+    // Allowed target roles: User, Student, Teacher, Administrator
+    let normalizedRole = trimmedRole;
+    if (trimmedRole.toLowerCase() === "admin") normalizedRole = "Administrator";
+
+    const allowedRoles = ["User", "Student", "Teacher", "Administrator"];
+    const matchedRole = allowedRoles.find(r => r.toLowerCase() === normalizedRole.toLowerCase());
 
     if (!matchedRole) {
       return res.status(400).json({
         success: false,
         error: {
           code: "INVALID_ROLE",
-          message: "Invalid target role. Allowed roles are: User, Student, Teacher. Administrator cannot be assigned."
+          message: "Invalid target role. Allowed roles are: User, Student, Teacher, Administrator."
         }
       });
     }
@@ -363,13 +367,288 @@ router.delete("/users/:id", async (req: Request, res: Response) => {
 });
 
 // -------------------------------------------------------------
-// GET /api/admin/messages (Inbox)
+// GET /api/admin/messages (Inbox: contact inquiries & incoming internal messages)
 // -------------------------------------------------------------
 router.get("/messages", async (req: Request, res: Response) => {
   try {
-    const [rows]: [any[], any] = await query("SELECT * FROM contact_messages ORDER BY created_at DESC LIMIT 100");
-    return res.json({ success: true, data: rows });
+    const adminId = req.user!.id;
+
+    // 1. Fetch website contact messages
+    const [contactRows]: [any[], any] = await query("SELECT * FROM contact_messages ORDER BY created_at DESC LIMIT 100");
+
+    // 2. Fetch internal messages sent to Admin or AllAdmins by students/teachers, or threads where users replied
+    const [internalRows]: [any[], any] = await query(`
+      SELECT DISTINCT
+        m.id,
+        m.reply_to_id,
+        m.sender_id,
+        m.sender_name,
+        m.sender_role,
+        m.recipient_type,
+        m.recipient_id,
+        m.recipient_name,
+        m.subject,
+        m.content,
+        m.attachments_json,
+        m.created_at,
+        COALESCE(r.is_read, 0) as is_read,
+        u.email as sender_email,
+        u.avatar_url as sender_avatar
+      FROM internal_messages m
+      LEFT JOIN internal_message_recipients r ON m.id = r.message_id AND (r.recipient_id = ? OR r.recipient_id = 'admin-1')
+      LEFT JOIN users u ON m.sender_id = u.id
+      WHERE (
+        (m.recipient_type = 'AllAdmins' OR m.recipient_id = ? OR m.recipient_id = 'admin-1' OR r.recipient_id IS NOT NULL)
+        OR (m.sender_id = ? AND EXISTS (SELECT 1 FROM internal_messages rep WHERE rep.reply_to_id = m.id))
+      )
+        AND m.reply_to_id IS NULL
+      ORDER BY m.created_at DESC
+      LIMIT 100
+    `, [adminId, adminId, adminId]);
+
+    // Format website contact inquiries
+    const formattedContacts = contactRows.map((r: any) => ({
+      id: r.id,
+      isInternal: false,
+      sender_name: r.sender_name,
+      sender_email: r.sender_email,
+      phone: r.phone,
+      subject: r.subject || "Website Inquiry",
+      message: r.message,
+      is_read: Boolean(r.is_read),
+      reply_text: r.reply_text,
+      replied_at: r.replied_at,
+      replied_by: r.replied_by,
+      created_at: r.created_at
+    }));
+
+    // Format internal incoming messages, including any reply threads
+    const formattedInternals = [];
+    for (const msg of internalRows) {
+      const [replies]: [any[], any] = await query(`
+        SELECT 
+          m.id, 
+          m.sender_id, 
+          m.sender_name, 
+          m.sender_role, 
+          m.content, 
+          m.created_at,
+          u.avatar_url as sender_avatar
+        FROM internal_messages m
+        LEFT JOIN users u ON m.sender_id = u.id
+        WHERE m.reply_to_id = ?
+        ORDER BY m.created_at ASC
+      `, [msg.id]);
+
+      const lastReply = replies.length > 0 ? replies[replies.length - 1] : null;
+
+      const effectiveSenderName = (msg.sender_id === adminId && lastReply) ? lastReply.sender_name : msg.sender_name;
+      const effectiveSenderRole = (msg.sender_id === adminId && lastReply) ? lastReply.sender_role : msg.sender_role;
+      const effectiveSenderAvatar = (msg.sender_id === adminId && lastReply) ? (lastReply.sender_avatar || null) : msg.sender_avatar;
+
+      formattedInternals.push({
+        id: msg.id,
+        isInternal: true,
+        sender_id: msg.sender_id,
+        sender_name: effectiveSenderName,
+        sender_role: effectiveSenderRole,
+        sender_email: msg.sender_email || `${msg.sender_id}@academy.local`,
+        sender_avatar: effectiveSenderAvatar,
+        recipient_type: msg.recipient_type,
+        recipient_name: msg.recipient_name,
+        subject: msg.subject,
+        message: msg.content,
+        attachments: msg.attachments_json ? JSON.parse(msg.attachments_json) : [],
+        is_read: Boolean(msg.is_read),
+        reply_text: lastReply ? lastReply.content : null,
+        replied_at: lastReply ? lastReply.created_at : null,
+        replied_by: lastReply ? lastReply.sender_id : null,
+        replies: replies.map((rep: any) => ({
+          id: rep.id,
+          sender_id: rep.sender_id,
+          sender_name: rep.sender_name,
+          sender_role: rep.sender_role,
+          sender_avatar: rep.sender_avatar,
+          content: rep.content,
+          created_at: rep.created_at
+        })),
+        created_at: msg.created_at
+      });
+    }
+
+    // Merge and sort newest first
+    const allMessages = [...formattedContacts, ...formattedInternals].sort((a, b) => {
+      const timeA = new Date(a.created_at).getTime();
+      const timeB = new Date(b.created_at).getTime();
+      return timeB - timeA;
+    });
+
+    return res.json({ success: true, data: allMessages });
   } catch (err: any) {
+    console.error("[Get Messages Error]:", err);
+    return res.status(500).json({ success: false, error: { code: "SERVER_ERROR", message: err.message } });
+  }
+});
+
+// -------------------------------------------------------------
+// POST /api/admin/messages/send (Authoritative MySQL Send)
+// -------------------------------------------------------------
+router.post("/messages/send", async (req: Request, res: Response) => {
+  try {
+    const adminId = req.user!.id;
+    const adminName = req.user!.name || "Administrator";
+    const {
+      recipientType,
+      targetUserId,
+      targetUserIds,
+      courseId,
+      seasonId,
+      subject,
+      content,
+      attachments
+    } = req.body;
+
+    if (!subject || !subject.trim() || !content || !content.trim()) {
+      return res.status(400).json({ success: false, error: { code: "VALIDATION_ERROR", message: "Subject and message content are required." } });
+    }
+
+    let recipientUserIds: string[] = [];
+    let recipientLabel = "";
+
+    if (recipientType === "Individual") {
+      if (!targetUserId) {
+        return res.status(400).json({ success: false, error: { code: "MISSING_RECIPIENT", message: "Please select a recipient user." } });
+      }
+      recipientUserIds = [targetUserId];
+      const [u]: [any[], any] = await query("SELECT name FROM users WHERE id = ?", [targetUserId]);
+      recipientLabel = u.length > 0 ? u[0].name : targetUserId;
+    } else if (recipientType === "Multiple") {
+      if (!Array.isArray(targetUserIds) || targetUserIds.length === 0) {
+        return res.status(400).json({ success: false, error: { code: "MISSING_RECIPIENT", message: "Please select at least one recipient." } });
+      }
+      recipientUserIds = targetUserIds;
+      recipientLabel = `${targetUserIds.length} Recipients`;
+    } else if (recipientType === "AllStudents") {
+      const [students]: [any[], any] = await query("SELECT id FROM users WHERE role_id = 3 AND deleted_at IS NULL");
+      recipientUserIds = students.map((s: any) => s.id);
+      recipientLabel = "All Students";
+    } else if (recipientType === "AllTeachers") {
+      const [teachers]: [any[], any] = await query("SELECT id FROM users WHERE role_id = 2 AND deleted_at IS NULL");
+      recipientUserIds = teachers.map((t: any) => t.id);
+      recipientLabel = "All Teachers";
+    } else if (recipientType === "AllAdmins") {
+      const [admins]: [any[], any] = await query("SELECT id FROM users WHERE role_id = 1 AND deleted_at IS NULL");
+      recipientUserIds = admins.map((a: any) => a.id);
+      recipientLabel = "All Administrators";
+    } else if (recipientType === "Course") {
+      if (!courseId) {
+        return res.status(400).json({ success: false, error: { code: "MISSING_COURSE", message: "Please select a course." } });
+      }
+      const [enrolled]: [any[], any] = await query("SELECT DISTINCT student_id as user_id FROM enrollments WHERE course_id = ?", [courseId]);
+      recipientUserIds = enrolled.map((e: any) => e.user_id);
+      const [c]: [any[], any] = await query("SELECT title FROM courses WHERE id = ?", [courseId]);
+      recipientLabel = c.length > 0 ? `Course: ${c[0].title}` : `Course ${courseId}`;
+    } else if (recipientType === "Season") {
+      if (!seasonId) {
+        return res.status(400).json({ success: false, error: { code: "MISSING_SEASON", message: "Please select a course season." } });
+      }
+      const [enrolled]: [any[], any] = await query("SELECT DISTINCT student_id as user_id FROM enrollments WHERE season_id = ?", [seasonId]);
+      recipientUserIds = enrolled.map((e: any) => e.user_id);
+      const [s]: [any[], any] = await query("SELECT name FROM course_seasons WHERE id = ?", [seasonId]);
+      recipientLabel = s.length > 0 ? `Season: ${s[0].name}` : `Season ${seasonId}`;
+    } else {
+      recipientLabel = "General Broadcast";
+    }
+
+    const messageId = `msg_${Date.now()}_${crypto.randomBytes(3).toString("hex")}`;
+    const attachmentsJson = attachments && Array.isArray(attachments) && attachments.length > 0 ? JSON.stringify(attachments) : null;
+
+    // 1. Insert central internal message record
+    await query(`
+      INSERT INTO internal_messages (id, sender_id, sender_name, sender_role, recipient_type, recipient_id, recipient_name, subject, content, attachments_json)
+      VALUES (?, ?, ?, 'admin', ?, ?, ?, ?, ?, ?)
+    `, [messageId, adminId, adminName, recipientType, targetUserId || null, recipientLabel, subject.trim(), content.trim(), attachmentsJson]);
+
+    // 2. Insert recipient delivery records & system notifications
+    for (const rId of recipientUserIds) {
+      await query(`
+        INSERT INTO internal_message_recipients (message_id, recipient_id, is_read)
+        VALUES (?, ?, 0)
+      `, [messageId, rId]);
+
+      await query(`
+        INSERT INTO notifications (user_id, type, title, message)
+        VALUES (?, 'system', ?, ?)
+      `, [rId, subject.trim(), content.trim().length > 120 ? content.trim().substring(0, 117) + "..." : content.trim()]);
+    }
+
+    // 3. Log administrative audit trail
+    await query(`
+      INSERT INTO activity_logs (user_id, action, details)
+      VALUES (?, 'SendMessage', ?)
+    `, [adminId, `Sent message "${subject}" to ${recipientLabel} (${recipientUserIds.length} recipients)`]);
+
+    return res.json({
+      success: true,
+      data: {
+        id: messageId,
+        subject: subject.trim(),
+        recipientLabel,
+        recipientCount: recipientUserIds.length,
+        createdAt: new Date().toISOString()
+      }
+    });
+  } catch (err: any) {
+    console.error("[Send Message Error]:", err);
+    return res.status(500).json({ success: false, error: { code: "SERVER_ERROR", message: err.message } });
+  }
+});
+
+// -------------------------------------------------------------
+// GET /api/admin/messages/sent (Authoritative MySQL Sent Messages)
+// -------------------------------------------------------------
+router.get("/messages/sent", async (req: Request, res: Response) => {
+  try {
+    const adminId = req.user!.id;
+    const [rows]: [any[], any] = await query(`
+      SELECT 
+        m.id,
+        m.subject,
+        m.content,
+        m.recipient_type,
+        m.recipient_id,
+        m.recipient_name,
+        m.attachments_json,
+        m.created_at,
+        COUNT(r.id) as delivered,
+        SUM(CASE WHEN r.is_read = 1 THEN 1 ELSE 0 END) as read_count
+      FROM internal_messages m
+      LEFT JOIN internal_message_recipients r ON m.id = r.message_id
+      WHERE m.sender_id = ?
+      GROUP BY m.id
+      ORDER BY m.created_at DESC
+      LIMIT 100
+    `, [adminId]);
+
+    const formatted = rows.map((r: any) => ({
+      id: r.id,
+      recipients: [r.recipient_name || r.recipient_type],
+      recipientRole: r.recipient_name || r.recipient_type,
+      subject: r.subject,
+      content: r.content,
+      timestamp: r.created_at instanceof Date ? r.created_at.toISOString() : String(r.created_at),
+      attachments: r.attachments_json ? JSON.parse(r.attachments_json) : undefined,
+      deliveryStats: {
+        delivered: Number(r.delivered || 0),
+        read: Number(r.read_count || 0),
+        unread: Math.max(0, Number(r.delivered || 0) - Number(r.read_count || 0))
+      },
+      isRead: false
+    }));
+
+    return res.json({ success: true, data: formatted });
+  } catch (err: any) {
+    console.error("[Get Sent Messages Error]:", err);
     return res.status(500).json({ success: false, error: { code: "SERVER_ERROR", message: err.message } });
   }
 });
@@ -380,7 +659,15 @@ router.get("/messages", async (req: Request, res: Response) => {
 router.patch("/messages/:id/read", async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    await query("UPDATE contact_messages SET is_read = 1 WHERE id = ?", [id]);
+    const adminId = req.user!.id;
+
+    // If numeric ID, update contact_messages
+    if (!isNaN(Number(id))) {
+      await query("UPDATE contact_messages SET is_read = 1 WHERE id = ?", [id]);
+    } else {
+      // Update internal_message_recipients
+      await query("UPDATE internal_message_recipients SET is_read = 1, read_at = NOW() WHERE message_id = ? AND (recipient_id = ? OR recipient_id = 'admin-1')", [id, adminId]);
+    }
     return res.json({ success: true, message: "Message marked as read." });
   } catch (err: any) {
     return res.status(500).json({ success: false, error: { code: "SERVER_ERROR", message: err.message } });
@@ -388,26 +675,53 @@ router.patch("/messages/:id/read", async (req: Request, res: Response) => {
 });
 
 // -------------------------------------------------------------
-// POST /api/admin/messages/:id/reply
+// POST /api/admin/messages/:id/reply (Reply to Contact or Internal Message)
 // -------------------------------------------------------------
 router.post("/messages/:id/reply", async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const { replyText } = req.body;
     const adminId = req.user!.id;
+    const adminName = req.user!.name || "Administrator";
 
-    if (!replyText) {
+    if (!replyText || !replyText.trim()) {
       return res.status(400).json({ success: false, error: { code: "REPLY_EMPTY", message: "Reply text is required." } });
     }
 
-    await query(`
-      UPDATE contact_messages
-      SET reply_text = ?, replied_at = NOW(), replied_by = ?, is_read = 1
-      WHERE id = ?
-    `, [replyText, adminId, id]);
+    if (!isNaN(Number(id))) {
+      // Reply to website contact inquiry
+      await query(`
+        UPDATE contact_messages
+        SET reply_text = ?, replied_at = NOW(), replied_by = ?, is_read = 1
+        WHERE id = ?
+      `, [replyText.trim(), adminId, id]);
+    } else {
+      // Reply to internal message thread
+      const [parent]: [any[], any] = await query("SELECT * FROM internal_messages WHERE id = ?", [id]);
+      if (parent.length > 0) {
+        const replyId = `rep_${Date.now()}_${crypto.randomBytes(3).toString("hex")}`;
+        const targetUserId = parent[0].sender_id;
+
+        await query(`
+          INSERT INTO internal_messages (id, reply_to_id, sender_id, sender_name, sender_role, recipient_type, recipient_id, recipient_name, subject, content)
+          VALUES (?, ?, ?, ?, 'admin', 'Individual', ?, ?, ?, ?)
+        `, [replyId, id, adminId, adminName, targetUserId, parent[0].sender_name, `Re: ${parent[0].subject}`, replyText.trim()]);
+
+        await query(`
+          INSERT INTO internal_message_recipients (message_id, recipient_id, is_read)
+          VALUES (?, ?, 0)
+        `, [replyId, targetUserId]);
+
+        await query(`
+          INSERT INTO notifications (user_id, type, title, message)
+          VALUES (?, 'system', ?, ?)
+        `, [targetUserId, `Reply: ${parent[0].subject}`, replyText.trim().substring(0, 100)]);
+      }
+    }
 
     return res.json({ success: true, message: "Reply saved and dispatched." });
   } catch (err: any) {
+    console.error("[Reply Message Error]:", err);
     return res.status(500).json({ success: false, error: { code: "SERVER_ERROR", message: err.message } });
   }
 });
@@ -572,7 +886,7 @@ router.get("/profile", async (req: Request, res: Response) => {
   try {
     const adminId = req.user!.id;
     const [rows]: [any[], any] = await query(
-      "SELECT id, name, username, email, phone, bio, avatar_url, title_prefix, specialization FROM users WHERE id = ?",
+      "SELECT id, name, username, email, phone, bio, avatar_url, department, title_prefix, specialization FROM users WHERE id = ?",
       [adminId]
     );
     if (rows.length === 0) {
@@ -582,12 +896,15 @@ router.get("/profile", async (req: Request, res: Response) => {
     return res.json({
       success: true,
       data: {
-        name: u.name || "Jaden Smith",
-        email: u.email || (process.env.ADMIN_EMAIL || "admin@roozzero.info"),
-        phone: u.phone || "+98 9123456789",
-        photo: u.avatar_url || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=300&auto=format&fit=crop",
-        bio: u.bio || "Super Administrator and Learning Management Architect. Orchestrating system-wide course allocations, credential signing, and academy security operations.",
-        department: "LMS Administration",
+        id: u.id,
+        name: u.name || "",
+        username: u.username || "",
+        email: u.email || "",
+        phone: u.phone || "",
+        photo: u.avatar_url || null,
+        avatarUrl: u.avatar_url || null,
+        bio: u.bio || "",
+        department: u.department || "LMS Administration",
         theme: "dark",
         titlePrefix: u.title_prefix || "Mr.",
         specialization: u.specialization || "Super Admin"
@@ -604,40 +921,155 @@ router.get("/profile", async (req: Request, res: Response) => {
 router.put("/profile", async (req: Request, res: Response) => {
   try {
     const adminId = req.user!.id;
-    const { name, email, phone, photo, bio, titlePrefix, specialization } = req.body;
+    const { name, firstName, lastName, username, email, phone, photo, avatarUrl, bio, department, specialization, titlePrefix } = req.body;
+
+    const resolvedName = name || (firstName && lastName ? `${firstName} ${lastName}`.trim() : (firstName || lastName || null));
+    const resolvedPhoto = photo !== undefined ? photo : (avatarUrl !== undefined ? avatarUrl : null);
+
+    // If username is being updated, check uniqueness
+    if (username) {
+      const [existingUser]: [any[], any] = await query("SELECT id FROM users WHERE username = ? AND id != ?", [username.trim(), adminId]);
+      if (existingUser.length > 0) {
+        return res.status(409).json({ success: false, error: { code: "USERNAME_TAKEN", message: "Username is already in use." } });
+      }
+    }
+
+    // If email is being updated, check uniqueness
+    if (email) {
+      const [existingEmail]: [any[], any] = await query("SELECT id FROM users WHERE email = ? AND id != ?", [email.trim().toLowerCase(), adminId]);
+      if (existingEmail.length > 0) {
+        return res.status(409).json({ success: false, error: { code: "EMAIL_TAKEN", message: "Email is already in use." } });
+      }
+    }
 
     await query(
       `UPDATE users
        SET name = COALESCE(?, name),
+           username = COALESCE(?, username),
            email = COALESCE(?, email),
            phone = COALESCE(?, phone),
-           avatar_url = COALESCE(?, avatar_url),
+           avatar_url = CASE WHEN ? = 1 THEN ? ELSE avatar_url END,
            bio = COALESCE(?, bio),
+           department = COALESCE(?, department),
            title_prefix = COALESCE(?, title_prefix),
            specialization = COALESCE(?, specialization)
        WHERE id = ?`,
-      [name || null, email || null, phone || null, photo || null, bio || null, titlePrefix || null, specialization || null, adminId]
+      [
+        resolvedName || null,
+        username ? username.trim() : null,
+        email ? email.trim().toLowerCase() : null,
+        phone || null,
+        resolvedPhoto !== undefined && resolvedPhoto !== null ? 1 : 0,
+        resolvedPhoto || null,
+        bio !== undefined ? bio : null,
+        department || null,
+        titlePrefix || null,
+        specialization || null,
+        adminId
+      ]
     );
 
     const [rows]: [any[], any] = await query(
-      "SELECT id, name, username, email, phone, bio, avatar_url, title_prefix, specialization FROM users WHERE id = ?",
+      "SELECT id, name, username, email, phone, bio, avatar_url, department, title_prefix, specialization FROM users WHERE id = ?",
       [adminId]
     );
     const u = rows[0];
     return res.json({
       success: true,
       data: {
+        id: u.id,
         name: u.name,
+        username: u.username,
         email: u.email,
         phone: u.phone,
         photo: u.avatar_url,
+        avatarUrl: u.avatar_url,
         bio: u.bio,
-        department: "LMS Administration",
+        department: u.department,
         theme: "dark",
         titlePrefix: u.title_prefix,
         specialization: u.specialization
       }
     });
+  } catch (err: any) {
+    console.error("[Update Admin Profile Error]:", err);
+    return res.status(500).json({ success: false, error: { code: "SERVER_ERROR", message: err.message } });
+  }
+});
+
+// -------------------------------------------------------------
+// POST /api/admin/profile/avatar
+// -------------------------------------------------------------
+router.post("/profile/avatar", uploadProfile.single("avatar"), async (req: Request, res: Response) => {
+  try {
+    const file = req.file;
+    if (!file) {
+      return res.status(400).json({ success: false, error: { code: "NO_FILE", message: "No profile photo uploaded." } });
+    }
+    const adminId = req.user!.id;
+    const avatarUrl = `/uploads/profiles/${file.filename}`;
+    await query("UPDATE users SET avatar_url = ? WHERE id = ?", [avatarUrl, adminId]);
+
+    return res.json({
+      success: true,
+      data: {
+        avatarUrl,
+        photo: avatarUrl,
+        message: "Admin profile photo uploaded successfully."
+      }
+    });
+  } catch (err: any) {
+    console.error("[Admin Avatar Upload Error]:", err);
+    return res.status(500).json({ success: false, error: { code: "SERVER_ERROR", message: err.message } });
+  }
+});
+
+// -------------------------------------------------------------
+// DELETE /api/admin/profile/avatar
+// -------------------------------------------------------------
+router.delete("/profile/avatar", async (req: Request, res: Response) => {
+  try {
+    const adminId = req.user!.id;
+    await query("UPDATE users SET avatar_url = NULL WHERE id = ?", [adminId]);
+    return res.json({ success: true, message: "Profile photo removed successfully." });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: { code: "SERVER_ERROR", message: err.message } });
+  }
+});
+
+// -------------------------------------------------------------
+// POST /api/admin/profile/change-password
+// -------------------------------------------------------------
+router.post("/profile/change-password", async (req: Request, res: Response) => {
+  try {
+    const adminId = req.user!.id;
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ success: false, error: { code: "MISSING_FIELDS", message: "Current and new password are required." } });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ success: false, error: { code: "PASSWORD_TOO_SHORT", message: "New password must be at least 6 characters." } });
+    }
+
+    const [rows]: [any[], any] = await query("SELECT password_hash FROM users WHERE id = ?", [adminId]);
+    if (rows.length === 0) {
+      return res.status(404).json({ success: false, error: { code: "NOT_FOUND", message: "Admin user not found." } });
+    }
+
+    const isMatch = await bcrypt.compare(currentPassword, rows[0].password_hash);
+    if (!isMatch) {
+      return res.status(400).json({ success: false, error: { code: "INVALID_CURRENT_PASSWORD", message: "Incorrect current password." } });
+    }
+
+    const newHash = await bcrypt.hash(newPassword, 10);
+    await query("UPDATE users SET password_hash = ? WHERE id = ?", [newHash, adminId]);
+
+    // Log security activity
+    await query("INSERT INTO activity_logs (user_id, action, details) VALUES (?, 'PasswordChange', 'Administrator password changed')", [adminId]);
+
+    return res.json({ success: true, message: "Password updated successfully." });
   } catch (err: any) {
     return res.status(500).json({ success: false, error: { code: "SERVER_ERROR", message: err.message } });
   }

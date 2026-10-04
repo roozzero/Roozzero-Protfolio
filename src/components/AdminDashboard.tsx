@@ -39,16 +39,27 @@ export default function AdminDashboard({ onLogout, onGoHome }: AdminDashboardPro
   >("overview");
   const [activeSubTab, setActiveSubTab] = useState("all");
 
-  const [profile, setProfile] = useState({
-    name: "Administrator",
-    email: "admin@roozzero.info",
+  const [profile, setProfile] = useState<{
+    name: string;
+    email: string;
+    phone: string;
+    photo: string;
+    bio: string;
+    department: string;
+    theme: "dark" | "light" | "system";
+    titlePrefix: string;
+    specialization: string;
+    [key: string]: any;
+  }>({
+    name: "",
+    email: "",
     phone: "",
-    photo: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=300&auto=format&fit=crop",
-    bio: "Super Administrator and Learning Management Architect.",
-    department: "LMS Administration",
-    theme: "dark" as const,
-    titlePrefix: "Mr.",
-    specialization: "Super Admin"
+    photo: "",
+    bio: "",
+    department: "",
+    theme: "dark",
+    titlePrefix: "",
+    specialization: ""
   });
 
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
@@ -58,7 +69,11 @@ export default function AdminDashboard({ onLogout, onGoHome }: AdminDashboardPro
     adminApi.getProfile()
       .then((res) => {
         if (res.success && res.data) {
-          setProfile((prev) => ({ ...prev, ...res.data }));
+          setProfile((prev) => ({
+            ...prev,
+            ...res.data,
+            photo: res.data.photo || res.data.avatarUrl || ""
+          }));
         }
       })
       .catch((err) => {
@@ -194,32 +209,38 @@ export default function AdminDashboard({ onLogout, onGoHome }: AdminDashboardPro
     loadAdminData();
   }, []);
 
-  const handleUpdateUserRole = async (id: string, newRole: "User" | "Student" | "Teacher") => {
+  const handleUpdateUserRole = async (id: string, newRole: "User" | "Student" | "Teacher" | "Administrator") => {
     const res = await adminApi.updateUserRole(id, newRole);
     if (!res.success) {
       const errMsg = (res as any).error?.message || "Failed to update user role.";
       dispatchAlert(errMsg);
       throw new Error(errMsg);
     }
+    const lower = newRole.toLowerCase();
+    const newRoleId = (lower === "administrator" || lower === "admin") ? 1 : lower === "teacher" ? 2 : lower === "student" ? 3 : 4;
+    const roleMapped = (lower === "administrator" || lower === "admin") ? "admin" : lower === "teacher" ? "teacher" : lower === "student" ? "student" : "user";
+
     setUsers(prev => prev.map(u => {
       if (u.id === id) {
-        const lower = newRole.toLowerCase();
-        const roleMapped = lower === "teacher" ? "teacher" : lower === "student" ? "student" : "user";
         return {
           ...u,
+          roleId: newRoleId,
+          role_id: newRoleId,
           role: roleMapped,
-          roleName: newRole
+          roleName: newRole,
+          role_name: newRole
         };
       }
       return u;
     }));
-    dispatchAlert("User role updated successfully.");
-    // Refresh dashboard stats from MySQL
-    adminApi.getDashboard().then(dashRes => {
-      if (dashRes.success && dashRes.data) {
-        setDashboardStats(dashRes.data.stats || dashRes.data);
-      }
-    }).catch(() => {});
+    dispatchAlert(`User role successfully updated to ${newRole}.`);
+
+    // Authoritatively re-fetch users, students, courses and stats from MySQL database
+    try {
+      await loadAdminData();
+    } catch (err) {
+      console.error("Failed to reload admin data after role update:", err);
+    }
   };
 
   // Handle Global Search

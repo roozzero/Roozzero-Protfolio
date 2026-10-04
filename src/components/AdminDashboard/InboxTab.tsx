@@ -81,45 +81,65 @@ export default function InboxTab({
   const [conversations, setConversations] = useState<Conversation[]>([]);
 
   // Load authoritative messages from backend API
-  useEffect(() => {
-    let isMounted = true;
+  const fetchMessagesAndSent = () => {
     adminApi.getMessages()
       .then((res) => {
-        if (!isMounted) return;
         if (res.success && Array.isArray(res.data)) {
-          const loaded: Conversation[] = res.data.map((r: any) => ({
-            id: `conv-msg-${r.id}`,
-            backendId: r.id,
-            subject: r.subject || "Website Inquiry",
-            senderId: `inq-${r.id}`,
-            senderName: r.sender_name || "Website Visitor",
-            senderRole: "student" as const,
-            senderAvatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(r.sender_name || "Visitor")}&background=10b981&color=fff`,
-            messages: [
+          const loaded: Conversation[] = res.data.map((r: any) => {
+            const isInternal = Boolean(r.isInternal);
+            const senderRole = r.sender_role === "teacher" ? ("teacher" as const) : r.sender_role === "admin" ? ("admin" as const) : ("student" as const);
+            const senderAvatar = r.sender_avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(r.sender_name || "User")}&background=4f46e5&color=fff`;
+
+            const threadMessages: AdminMessage[] = [
               {
-                id: `msg-${r.id}-1`,
-                senderId: `inq-${r.id}`,
-                senderName: r.sender_name || "Website Visitor",
-                senderRole: "student" as const,
-                subject: r.subject || "Website Inquiry",
-                content: r.message,
-                timestamp: r.created_at ? (r.created_at instanceof Date ? r.created_at.toISOString() : String(r.created_at)) : new Date().toISOString()
+                id: `msg-${r.id}-root`,
+                senderId: r.sender_id || `inq-${r.id}`,
+                senderName: r.sender_name || (isInternal ? "Academy User" : "Website Visitor"),
+                senderRole: senderRole,
+                senderAvatar: senderAvatar,
+                subject: r.subject || "Message",
+                content: r.message || "",
+                timestamp: r.created_at ? (r.created_at instanceof Date ? r.created_at.toISOString() : String(r.created_at)) : new Date().toISOString(),
+                attachments: r.attachments
               },
-              ...(r.reply_text ? [{
+              ...(Array.isArray(r.replies) ? r.replies.map((rep: any) => {
+                const repRole = rep.sender_role === "teacher" ? ("teacher" as const) : rep.sender_role === "admin" ? ("admin" as const) : ("student" as const);
+                return {
+                  id: `msg-rep-${rep.id}`,
+                  senderId: rep.sender_id || "admin-1",
+                  senderName: rep.sender_name || (repRole === "admin" ? "Administrator" : "User"),
+                  senderRole: repRole,
+                  senderAvatar: rep.sender_avatar,
+                  subject: `Re: ${r.subject}`,
+                  content: rep.content,
+                  timestamp: rep.created_at ? (rep.created_at instanceof Date ? rep.created_at.toISOString() : String(rep.created_at)) : new Date().toISOString()
+                };
+              }) : (r.reply_text ? [{
                 id: `msg-${r.id}-rep`,
                 senderId: r.replied_by || "admin-1",
                 senderName: "Administrator",
                 senderRole: "admin" as const,
-                subject: `Re: ${r.subject || "Website Inquiry"}`,
+                subject: `Re: ${r.subject || "Message"}`,
                 content: r.reply_text,
                 timestamp: r.replied_at ? (r.replied_at instanceof Date ? r.replied_at.toISOString() : String(r.replied_at)) : new Date().toISOString()
-              }] : [])
-            ],
-            isRead: Boolean(r.is_read),
-            isArchived: false,
-            status: r.reply_text ? ("closed" as const) : ("open" as const),
-            lastUpdated: (r.replied_at || r.created_at || new Date().toISOString())
-          }));
+              }] : []))
+            ];
+
+            return {
+              id: `conv-msg-${r.id}`,
+              backendId: r.id,
+              subject: r.subject || (isInternal ? "User Inquiry" : "Website Inquiry"),
+              senderId: r.sender_id || `inq-${r.id}`,
+              senderName: r.sender_name || (isInternal ? "Academy User" : "Website Visitor"),
+              senderRole: senderRole,
+              senderAvatar: senderAvatar,
+              messages: threadMessages,
+              isRead: Boolean(r.is_read),
+              isArchived: false,
+              status: r.reply_text || (r.replies && r.replies.length > 0) ? ("closed" as const) : ("open" as const),
+              lastUpdated: (r.replied_at || r.created_at || new Date().toISOString())
+            };
+          });
           setConversations(loaded);
         } else {
           setConversations([]);
@@ -129,12 +149,25 @@ export default function InboxTab({
         if (err?.status !== 401 && !err?.message?.includes("Authentication required")) {
           console.warn("Could not load messages from backend:", err?.message || err);
         }
-        if (isMounted) setConversations([]);
+        setConversations([]);
       });
 
-    return () => {
-      isMounted = false;
-    };
+    // Load authoritative sent messages from MySQL
+    adminApi.getSentMessages()
+      .then((res) => {
+        if (res.success && Array.isArray(res.data)) {
+          setSentMessages(res.data);
+        } else {
+          setSentMessages([]);
+        }
+      })
+      .catch(() => {
+        setSentMessages([]);
+      });
+  };
+
+  useEffect(() => {
+    fetchMessagesAndSent();
   }, []);
 
   const [sentMessages, setSentMessages] = useState<SentMessage[]>([]);
@@ -168,42 +201,18 @@ export default function InboxTab({
     setIsReplying(true);
 
     try {
-      if (selectedConv?.backendId) {
-        await adminApi.replyMessage(selectedConv.backendId, replyText.trim());
+      const msgId = selectedConv?.backendId || selectedConv?.id?.replace("conv-msg-", "");
+      if (msgId) {
+        await adminApi.replyMessage(msgId, replyText.trim());
       }
 
-      const newMsg: AdminMessage = {
-        id: "msg-rep-" + Date.now(),
-        senderId: "admin-1",
-        senderName: "Administrator",
-        senderRole: "super-admin",
-        senderAvatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=300&auto=format&fit=crop",
-        subject: `Re: ${selectedConv?.subject}`,
-        content: replyText,
-        timestamp: new Date().toISOString(),
-        attachments: replyAttachments.length > 0 ? replyAttachments : undefined
-      };
-
-      if (selectedConv) {
-        const updatedConv: Conversation = {
-          ...selectedConv,
-          messages: [...selectedConv.messages, newMsg],
-          isRead: true,
-          status: "closed",
-          lastUpdated: new Date().toISOString()
-        };
-
-        setConversations(prev =>
-          prev.map(c => c.id === selectedConv.id ? updatedConv : c)
-        );
-        setSelectedConv(updatedConv);
-        showCustomToast("Message reply dispatched and stored successfully!", "success");
-      }
+      showCustomToast("Message reply dispatched and stored in database!", "success");
+      setReplyText("");
+      setReplyAttachments([]);
+      fetchMessagesAndSent();
     } catch (err: any) {
       showCustomToast(err.message || "Failed to dispatch reply.", "warning");
     } finally {
-      setReplyText("");
-      setReplyAttachments([]);
       setIsReplying(false);
     }
   };
@@ -305,94 +314,70 @@ export default function InboxTab({
     }
   };
 
-  const handleSendCompose = (e: React.FormEvent) => {
+  const handleSendCompose = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!composeSubject.trim() || !composeContent.trim()) {
       showCustomToast("Subject and message content are required.", "warning");
       return;
     }
 
-    // Determine Recipients list
-    let recList: string[] = [];
-    let recRoleLabel = "";
-
-    if (recipientType === "Individual") {
-      const userObj = users.find(u => u.id === selectedIndividual) || students.find(s => s.id === selectedIndividual);
-      if (!userObj) {
-        showCustomToast("Please select a recipient first.", "warning");
-        return;
-      }
-      recList = [userObj.name];
-      recRoleLabel = `Individual (${userObj.role || "student"})`;
-    } else if (recipientType === "Multiple") {
-      if (selectedMultiple.length === 0) {
-        showCustomToast("Please select at least one recipient.", "warning");
-        return;
-      }
-      recList = selectedMultiple.map(mid => {
-        const u = users.find(usr => usr.id === mid) || students.find(std => std.id === mid);
-        return u ? u.name : "System User";
-      });
-      recRoleLabel = "Multiple Recipients";
-    } else if (recipientType === "AllStudents") {
-      recList = students.map(s => s.name);
-      recRoleLabel = "All Students";
-    } else if (recipientType === "AllTeachers") {
-      recList = users.filter(u => u.role === "teacher").map(t => t.name);
-      recRoleLabel = "All Teachers";
-    } else if (recipientType === "AllAdmins") {
-      recList = users.filter(u => u.role === "admin" || u.role === "super-admin").map(a => a.name);
-      recRoleLabel = "All Administrators";
-    } else if (recipientType === "Course") {
-      const course = courses.find(c => c.id === selectedCourseId);
-      if (!course) {
-        showCustomToast("Please select a course first.", "warning");
-        return;
-      }
-      // Target students enrolled in that course
-      recList = students.filter(s => s.courseId === selectedCourseId).map(s => s.name);
-      recRoleLabel = `Course Student Roster: ${course.title}`;
-    } else if (recipientType === "Season") {
-      const season = courseSeasons.find(s => s.id === selectedSeasonId);
-      if (!season) {
-        showCustomToast("Please select a course season first.", "warning");
-        return;
-      }
-      recList = students.filter(s => s.seasonId === selectedSeasonId || s.courseId === season.courseId).map(s => s.name);
-      recRoleLabel = `Season Student Intake: ${season.name}`;
+    if (recipientType === "Individual" && !selectedIndividual) {
+      showCustomToast("Please select a recipient first.", "warning");
+      return;
+    }
+    if (recipientType === "Multiple" && selectedMultiple.length === 0) {
+      showCustomToast("Please select at least one recipient.", "warning");
+      return;
+    }
+    if (recipientType === "Course" && !selectedCourseId) {
+      showCustomToast("Please select a course first.", "warning");
+      return;
+    }
+    if (recipientType === "Season" && !selectedSeasonId) {
+      showCustomToast("Please select a course season first.", "warning");
+      return;
     }
 
     setIsSending(true);
 
-    setTimeout(() => {
-      const newSent: SentMessage = {
-        id: "sent-" + Date.now(),
-        recipients: recList,
-        recipientRole: recRoleLabel,
-        subject: composeSubject,
-        content: composeContent,
-        timestamp: new Date().toISOString(),
-        attachments: composeAttachments.length > 0 ? composeAttachments : undefined,
-        deliveryStats: {
-          delivered: recList.length,
-          read: 0,
-          unread: recList.length
-        },
-        isRead: false
-      };
+    try {
+      const res = await adminApi.sendMessage({
+        recipientType,
+        targetUserId: recipientType === "Individual" ? selectedIndividual : undefined,
+        targetUserIds: recipientType === "Multiple" ? selectedMultiple : undefined,
+        courseId: recipientType === "Course" ? selectedCourseId : undefined,
+        seasonId: recipientType === "Season" ? selectedSeasonId : undefined,
+        subject: composeSubject.trim(),
+        content: composeContent.trim(),
+        attachments: composeAttachments
+      });
 
-      setSentMessages(prev => [newSent, ...prev]);
-      showCustomToast(`Central message sent safely to ${recList.length} recipient(s)!`, "success");
+      if (res.success) {
+        showCustomToast(`Message sent successfully to ${res.data?.recipientLabel || "recipients"} and recorded in database!`, "success");
+        setComposeSubject("");
+        setComposeContent("");
+        setComposeAttachments([]);
+        setSelectedIndividual("");
+        setSelectedMultiple([]);
+        setSelectedCourseId("");
+        setSelectedSeasonId("");
 
-      // Reset
-      setComposeSubject("");
-      setComposeContent("");
-      setComposeAttachments([]);
-      setSelectedIndividual("");
-      setSelectedMultiple([]);
+        // Refresh sent messages from authoritative MySQL
+        adminApi.getSentMessages()
+          .then((sRes) => {
+            if (sRes.success && Array.isArray(sRes.data)) {
+              setSentMessages(sRes.data);
+            }
+          })
+          .catch(() => {});
+
+        setActiveTab("sent");
+      }
+    } catch (err: any) {
+      showCustomToast(err.message || "Failed to dispatch message.", "warning");
+    } finally {
       setIsSending(false);
-      setActiveTab("sent");
-    }, 800);
+    }
   };
 
   // --- ANNOUNCEMENTS TAB STATE ---

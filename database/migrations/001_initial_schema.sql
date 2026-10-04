@@ -674,4 +674,35 @@ CREATE TABLE IF NOT EXISTS `dynamic_states` (
   `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- 10. Internal Messages & Recipients
+CREATE TABLE IF NOT EXISTS `internal_messages` (
+  `id` VARCHAR(50) NOT NULL PRIMARY KEY,
+  `reply_to_id` VARCHAR(50) DEFAULT NULL,
+  `sender_id` VARCHAR(50) NOT NULL,
+  `sender_name` VARCHAR(150) NOT NULL,
+  `sender_role` VARCHAR(50) NOT NULL,
+  `recipient_type` VARCHAR(50) NOT NULL,
+  `recipient_id` VARCHAR(50) DEFAULT NULL,
+  `recipient_name` VARCHAR(255) DEFAULT NULL,
+  `subject` VARCHAR(255) NOT NULL,
+  `content` TEXT NOT NULL,
+  `attachments_json` TEXT DEFAULT NULL,
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  INDEX `idx_intmsg_sender` (`sender_id`),
+  INDEX `idx_intmsg_recipient` (`recipient_id`),
+  INDEX `idx_intmsg_created` (`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `internal_message_recipients` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `message_id` VARCHAR(50) NOT NULL,
+  `recipient_id` VARCHAR(50) NOT NULL,
+  `is_read` TINYINT(1) DEFAULT 0,
+  `read_at` TIMESTAMP NULL DEFAULT NULL,
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  INDEX `idx_imr_msg` (`message_id`),
+  INDEX `idx_imr_rec` (`recipient_id`),
+  INDEX `idx_imr_read` (`is_read`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 SET FOREIGN_KEY_CHECKS = 1;

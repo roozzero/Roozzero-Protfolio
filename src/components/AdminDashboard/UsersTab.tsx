@@ -17,7 +17,7 @@ interface UsersTabProps {
   onResetPassword?: (id: string) => void;
   onDeleteUser?: (id: string) => void;
   onAddStudent?: (student: Partial<Student>) => void;
-  onUpdateUserRole: (id: string, newRole: "User" | "Student" | "Teacher") => Promise<void>;
+  onUpdateUserRole: (id: string, newRole: "User" | "Student" | "Teacher" | "Administrator") => Promise<void>;
   isLoading?: boolean;
 }
 
@@ -86,7 +86,7 @@ export default function UsersTab({
 
   // Role Change Modal state
   const [selectedUserForRole, setSelectedUserForRole] = useState<AdminUser | null>(null);
-  const [targetRole, setTargetRole] = useState<"User" | "Student" | "Teacher">("Student");
+  const [targetRole, setTargetRole] = useState<"User" | "Student" | "Teacher" | "Administrator">("Student");
   const [isSavingRole, setIsSavingRole] = useState(false);
   const [roleError, setRoleError] = useState<string | null>(null);
 
@@ -594,8 +594,8 @@ export default function UsersTab({
                   <label className="text-xs font-bold text-white/70 block mb-2">
                     Select New Role:
                   </label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {(["User", "Student", "Teacher"] as const).map((r) => (
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {(["User", "Student", "Teacher", "Administrator"] as const).map((r) => (
                       <button
                         key={r}
                         type="button"
