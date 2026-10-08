@@ -1,8 +1,9 @@
 import { Router, Request, Response, NextFunction } from "express";
 import crypto from "crypto";
+import bcrypt from "bcryptjs";
 import { query, getDbPool } from "../db/pool";
 import { requireAuth, requireRole } from "../middleware/auth";
-import { uploadResourceFile, uploadCorrectedFile } from "../middleware/upload";
+import { uploadResourceFile, uploadCorrectedFile, uploadProfile } from "../middleware/upload";
 
 const router = Router();
 
@@ -1023,6 +1024,207 @@ router.post("/messages/send", async (req: Request, res: Response) => {
     return res.json({ success: true, data: { id: messageId, message: "Message sent successfully." } });
   } catch (err: any) {
     console.error("[Teacher Send Message Error]:", err);
+    return res.status(500).json({ success: false, error: { code: "SERVER_ERROR", message: err.message } });
+  }
+});
+
+// -------------------------------------------------------------
+// GET /api/teacher/profile
+// -------------------------------------------------------------
+router.get("/profile", async (req: Request, res: Response) => {
+  try {
+    const teacherId = req.user!.id;
+    const [rows]: [any[], any] = await query(
+      "SELECT id, name, username, email, phone, bio, avatar_url, department, title_prefix, specialization FROM users WHERE id = ?",
+      [teacherId]
+    );
+    if (rows.length === 0) {
+      return res.status(404).json({ success: false, error: { code: "NOT_FOUND", message: "Teacher not found" } });
+    }
+    const u = rows[0];
+    return res.json({
+      success: true,
+      data: {
+        id: u.id,
+        name: u.name || "",
+        username: u.username || "",
+        email: u.email || "",
+        phone: u.phone || "",
+        photo: u.avatar_url || null,
+        avatarUrl: u.avatar_url || null,
+        bio: u.bio || "",
+        department: u.department || "Computer Science",
+        theme: "dark",
+        titlePrefix: u.title_prefix || "Dr.",
+        specialization: u.specialization || "Instructor"
+      }
+    });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: { code: "SERVER_ERROR", message: err.message } });
+  }
+});
+
+// PUT /api/teacher/profile
+router.put("/profile", async (req: Request, res: Response) => {
+  try {
+    const teacherId = req.user!.id;
+    const { name, firstName, lastName, username, email, phone, photo, avatarUrl, bio, department, specialization, titlePrefix } = req.body;
+
+    const resolvedName = name || (firstName && lastName ? `${firstName} ${lastName}`.trim() : (firstName || lastName || null));
+    const resolvedPhoto = photo !== undefined ? photo : (avatarUrl !== undefined ? avatarUrl : null);
+
+    if (username) {
+      const [existingUser]: [any[], any] = await query("SELECT id FROM users WHERE username = ? AND id != ?", [username.trim(), teacherId]);
+      if (existingUser.length > 0) {
+        return res.status(409).json({ success: false, error: { code: "USERNAME_TAKEN", message: "Username is already in use." } });
+      }
+    }
+
+    if (email) {
+      const [existingEmail]: [any[], any] = await query("SELECT id FROM users WHERE email = ? AND id != ?", [email.trim().toLowerCase(), teacherId]);
+      if (existingEmail.length > 0) {
+        return res.status(409).json({ success: false, error: { code: "EMAIL_TAKEN", message: "Email is already in use." } });
+      }
+    }
+
+    await query(
+      `UPDATE users
+       SET name = COALESCE(?, name),
+           username = COALESCE(?, username),
+           email = COALESCE(?, email),
+           phone = COALESCE(?, phone),
+           avatar_url = CASE WHEN ? = 1 THEN ? ELSE avatar_url END,
+           bio = COALESCE(?, bio),
+           department = COALESCE(?, department),
+           title_prefix = COALESCE(?, title_prefix),
+           specialization = COALESCE(?, specialization)
+       WHERE id = ?`,
+      [
+        resolvedName || null,
+        username ? username.trim() : null,
+        email ? email.trim().toLowerCase() : null,
+        phone || null,
+        resolvedPhoto !== undefined && resolvedPhoto !== null ? 1 : 0,
+        resolvedPhoto || null,
+        bio !== undefined ? bio : null,
+        department || null,
+        titlePrefix || null,
+        specialization || null,
+        teacherId
+      ]
+    );
+
+    const [rows]: [any[], any] = await query(
+      "SELECT id, name, username, email, phone, bio, avatar_url, department, title_prefix, specialization FROM users WHERE id = ?",
+      [teacherId]
+    );
+    const u = rows[0];
+    return res.json({
+      success: true,
+      data: {
+        id: u.id,
+        name: u.name,
+        username: u.username,
+        email: u.email,
+        phone: u.phone,
+        photo: u.avatar_url,
+        avatarUrl: u.avatar_url,
+        bio: u.bio,
+        department: u.department,
+        theme: "dark",
+        titlePrefix: u.title_prefix,
+        specialization: u.specialization
+      }
+    });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: { code: "SERVER_ERROR", message: err.message } });
+  }
+});
+
+// POST /api/teacher/profile/avatar
+router.post("/profile/avatar", uploadProfile.single("avatar"), async (req: Request, res: Response) => {
+  try {
+    const file = req.file;
+    if (!file) {
+      return res.status(400).json({ success: false, error: { code: "NO_FILE", message: "No profile photo uploaded." } });
+    }
+
+    const teacherId = req.user!.id;
+    const avatarUrl = `/uploads/profiles/${file.filename}`;
+
+    await query("UPDATE users SET avatar_url = ? WHERE id = ?", [avatarUrl, teacherId]);
+
+    return res.json({
+      success: true,
+      data: {
+        avatarUrl,
+        photo: avatarUrl,
+        message: "Instructor profile photo uploaded successfully."
+      }
+    });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: { code: "SERVER_ERROR", message: err.message } });
+  }
+});
+
+// DELETE /api/teacher/profile/avatar
+router.delete("/profile/avatar", async (req: Request, res: Response) => {
+  try {
+    const teacherId = req.user!.id;
+    await query("UPDATE users SET avatar_url = NULL WHERE id = ?", [teacherId]);
+    return res.json({ success: true, message: "Profile photo removed successfully." });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: { code: "SERVER_ERROR", message: err.message } });
+  }
+});
+
+// POST /api/teacher/profile/change-password
+router.post("/profile/change-password", async (req: Request, res: Response) => {
+  try {
+    const teacherId = req.user!.id;
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ success: false, error: { code: "MISSING_FIELDS", message: "Current and new password are required." } });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ success: false, error: { code: "PASSWORD_TOO_SHORT", message: "New password must be at least 6 characters." } });
+    }
+
+    const [rows]: [any[], any] = await query("SELECT password_hash FROM users WHERE id = ?", [teacherId]);
+    if (rows.length === 0) {
+      return res.status(404).json({ success: false, error: { code: "NOT_FOUND", message: "User not found." } });
+    }
+
+    const isMatch = await bcrypt.compare(currentPassword, rows[0].password_hash);
+    if (!isMatch) {
+      return res.status(400).json({ success: false, error: { code: "INVALID_CURRENT_PASSWORD", message: "Incorrect current password." } });
+    }
+
+    const newHash = await bcrypt.hash(newPassword, 10);
+    await query("UPDATE users SET password_hash = ? WHERE id = ?", [newHash, teacherId]);
+
+    return res.json({ success: true, message: "Password updated successfully." });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: { code: "SERVER_ERROR", message: err.message } });
+  }
+});
+
+// GET /api/teacher/login-history
+router.get("/login-history", async (req: Request, res: Response) => {
+  try {
+    const teacherId = req.user!.id;
+    const [rows]: [any[], any] = await query(`
+      SELECT l.*, u.name as user_name, u.email as user_email
+      FROM login_history l
+      LEFT JOIN users u ON l.user_id = u.id
+      WHERE l.user_id = ?
+      ORDER BY l.attempt_time DESC
+      LIMIT 10
+    `, [teacherId]);
+    return res.json({ success: true, data: rows });
+  } catch (err: any) {
     return res.status(500).json({ success: false, error: { code: "SERVER_ERROR", message: err.message } });
   }
 });

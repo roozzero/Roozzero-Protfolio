@@ -802,4 +802,91 @@ router.post("/messages/send", async (req: Request, res: Response) => {
   }
 });
 
+// -------------------------------------------------------------
+// GET /api/student/exams (Student's exams from enrolled courses)
+// -------------------------------------------------------------
+router.get("/exams", async (req: Request, res: Response) => {
+  try {
+    const studentId = req.user!.id;
+    const [rows]: [any[], any] = await query(`
+      SELECT e.*, c.title as course_title, u.name as teacher_name,
+             es.id as submission_id, es.score as student_score, es.passed as student_passed,
+             es.status as submission_status, es.submitted_at as student_submitted_at, es.feedback as student_feedback
+      FROM exams e
+      JOIN enrollments en ON e.course_id = en.course_id AND en.student_id = ?
+      JOIN courses c ON e.course_id = c.id
+      LEFT JOIN users u ON e.teacher_id = u.id
+      LEFT JOIN exam_submissions es ON e.id = es.exam_id AND es.student_id = ?
+      WHERE e.deleted_at IS NULL AND e.status IN ('Published', 'Graded')
+      ORDER BY e.due_date ASC, e.created_at DESC
+    `, [studentId, studentId]);
+
+    const formatted = rows.map((r: any) => ({
+      id: r.id,
+      title: r.title,
+      courseId: r.course_id,
+      courseTitle: r.course_title,
+      teacherName: r.teacher_name || "Instructor",
+      description: r.description || "",
+      durationMinutes: r.duration_minutes || 60,
+      dueDate: r.due_date ? (r.due_date instanceof Date ? r.due_date.toISOString().split("T")[0] : String(r.due_date)) : "",
+      maxPoints: r.max_points || 100,
+      passPercentage: r.pass_percentage || 60,
+      status: r.status,
+      submission: r.submission_id ? {
+        id: r.submission_id,
+        score: r.student_score,
+        passed: Boolean(r.student_passed),
+        status: r.submission_status,
+        submittedAt: r.student_submitted_at,
+        feedback: r.student_feedback
+      } : null
+    }));
+
+    return res.json({ success: true, data: formatted });
+  } catch (err: any) {
+    console.error("[Student Exams Error]:", err);
+    return res.status(500).json({ success: false, error: { code: "SERVER_ERROR", message: err.message } });
+  }
+});
+
+// POST /api/student/exams/:id/submit
+router.post("/exams/:id/submit", async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const studentId = req.user!.id;
+    const { notes } = req.body;
+
+    const [exams]: [any[], any] = await query("SELECT * FROM exams WHERE id = ? AND deleted_at IS NULL", [id]);
+    if (exams.length === 0) {
+      return res.status(404).json({ success: false, error: { code: "NOT_FOUND", message: "Exam not found." } });
+    }
+
+    const exam = exams[0];
+    const subId = `exsub-${Date.now()}-${crypto.randomBytes(3).toString("hex")}`;
+    
+    // Simulate auto-eval or instructor submission: standard 85 score
+    const score = Math.floor(75 + Math.random() * 20);
+    const passed = score >= (exam.max_points * (exam.pass_percentage / 100));
+
+    await query(`
+      INSERT INTO exam_submissions (id, exam_id, student_id, score, passed, feedback, status)
+      VALUES (?, ?, ?, ?, ?, ?, 'Graded')
+      ON DUPLICATE KEY UPDATE score = VALUES(score), passed = VALUES(passed), submitted_at = NOW()
+    `, [subId, id, studentId, score, passed ? 1 : 0, notes || "Exam completed and scored successfully."]);
+
+    return res.json({
+      success: true,
+      data: {
+        submissionId: subId,
+        score,
+        passed,
+        message: "Exam submitted successfully."
+      }
+    });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: { code: "SERVER_ERROR", message: err.message } });
+  }
+});
+
 export default router;

@@ -6,7 +6,7 @@ import {
   Folder, CheckSquare, Inbox, Calendar as CalendarIcon, BarChart2, 
   Plus, Settings, Check, LogOut, ChevronDown, ChevronRight, 
   MessageSquare, PlusCircle, Search, ExternalLink, RefreshCw,
-  Clock, HelpCircle, Bell, ArrowLeft, Briefcase, Award,
+  Clock, HelpCircle, Bell, ArrowLeft, Briefcase, Award, CheckCircle2,
   LayoutDashboard, BookOpen, Menu, X, Upload, Trash2, Camera, ClipboardList, Book, Copy,
   FileText, FileArchive, FileCode, Download, AlertCircle, FileSpreadsheet, Paperclip, FileImage,
   Printer, Lock, AlertTriangle, Filter, ZoomIn, ZoomOut, RotateCcw, Phone, Mail, Shield, Eye, EyeOff, Palette,
@@ -1403,10 +1403,49 @@ export default function UserDashboard({ onLogout, onGoHome }: UserDashboardProps
         setEmailList([]);
       });
 
+    // 10. Student Examinations
+    setIsLoadingExams(true);
+    studentApi.getExams()
+      .then((res) => {
+        if (!isMounted) return;
+        if (res.success && Array.isArray(res.data)) {
+          setExams(res.data);
+        } else {
+          setExams([]);
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to load exams:", err);
+        setExams([]);
+      })
+      .finally(() => {
+        if (isMounted) setIsLoadingExams(false);
+      });
+
     return () => {
       isMounted = false;
     };
   }, []);
+
+  // Examinations State
+  const [exams, setExams] = useState<any[]>([]);
+  const [isLoadingExams, setIsLoadingExams] = useState(false);
+  const [takingExam, setTakingExam] = useState<any | null>(null);
+  const [examSubmissionNotes, setExamSubmissionNotes] = useState("");
+  const [isSubmittingExam, setIsSubmittingExam] = useState(false);
+  const [viewingExamResult, setViewingExamResult] = useState<any | null>(null);
+
+  // Dedicated Discussions Tab State
+  const [discussionTabFilterCourse, setDiscussionTabFilterCourse] = useState("all");
+  const [discussionTabFilterStatus, setDiscussionTabFilterStatus] = useState("all");
+  const [selectedDiscussionTabId, setSelectedDiscussionTabId] = useState<string | null>(null);
+  const [showCreateDiscussionModal, setShowCreateDiscussionModal] = useState(false);
+  const [newDiscCourseId, setNewDiscCourseId] = useState("");
+  const [newDiscTitle, setNewDiscTitle] = useState("");
+  const [newDiscBody, setNewDiscBody] = useState("");
+  const [isCreatingDiscussion, setIsCreatingDiscussion] = useState(false);
+  const [discussionTabReplyText, setDiscussionTabReplyText] = useState("");
+  const [isSendingTabReply, setIsSendingTabReply] = useState(false);
 
   // Selected assignment for the premium details page
   const [selectedAssignmentId, setSelectedAssignmentId] = useState<string | null>(null);
@@ -1523,7 +1562,7 @@ export default function UserDashboard({ onLogout, onGoHome }: UserDashboardProps
   }, [profileBio]);
   
   // Navigation states
-  const [activeTab, setActiveTab] = useState<"dashboard" | "inbox" | "courses" | "assignments" | "achievements" | "calendar" | "settings">("dashboard");
+  const [activeTab, setActiveTab] = useState<"dashboard" | "inbox" | "courses" | "assignments" | "exams" | "discussions" | "achievements" | "calendar" | "settings">("dashboard");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
@@ -2857,12 +2896,151 @@ export default function UserDashboard({ onLogout, onGoHome }: UserDashboardProps
       });
   };
 
+  // Handler for student taking/submitting an exam
+  const handleSubmitExam = async (examId: string) => {
+    setIsSubmittingExam(true);
+    try {
+      const res = await studentApi.submitExam(examId, examSubmissionNotes);
+      if (res.success) {
+        showCustomToast(`Exam submitted successfully! Score: ${res.data?.score || 85}%`, "success");
+        setTakingExam(null);
+        setExamSubmissionNotes("");
+        const exRes = await studentApi.getExams();
+        if (exRes.success && Array.isArray(exRes.data)) {
+          setExams(exRes.data);
+        }
+      } else {
+        showCustomToast("Failed to submit exam.", "warning");
+      }
+    } catch (err: any) {
+      showCustomToast(err.message || "Failed to submit exam.", "warning");
+    } finally {
+      setIsSubmittingExam(false);
+    }
+  };
+
+  // Handler for creating a new discussion thread
+  const handleCreateNewDiscussion = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newDiscCourseId || !newDiscTitle.trim() || !newDiscBody.trim()) {
+      showCustomToast("Please fill in course, title, and discussion question.", "warning");
+      return;
+    }
+    setIsCreatingDiscussion(true);
+    try {
+      const res = await studentApi.createDiscussion({
+        courseId: newDiscCourseId,
+        title: newDiscTitle.trim(),
+        text: newDiscBody.trim()
+      });
+      if (res.success) {
+        showCustomToast("Discussion thread posted successfully!", "success");
+        setShowCreateDiscussionModal(false);
+        setNewDiscTitle("");
+        setNewDiscBody("");
+        const dRes = await studentApi.getDiscussions();
+        if (dRes.success && Array.isArray(dRes.data)) {
+          const mappedConvs = dRes.data.map((d: any) => ({
+            id: String(d.id),
+            courseId: String(d.courseId),
+            courseTitle: d.courseTitle,
+            title: d.title,
+            studentName: d.studentName || profileName || "Student",
+            status: d.status || "Open",
+            lastActivity: d.time || "Recent",
+            unreadCount: 0,
+            messages: [
+              {
+                id: `init-${d.id}`,
+                sender: "Student",
+                senderName: d.studentName || profileName || "Student",
+                avatarText: (d.studentName || profileName || "ST").substring(0, 2).toUpperCase(),
+                text: d.description || d.title,
+                time: d.time || "Recent"
+              },
+              ...(d.replies || []).map((rep: any) => ({
+                id: String(rep.id),
+                sender: rep.role === "Student" ? "Student" : (rep.role === "Administrator" ? "Academy Admin" : "Instructor"),
+                senderName: rep.sender,
+                avatarText: (rep.sender || "IN").substring(0, 2).toUpperCase(),
+                text: rep.text,
+                time: rep.time || "Recent"
+              }))
+            ]
+          }));
+          setConversations(mappedConvs);
+          if (res.data?.id) {
+            setSelectedDiscussionTabId(String(res.data.id));
+          }
+        }
+      }
+    } catch (err: any) {
+      showCustomToast(err.message || "Failed to post discussion.", "warning");
+    } finally {
+      setIsCreatingDiscussion(false);
+    }
+  };
+
+  // Handler for replying to a discussion thread in dedicated tab
+  const handleReplyDiscussionTab = async (threadId: string) => {
+    if (!discussionTabReplyText.trim()) {
+      showCustomToast("Please enter your reply.", "warning");
+      return;
+    }
+    setIsSendingTabReply(true);
+    try {
+      const res = await studentApi.replyDiscussion(threadId, discussionTabReplyText.trim());
+      if (res.success) {
+        setDiscussionTabReplyText("");
+        showCustomToast("Reply posted successfully!", "success");
+        const dRes = await studentApi.getDiscussions();
+        if (dRes.success && Array.isArray(dRes.data)) {
+          const mappedConvs = dRes.data.map((d: any) => ({
+            id: String(d.id),
+            courseId: String(d.courseId),
+            courseTitle: d.courseTitle,
+            title: d.title,
+            studentName: d.studentName || profileName || "Student",
+            status: d.status || "Open",
+            lastActivity: d.time || "Recent",
+            unreadCount: 0,
+            messages: [
+              {
+                id: `init-${d.id}`,
+                sender: "Student",
+                senderName: d.studentName || profileName || "Student",
+                avatarText: (d.studentName || profileName || "ST").substring(0, 2).toUpperCase(),
+                text: d.description || d.title,
+                time: d.time || "Recent"
+              },
+              ...(d.replies || []).map((rep: any) => ({
+                id: String(rep.id),
+                sender: rep.role === "Student" ? "Student" : (rep.role === "Administrator" ? "Academy Admin" : "Instructor"),
+                senderName: rep.sender,
+                avatarText: (rep.sender || "IN").substring(0, 2).toUpperCase(),
+                text: rep.text,
+                time: rep.time || "Recent"
+              }))
+            ]
+          }));
+          setConversations(mappedConvs);
+        }
+      }
+    } catch (err: any) {
+      showCustomToast(err.message || "Failed to post reply.", "warning");
+    } finally {
+      setIsSendingTabReply(false);
+    }
+  };
+
   // Unified list of sidebar navigation items (stating types cleanly)
   const sidebarItems = [
     { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
     { id: "inbox", label: "Inbox", icon: Inbox, badge: emails.filter(e => !e.read).length },
     { id: "courses", label: "My Courses", icon: BookOpen },
     { id: "assignments", label: "Assignments", icon: CheckSquare },
+    { id: "exams", label: "Examinations", icon: ClipboardList, badge: exams.filter(e => !e.submission).length },
+    { id: "discussions", label: "Discussions", icon: MessageSquare },
     { id: "achievements", label: "Achievements", icon: Award },
     { id: "calendar", label: "Calendar", icon: CalendarIcon },
     { id: "settings", label: "Settings", icon: Settings },
@@ -7230,6 +7408,653 @@ export default function UserDashboard({ onLogout, onGoHome }: UserDashboardProps
               </div>
             </div>
           )}
+
+          {/* EXAMINATIONS TAB */}
+          {activeTab === "exams" && (
+            <div className="space-y-6 animate-fade-in text-left">
+              {/* Header */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/[0.05] pb-4">
+                <div className="space-y-1">
+                  <span className="text-[10px] text-indigo-400 font-bold uppercase tracking-wider block font-mono">Academic Assessments</span>
+                  <h2 className="font-sans text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2">
+                    <ClipboardList className="text-indigo-400" size={24} />
+                    <span>Examinations & Tests</span>
+                  </h2>
+                  <p className="text-xs text-white/40 max-w-2xl leading-relaxed">
+                    Access assigned course tests, monitor deadlines, take exams, and inspect scored evaluations with instructor feedback.
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    setIsLoadingExams(true);
+                    studentApi.getExams().then(res => {
+                      if (res.success && Array.isArray(res.data)) setExams(res.data);
+                    }).finally(() => setIsLoadingExams(false));
+                  }}
+                  className="px-4 py-2 rounded-xl bg-white/[0.02] border border-white/10 hover:bg-white/[0.05] text-xs font-bold text-white/80 transition-all flex items-center gap-2 self-start sm:self-center cursor-pointer"
+                >
+                  <RefreshCw size={13} className={isLoadingExams ? "animate-spin" : ""} />
+                  <span>Refresh Exams</span>
+                </button>
+              </div>
+
+              {/* Stats overview */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/[0.05]">
+                  <span className="text-[10px] text-white/40 uppercase font-mono block">Total Assigned</span>
+                  <span className="text-xl font-black text-white mt-1 block">{exams.length}</span>
+                </div>
+                <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/[0.05]">
+                  <span className="text-[10px] text-emerald-400 uppercase font-mono block">Completed</span>
+                  <span className="text-xl font-black text-emerald-400 mt-1 block">
+                    {exams.filter(e => e.submission).length}
+                  </span>
+                </div>
+                <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/[0.05]">
+                  <span className="text-[10px] text-amber-400 uppercase font-mono block">Pending</span>
+                  <span className="text-xl font-black text-amber-400 mt-1 block">
+                    {exams.filter(e => !e.submission).length}
+                  </span>
+                </div>
+                <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/[0.05]">
+                  <span className="text-[10px] text-indigo-400 uppercase font-mono block">Average Score</span>
+                  <span className="text-xl font-black text-indigo-400 mt-1 block">
+                    {(() => {
+                      const graded = exams.filter(e => e.submission && typeof e.submission.score === "number");
+                      if (graded.length === 0) return "N/A";
+                      const avg = Math.round(graded.reduce((acc, curr) => acc + curr.submission.score, 0) / graded.length);
+                      return `${avg}%`;
+                    })()}
+                  </span>
+                </div>
+              </div>
+
+              {/* Exams Listing */}
+              {isLoadingExams ? (
+                <div className="py-20 text-center flex flex-col items-center justify-center space-y-3">
+                  <RefreshCw className="animate-spin text-indigo-400" size={24} />
+                  <p className="text-xs text-white/40">Loading your examination papers...</p>
+                </div>
+              ) : exams.length === 0 ? (
+                <div className="py-20 text-center border border-dashed border-white/10 rounded-3xl bg-white/[0.01] space-y-3">
+                  <div className="h-12 w-12 rounded-full bg-white/[0.03] border border-white/10 flex items-center justify-center mx-auto text-white/30">
+                    <ClipboardList size={22} />
+                  </div>
+                  <h4 className="text-sm font-bold text-white">No Examinations Assigned Yet</h4>
+                  <p className="text-xs text-white/40 max-w-sm mx-auto">
+                    When instructors publish exams or periodic assessments for your enrolled courses, they will appear right here.
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {exams.map((exam) => {
+                    const isSubmitted = Boolean(exam.submission);
+                    const isPassed = exam.submission?.passed;
+                    const score = exam.submission?.score;
+                    return (
+                      <div
+                        key={exam.id}
+                        className="bg-[#08080c] border border-white/[0.06] rounded-3xl p-5 hover:border-white/10 transition-all flex flex-col justify-between space-y-4 group"
+                      >
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="px-2.5 py-1 rounded-full text-[9px] font-mono font-bold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 truncate max-w-[170px]">
+                              {exam.courseTitle || "Academy Course"}
+                            </span>
+                            <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider shrink-0 ${
+                              isSubmitted
+                                ? isPassed
+                                  ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30"
+                                  : "bg-red-500/15 text-red-400 border border-red-500/30"
+                                : "bg-white/[0.04] text-white/60 border border-white/10"
+                            }`}>
+                              {isSubmitted ? (isPassed ? "Passed" : "Completed") : "Open"}
+                            </span>
+                          </div>
+
+                          <div className="space-y-1">
+                            <h3 className="font-sans text-sm font-bold text-white group-hover:text-indigo-300 transition-colors">
+                              {exam.title}
+                            </h3>
+                            {exam.description && (
+                              <p className="text-xs text-white/40 line-clamp-2 leading-relaxed font-sans">
+                                {exam.description}
+                              </p>
+                            )}
+                          </div>
+
+                          <div className="pt-2 border-t border-white/[0.04] grid grid-cols-2 gap-2 text-[10px] text-white/50 font-mono">
+                            <div>
+                              <span className="text-white/30 block">Duration:</span>
+                              <span className="text-white font-bold">{exam.durationMinutes || 60} mins</span>
+                            </div>
+                            <div>
+                              <span className="text-white/30 block">Max Score:</span>
+                              <span className="text-white font-bold">{exam.maxPoints || 100} pts</span>
+                            </div>
+                            <div>
+                              <span className="text-white/30 block">Pass Threshold:</span>
+                              <span className="text-white font-bold">{exam.passPercentage || 60}%</span>
+                            </div>
+                            <div>
+                              <span className="text-white/30 block">Due Date:</span>
+                              <span className="text-white font-bold">{exam.dueDate || "Not set"}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="pt-3 border-t border-white/[0.04]">
+                          {isSubmitted ? (
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="text-left">
+                                <span className="text-[9px] text-white/40 block font-mono">Score Achieved:</span>
+                                <span className={`text-sm font-black font-mono ${isPassed ? "text-emerald-400" : "text-amber-400"}`}>
+                                  {score ?? "--"} / {exam.maxPoints || 100} pts
+                                </span>
+                              </div>
+                              <button
+                                onClick={() => setViewingExamResult(exam)}
+                                className="px-3 py-1.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.08] text-white/80 text-xs font-bold transition-all cursor-pointer border border-white/10"
+                              >
+                                View Feedback
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => {
+                                setTakingExam(exam);
+                                setExamSubmissionNotes("");
+                              }}
+                              className="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs transition-all shadow-md shadow-indigo-600/20 flex items-center justify-center gap-1.5 cursor-pointer"
+                            >
+                              <span>Take Examination</span>
+                              <ArrowRight size={13} />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* DISCUSSIONS TAB */}
+          {activeTab === "discussions" && (
+            <div className="space-y-6 animate-fade-in text-left">
+              {/* Header */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/[0.05] pb-4">
+                <div className="space-y-1">
+                  <span className="text-[10px] text-indigo-400 font-bold uppercase tracking-wider block font-mono">Collaborative Learning</span>
+                  <h2 className="font-sans text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2">
+                    <MessageSquare className="text-indigo-400" size={24} />
+                    <span>Course Discussions & Q&A</span>
+                  </h2>
+                  <p className="text-xs text-white/40 max-w-2xl leading-relaxed">
+                    Collaborate with peers, ask questions about lectures or assignments, and receive prompt replies from course instructors.
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    setNewDiscCourseId(courses[0]?.id || "");
+                    setNewDiscTitle("");
+                    setNewDiscBody("");
+                    setShowCreateDiscussionModal(true);
+                  }}
+                  className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs transition-all shadow-lg shadow-indigo-600/20 flex items-center gap-1.5 self-start sm:self-center cursor-pointer shrink-0"
+                >
+                  <Plus size={14} />
+                  <span>New Discussion</span>
+                </button>
+              </div>
+
+              {/* Filter controls */}
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-white/40 font-bold">Course:</span>
+                  <select
+                    value={discussionTabFilterCourse}
+                    onChange={(e) => setDiscussionTabFilterCourse(e.target.value)}
+                    className="bg-white/[0.02] border border-white/10 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-indigo-500/50"
+                  >
+                    <option value="all">All My Courses</option>
+                    {courses.map((c) => (
+                      <option key={c.id} value={c.id}>{c.title}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-white/40 font-bold">Status:</span>
+                  <div className="flex rounded-xl bg-white/[0.02] border border-white/5 p-1 gap-1">
+                    {(["all", "Open", "Resolved"] as const).map((st) => (
+                      <button
+                        key={st}
+                        onClick={() => setDiscussionTabFilterStatus(st)}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                          discussionTabFilterStatus === st
+                            ? "bg-indigo-600 text-white"
+                            : "text-white/40 hover:text-white"
+                        }`}
+                      >
+                        {st === "all" ? "All" : st}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Discussions Content Layout */}
+              {(() => {
+                const filtered = conversations.filter(c => {
+                  if (discussionTabFilterCourse !== "all" && c.courseId !== discussionTabFilterCourse) return false;
+                  if (discussionTabFilterStatus !== "all" && c.status !== discussionTabFilterStatus) return false;
+                  return true;
+                });
+
+                const activeThread = filtered.find(c => c.id === selectedDiscussionTabId) || filtered[0];
+
+                if (filtered.length === 0) {
+                  return (
+                    <div className="py-20 text-center border border-dashed border-white/10 rounded-3xl bg-white/[0.01] space-y-3">
+                      <div className="h-12 w-12 rounded-full bg-white/[0.03] border border-white/10 flex items-center justify-center mx-auto text-white/30">
+                        <MessageSquare size={22} />
+                      </div>
+                      <h4 className="text-sm font-bold text-white">No Discussions in this Category</h4>
+                      <p className="text-xs text-white/40 max-w-sm mx-auto">
+                        Have a question regarding your coursework? Click "New Discussion" to start a thread with your instructor.
+                      </p>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    {/* Left Threads Column */}
+                    <div className="lg:col-span-1 space-y-2.5">
+                      {filtered.map((thread) => {
+                        const isSelected = activeThread?.id === thread.id;
+                        return (
+                          <div
+                            key={thread.id}
+                            onClick={() => setSelectedDiscussionTabId(thread.id)}
+                            className={`p-4 rounded-2xl border transition-all cursor-pointer text-left ${
+                              isSelected
+                                ? "bg-white/[0.04] border-indigo-500/40 shadow-lg"
+                                : "bg-white/[0.01] border-white/[0.05] hover:border-white/10 hover:bg-white/[0.02]"
+                            }`}
+                          >
+                            <div className="flex items-center justify-between gap-2 mb-1.5">
+                              <span className="text-[9px] font-mono text-indigo-400 font-bold bg-indigo-500/10 px-2 py-0.5 rounded-full truncate max-w-[140px]">
+                                {thread.courseTitle || "Course"}
+                              </span>
+                              <span className="text-[9px] font-mono text-white/30">{thread.lastActivity}</span>
+                            </div>
+                            <h4 className="text-xs font-bold text-white leading-tight line-clamp-1">
+                              {thread.title}
+                            </h4>
+                            <p className="text-[11px] text-white/40 mt-1 line-clamp-2 leading-relaxed">
+                              {thread.messages?.[0]?.text || "Discussion thread..."}
+                            </p>
+                            <div className="mt-2 pt-2 border-t border-white/[0.04] flex items-center justify-between text-[10px] text-white/40">
+                              <span>By: <strong className="text-white/70">{thread.studentName}</strong></span>
+                              <span className="font-mono">{thread.messages?.length || 1} messages</span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Right Active Thread Detail Column */}
+                    <div className="lg:col-span-2 bg-[#08080c] border border-white/[0.06] rounded-3xl p-6 flex flex-col justify-between min-h-[500px]">
+                      {activeThread ? (
+                        <div className="space-y-6">
+                          <div className="border-b border-white/[0.05] pb-4 space-y-2">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[10px] font-mono text-indigo-400 font-bold bg-indigo-500/10 px-2.5 py-1 rounded-full border border-indigo-500/20">
+                                {activeThread.courseTitle}
+                              </span>
+                              <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${
+                                activeThread.status === "Resolved"
+                                  ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30"
+                                  : "bg-indigo-500/15 text-indigo-400 border border-indigo-500/30"
+                              }`}>
+                                {activeThread.status}
+                              </span>
+                            </div>
+                            <h3 className="font-sans text-base font-bold text-white">
+                              {activeThread.title}
+                            </h3>
+                          </div>
+
+                          {/* Message List */}
+                          <div className="space-y-4 max-h-[380px] overflow-y-auto pr-2 scrollbar-thin">
+                            {activeThread.messages?.map((msg: any) => {
+                              const isInstructor = msg.sender === "Instructor" || msg.sender === "Academy Admin";
+                              return (
+                                <div
+                                  key={msg.id}
+                                  className={`p-4 rounded-2xl border ${
+                                    isInstructor
+                                      ? "bg-indigo-950/20 border-indigo-500/25 ml-4"
+                                      : "bg-white/[0.02] border-white/[0.05] mr-4"
+                                  }`}
+                                >
+                                  <div className="flex items-center justify-between mb-2">
+                                    <div className="flex items-center gap-2">
+                                      <div className={`h-6 w-6 rounded-full flex items-center justify-center text-[10px] font-bold ${
+                                        isInstructor
+                                          ? "bg-indigo-500 text-white"
+                                          : "bg-white/10 text-white/70"
+                                      }`}>
+                                        {msg.avatarText || "ST"}
+                                      </div>
+                                      <span className="text-xs font-bold text-white">
+                                        {msg.senderName}
+                                      </span>
+                                      {isInstructor && (
+                                        <span className="text-[9px] bg-indigo-500/20 text-indigo-300 font-mono px-1.5 py-0.2 rounded font-bold">
+                                          Instructor
+                                        </span>
+                                      )}
+                                    </div>
+                                    <span className="text-[10px] font-mono text-white/30">{msg.time}</span>
+                                  </div>
+                                  <p className="text-xs text-white/80 leading-relaxed whitespace-pre-wrap pl-8">
+                                    {msg.text}
+                                  </p>
+                                </div>
+                              );
+                            })}
+                          </div>
+
+                          {/* Reply Box */}
+                          <div className="pt-4 border-t border-white/[0.05] space-y-2.5">
+                            <textarea
+                              rows={3}
+                              value={discussionTabReplyText}
+                              onChange={(e) => setDiscussionTabReplyText(e.target.value)}
+                              placeholder="Write your reply or inquiry..."
+                              className="w-full bg-white/[0.02] border border-white/10 rounded-2xl p-3 text-xs text-white placeholder-white/30 focus:outline-none focus:border-indigo-500/50 resize-none"
+                            />
+                            <div className="flex justify-end">
+                              <button
+                                onClick={() => handleReplyDiscussionTab(activeThread.id)}
+                                disabled={isSendingTabReply || !discussionTabReplyText.trim()}
+                                className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+                              >
+                                {isSendingTabReply ? (
+                                  <>
+                                    <RefreshCw className="animate-spin" size={13} />
+                                    <span>Sending...</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Send size={13} />
+                                    <span>Post Reply</span>
+                                  </>
+                                )}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="m-auto text-center text-white/40 text-xs">
+                          Select a conversation thread to read messages.
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+          )}
+
+          {/* EXAM TAKING MODAL */}
+          <AnimatePresence>
+            {takingExam && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  className="w-full max-w-lg bg-[#090a0d] border border-white/10 rounded-3xl p-6 space-y-5 shadow-2xl text-left font-sans"
+                >
+                  <div className="flex items-center justify-between border-b border-white/[0.08] pb-3">
+                    <div className="space-y-0.5">
+                      <span className="text-[10px] text-indigo-400 font-mono font-bold uppercase">{takingExam.courseTitle}</span>
+                      <h3 className="text-base font-bold text-white flex items-center gap-2">
+                        <ClipboardList size={18} className="text-indigo-400" />
+                        <span>{takingExam.title}</span>
+                      </h3>
+                    </div>
+                    <button
+                      onClick={() => setTakingExam(null)}
+                      className="p-1 rounded-lg border border-white/10 text-white/40 hover:text-white"
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
+
+                  <div className="p-3.5 rounded-2xl bg-white/[0.02] border border-white/[0.05] space-y-2 text-xs">
+                    <div className="flex justify-between text-white/60">
+                      <span>Duration: <strong className="text-white">{takingExam.durationMinutes || 60} minutes</strong></span>
+                      <span>Max Score: <strong className="text-white">{takingExam.maxPoints || 100} pts</strong></span>
+                    </div>
+                    {takingExam.description && (
+                      <p className="text-white/70 leading-relaxed pt-1 border-t border-white/[0.04]">
+                        {takingExam.description}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2 text-xs">
+                    <label className="text-white/70 font-bold block">
+                      Your Answers & Submission Notes:
+                    </label>
+                    <textarea
+                      rows={5}
+                      value={examSubmissionNotes}
+                      onChange={(e) => setExamSubmissionNotes(e.target.value)}
+                      placeholder="Type your complete solution, explanations, or paste relevant project links..."
+                      className="w-full bg-white/[0.02] border border-white/10 rounded-2xl p-3 text-white placeholder-white/30 focus:outline-none focus:border-indigo-500/50 leading-relaxed font-sans"
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-end gap-2 pt-2 border-t border-white/[0.05]">
+                    <button
+                      type="button"
+                      onClick={() => setTakingExam(null)}
+                      disabled={isSubmittingExam}
+                      className="px-4 py-2 rounded-xl border border-white/10 text-white/60 hover:text-white text-xs font-bold"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleSubmitExam(takingExam.id)}
+                      disabled={isSubmittingExam}
+                      className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition-all shadow-md shadow-indigo-600/20 disabled:opacity-50 flex items-center gap-1.5"
+                    >
+                      {isSubmittingExam ? (
+                        <>
+                          <RefreshCw className="animate-spin" size={13} />
+                          <span>Submitting...</span>
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle2 size={14} />
+                          <span>Submit Examination</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </motion.div>
+              </div>
+            )}
+          </AnimatePresence>
+
+          {/* VIEW EXAM RESULT & FEEDBACK MODAL */}
+          <AnimatePresence>
+            {viewingExamResult && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  className="w-full max-w-md bg-[#090a0d] border border-white/10 rounded-3xl p-6 space-y-5 shadow-2xl text-left font-sans"
+                >
+                  <div className="flex items-center justify-between border-b border-white/[0.08] pb-3">
+                    <h3 className="text-base font-bold text-white flex items-center gap-2">
+                      <Award size={18} className="text-emerald-400" />
+                      <span>Exam Assessment Result</span>
+                    </h3>
+                    <button
+                      onClick={() => setViewingExamResult(null)}
+                      className="p-1 rounded-lg border border-white/10 text-white/40 hover:text-white"
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
+
+                  <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/[0.05] space-y-3">
+                    <h4 className="text-sm font-bold text-white">{viewingExamResult.title}</h4>
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-white/40">Status:</span>
+                      <span className={`font-bold font-mono px-2 py-0.5 rounded-full ${
+                        viewingExamResult.submission?.passed
+                          ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30"
+                          : "bg-red-500/15 text-red-400 border border-red-500/30"
+                      }`}>
+                        {viewingExamResult.submission?.passed ? "Passed" : "Not Passed"}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-white/40">Score:</span>
+                      <span className="text-base font-black font-mono text-white">
+                        {viewingExamResult.submission?.score ?? "--"} / {viewingExamResult.maxPoints || 100} pts
+                      </span>
+                    </div>
+                  </div>
+
+                  {viewingExamResult.submission?.feedback && (
+                    <div className="p-3.5 rounded-2xl bg-indigo-950/20 border border-indigo-500/20 space-y-1 text-xs">
+                      <span className="text-[10px] text-indigo-400 font-bold uppercase tracking-wider block font-mono">
+                        Instructor Feedback:
+                      </span>
+                      <p className="text-white/80 leading-relaxed">
+                        {viewingExamResult.submission.feedback}
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="flex justify-end pt-2">
+                    <button
+                      onClick={() => setViewingExamResult(null)}
+                      className="px-4 py-2 rounded-xl bg-white/[0.04] hover:bg-white/10 text-white text-xs font-bold"
+                    >
+                      Close
+                    </button>
+                  </div>
+                </motion.div>
+              </div>
+            )}
+          </AnimatePresence>
+
+          {/* CREATE DISCUSSION MODAL */}
+          <AnimatePresence>
+            {showCreateDiscussionModal && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  className="w-full max-w-md bg-[#090a0d] border border-white/10 rounded-3xl p-6 space-y-4 shadow-2xl text-left font-sans"
+                >
+                  <div className="flex items-center justify-between border-b border-white/[0.08] pb-3">
+                    <h3 className="text-base font-bold text-white flex items-center gap-2">
+                      <MessageSquare size={18} className="text-indigo-400" />
+                      <span>Start New Discussion Thread</span>
+                    </h3>
+                    <button
+                      onClick={() => setShowCreateDiscussionModal(false)}
+                      className="p-1 rounded-lg border border-white/10 text-white/40 hover:text-white"
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
+
+                  <form onSubmit={handleCreateNewDiscussion} className="space-y-4 text-xs">
+                    <div>
+                      <label className="text-white/70 block mb-1 font-bold">Select Course</label>
+                      <select
+                        value={newDiscCourseId}
+                        onChange={(e) => setNewDiscCourseId(e.target.value)}
+                        required
+                        className="w-full bg-white/[0.02] border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-indigo-500/50"
+                      >
+                        {courses.map((c) => (
+                          <option key={c.id} value={c.id}>{c.title}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="text-white/70 block mb-1 font-bold">Discussion Title / Topic</label>
+                      <input
+                        type="text"
+                        value={newDiscTitle}
+                        onChange={(e) => setNewDiscTitle(e.target.value)}
+                        required
+                        placeholder="e.g. Question about state machines in Lecture 4"
+                        className="w-full bg-white/[0.02] border border-white/10 rounded-xl px-3 py-2 text-white placeholder-white/30 focus:outline-none focus:border-indigo-500/50"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-white/70 block mb-1 font-bold">Message Details</label>
+                      <textarea
+                        rows={4}
+                        value={newDiscBody}
+                        onChange={(e) => setNewDiscBody(e.target.value)}
+                        required
+                        placeholder="Explain your inquiry in detail..."
+                        className="w-full bg-white/[0.02] border border-white/10 rounded-xl px-3 py-2 text-white placeholder-white/30 focus:outline-none focus:border-indigo-500/50 leading-relaxed resize-none"
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-end gap-2 pt-2 border-t border-white/[0.05]">
+                      <button
+                        type="button"
+                        onClick={() => setShowCreateDiscussionModal(false)}
+                        className="px-4 py-2 rounded-xl border border-white/10 text-white/60 hover:text-white text-xs font-bold"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={isCreatingDiscussion}
+                        className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition-all shadow-md shadow-indigo-600/20 disabled:opacity-50 flex items-center gap-1.5"
+                      >
+                        {isCreatingDiscussion ? (
+                          <>
+                            <RefreshCw className="animate-spin" size={13} />
+                            <span>Posting...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Send size={13} />
+                            <span>Post Discussion</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </form>
+                </motion.div>
+              </div>
+            )}
+          </AnimatePresence>
 
           {activeTab === "settings" && (
             <div className="space-y-6 animate-fade-in pb-10 w-full font-sans">

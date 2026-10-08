@@ -17,8 +17,8 @@ interface OverviewTabProps {
   seasons?: CourseSeason[];
   users?: AdminUser[];
   stats?: DashboardStats;
-  onQuickAction?: (tabId: string) => void;
-  onNavigateTab?: (tabId: string) => void;
+  onQuickAction?: (tabId: string, subTab?: string) => void;
+  onNavigateTab?: (tabId: string, subTab?: string) => void;
   onApproveRequest: (id: string) => void;
   onRejectRequest: (id: string, notes?: string) => void;
   onApproveCertificate: (id: string) => void;
@@ -44,11 +44,11 @@ export default function OverviewTab({
   onRejectCertificate,
   onUpdateSessionStatus,
 }: OverviewTabProps) {
-  const handleNav = (target: string) => {
+  const handleNav = (target: string, subTab?: string) => {
     if (onQuickAction) {
-      onQuickAction(target);
+      onQuickAction(target, subTab);
     } else if (onNavigateTab) {
-      onNavigateTab(target);
+      onNavigateTab(target, subTab);
     }
   };
 
@@ -59,14 +59,14 @@ export default function OverviewTab({
   const scheduledSessions = sessions.filter((s) => s.status === "Scheduled");
 
   const statCards = [
-    { label: "Total Users", value: stats?.totalUsers ?? users.length, icon: Users, actionId: "users", color: "text-indigo-400" },
-    { label: "Normal Users", value: stats?.normalUsers ?? users.filter(u => u.role === "user").length, icon: UserCheck, actionId: "users", color: "text-blue-400" },
-    { label: "Students", value: stats?.students ?? users.filter(u => u.role === "student").length, icon: GraduationCap, actionId: "users", color: "text-emerald-400" },
-    { label: "Teachers", value: stats?.teachers ?? users.filter(u => u.role === "teacher").length, icon: Award, actionId: "users", color: "text-amber-400" },
-    { label: "Administrators", value: stats?.administrators ?? users.filter(u => u.role === "admin" || u.role === "super-admin").length, icon: Shield, actionId: "users", color: "text-purple-400" },
-    { label: "Active Courses", value: stats?.totalCourses ?? courses.length, icon: BookOpen, actionId: "courses", color: "text-teal-400" },
-    { label: "Live Sessions", value: scheduledSessions.length, icon: Calendar, actionId: "courses", color: "text-cyan-400" },
-    { label: "Pending Approvals", value: pendingRequests.length + pendingCertificates.length, icon: AlertCircle, actionId: "certificates", color: "text-rose-400" },
+    { label: "Total Users", value: stats?.totalUsers ?? users.length, icon: Users, actionId: "users", subTab: "all", color: "text-indigo-400" },
+    { label: "Normal Users", value: stats?.normalUsers ?? users.filter(u => u.role === "user").length, icon: UserCheck, actionId: "users", subTab: "normal", color: "text-blue-400" },
+    { label: "Students", value: stats?.students ?? users.filter(u => u.role === "student").length, icon: GraduationCap, actionId: "users", subTab: "students", color: "text-emerald-400" },
+    { label: "Teachers", value: stats?.teachers ?? users.filter(u => u.role === "teacher").length, icon: Award, actionId: "users", subTab: "teachers", color: "text-amber-400" },
+    { label: "Administrators", value: stats?.administrators ?? users.filter(u => u.role === "admin" || u.role === "super-admin").length, icon: Shield, actionId: "users", subTab: "admins", color: "text-purple-400" },
+    { label: "Active Courses", value: stats?.totalCourses ?? courses.length, icon: BookOpen, actionId: "academic", subTab: "catalog", color: "text-teal-400" },
+    { label: "Live Sessions", value: scheduledSessions.length, icon: Calendar, actionId: "academic", subTab: "sessions", color: "text-cyan-400" },
+    { label: "Pending Approvals", value: pendingRequests.length + pendingCertificates.length, icon: AlertCircle, actionId: "certificates", subTab: "all", color: "text-rose-400" },
   ];
 
   return (
@@ -81,7 +81,7 @@ export default function OverviewTab({
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: idx * 0.05 }}
-              onClick={() => handleNav(stat.actionId)}
+              onClick={() => handleNav(stat.actionId, stat.subTab)}
               className="p-5 rounded-2xl bg-white/[0.02] border border-white/[0.06] hover:border-emerald-500/30 transition-all cursor-pointer group backdrop-blur-md"
             >
               <div className="flex items-center justify-between">

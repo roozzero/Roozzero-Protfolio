@@ -278,6 +278,17 @@ export const studentApi = {
       method: "POST",
       body: JSON.stringify(data)
     });
+  },
+
+  async getExams() {
+    return request<{ success: boolean; data: any[] }>("/student/exams");
+  },
+
+  async submitExam(id: string, notes?: string) {
+    return request<{ success: boolean; data: any }>(`/student/exams/${id}/submit`, {
+      method: "POST",
+      body: JSON.stringify({ notes })
+    });
   }
 };
 
@@ -385,6 +396,37 @@ export const teacherApi = {
     return request<{ success: boolean; data: any }>("/teacher/messages/send", {
       method: "POST",
       body: JSON.stringify(data)
+    });
+  },
+
+  async getProfile() {
+    return request<{ success: boolean; data: any }>("/teacher/profile");
+  },
+
+  async updateProfile(data: any) {
+    return request<{ success: boolean; data: any }>("/teacher/profile", {
+      method: "PUT",
+      body: JSON.stringify(data)
+    });
+  },
+
+  async uploadAvatar(formData: FormData) {
+    return request<{ success: boolean; data: { avatarUrl: string } }>("/teacher/profile/avatar", {
+      method: "POST",
+      body: formData
+    });
+  },
+
+  async removeAvatar() {
+    return request<{ success: boolean; message: string }>("/teacher/profile/avatar", {
+      method: "DELETE"
+    });
+  },
+
+  async changePassword(currentPassword: string, newPassword: string) {
+    return request<{ success: boolean; message: string }>("/teacher/profile/change-password", {
+      method: "POST",
+      body: JSON.stringify({ currentPassword, newPassword })
     });
   }
 };
@@ -539,6 +581,129 @@ export const adminApi = {
 
   async getCourseSeasons() {
     return request<{ success: boolean; data: any[] }>("/admin/course-seasons");
+  },
+
+  async getTeachers() {
+    return request<{ success: boolean; data: any[] }>("/admin/teachers");
+  },
+
+  async createCourse(data: any) {
+    return request<{ success: boolean; data: any }>("/admin/courses", {
+      method: "POST",
+      body: JSON.stringify(data)
+    });
+  },
+
+  async updateCourse(id: string, data: any) {
+    return request<{ success: boolean; message: string }>(`/admin/courses/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data)
+    });
+  },
+
+  async deleteCourse(id: string) {
+    return request<{ success: boolean; message: string }>(`/admin/courses/${id}`, {
+      method: "DELETE"
+    });
+  },
+
+  async getCourseDetails(id: string) {
+    return request<{ success: boolean; data: any }>(`/admin/courses/${id}`);
+  },
+
+  async getCourseDetail(id: string) {
+    return this.getCourseDetails(id);
+  },
+
+  async assignCourseTeacher(courseId: string, teacherId: string | null) {
+    return request<{ success: boolean; message: string }>(`/admin/courses/${courseId}/teacher`, {
+      method: "PUT",
+      body: JSON.stringify({ teacherId })
+    });
+  },
+
+  async getAvailableStudents(courseId: string) {
+    return request<{ success: boolean; data: any[] }>(`/admin/courses/${courseId}/available-students`);
+  },
+
+  async getCourseAvailableStudents(courseId: string) {
+    return this.getAvailableStudents(courseId);
+  },
+
+  async enrollStudent(courseId: string, studentId: string, seasonId?: string) {
+    return request<{ success: boolean; message: string }>(`/admin/courses/${courseId}/enroll`, {
+      method: "POST",
+      body: JSON.stringify({ studentId, seasonId })
+    });
+  },
+
+  async enrollStudentInCourse(courseId: string, studentId: string, seasonId?: string) {
+    return this.enrollStudent(courseId, studentId, seasonId);
+  },
+
+  async removeStudentFromCourse(courseId: string, studentId: string) {
+    return request<{ success: boolean; message: string }>(`/admin/courses/${courseId}/enroll/${studentId}`, {
+      method: "DELETE"
+    });
+  },
+
+  async getCourseLessons(courseId: string) {
+    return request<{ success: boolean; data: any[] }>(`/admin/courses/${courseId}/lessons`);
+  },
+
+  async addCourseLesson(courseId: string, data: any) {
+    return request<{ success: boolean; data: any; message: string }>(`/admin/courses/${courseId}/lessons`, {
+      method: "POST",
+      body: JSON.stringify(data)
+    });
+  },
+
+  async createLesson(courseId: string, data: any) {
+    return this.addCourseLesson(courseId, data);
+  },
+
+  async updateCourseLesson(courseId: string, lessonId: string, data: any) {
+    return request<{ success: boolean; message: string }>(`/admin/courses/${courseId}/lessons/${lessonId}`, {
+      method: "PUT",
+      body: JSON.stringify(data)
+    });
+  },
+
+  async updateLesson(courseId: string, lessonId: string, data: any) {
+    return this.updateCourseLesson(courseId, lessonId, data);
+  },
+
+  async deleteCourseLesson(courseId: string, lessonId: string) {
+    return request<{ success: boolean; message: string }>(`/admin/courses/${courseId}/lessons/${lessonId}`, {
+      method: "DELETE"
+    });
+  },
+
+  async deleteLesson(courseId: string, lessonId: string) {
+    return this.deleteCourseLesson(courseId, lessonId);
+  },
+
+  async getExams() {
+    return request<{ success: boolean; data: any[] }>("/admin/exams");
+  },
+
+  async createExam(data: any) {
+    return request<{ success: boolean; data: any }>("/admin/exams", {
+      method: "POST",
+      body: JSON.stringify(data)
+    });
+  },
+
+  async publishExamResults(id: string) {
+    return request<{ success: boolean; message: string }>(`/admin/exams/${id}/publish`, {
+      method: "PATCH"
+    });
+  },
+
+  async deleteExam(id: string) {
+    return request<{ success: boolean; message: string }>(`/admin/exams/${id}`, {
+      method: "DELETE"
+    });
   }
 };
 

@@ -1075,4 +1075,526 @@ router.post("/profile/change-password", async (req: Request, res: Response) => {
   }
 });
 
+// -------------------------------------------------------------
+// COURSE MANAGEMENT FOR ADMINISTRATOR
+// -------------------------------------------------------------
+
+// GET /api/admin/teachers (List of all active instructors for assignment)
+router.get("/teachers", async (req: Request, res: Response) => {
+  try {
+    const [rows]: [any[], any] = await query(`
+      SELECT u.id, u.name, u.email, u.avatar_url, u.specialization, u.department
+      FROM users u
+      WHERE u.role_id = 2 AND u.deleted_at IS NULL
+      ORDER BY u.name ASC
+    `);
+    return res.json({ success: true, data: rows });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: { code: "SERVER_ERROR", message: err.message } });
+  }
+});
+
+// POST /api/admin/courses (Admin creates new course)
+router.post("/courses", async (req: Request, res: Response) => {
+  try {
+    const {
+      title,
+      code,
+      slug,
+      price,
+      description,
+      shortDescription,
+      categoryId,
+      teacherId,
+      sessionsCount,
+      status,
+      image
+    } = req.body;
+
+    if (!title || !title.trim()) {
+      return res.status(400).json({ success: false, error: { code: "MISSING_TITLE", message: "Course title is required." } });
+    }
+
+    const courseId = `crs-${Date.now()}-${crypto.randomBytes(3).toString("hex")}`;
+    const courseCode = (code && code.trim()) || `CRS-${Math.floor(100 + Math.random() * 900)}`;
+    const courseSlug = (slug && slug.trim()) || title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+
+    await query(`
+      INSERT INTO courses (id, title, code, slug, price, description, short_description, category_id, teacher_id, sessions_count, students_count, status, image)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
+    `, [
+      courseId,
+      title.trim(),
+      courseCode,
+      courseSlug,
+      price || "$0",
+      description || "",
+      shortDescription || description || "",
+      categoryId ? Number(categoryId) : 1,
+      teacherId || null,
+      sessionsCount ? Number(sessionsCount) : 12,
+      status || "Published",
+      image || null
+    ]);
+
+    // Create default cohort season for this course
+    const seasonId = `season-${Date.now()}`;
+    await query(`
+      INSERT INTO course_seasons (id, name, course_id, start_date, end_date, max_capacity, registration_status, status)
+      VALUES (?, ?, ?, CURDATE(), DATE_ADD(CURDATE(), INTERVAL 90 DAY), 25, 'Open', 'Active')
+    `, [seasonId, `${title.trim()} - Cohort 1`, courseId]);
+
+    // Audit log
+    await query("INSERT INTO activity_logs (user_id, action, details) VALUES (?, 'CreateCourse', ?)", [
+      req.user!.id,
+      `Created course "${title.trim()}" (${courseCode})`
+    ]);
+
+    return res.status(201).json({
+      success: true,
+      data: {
+        id: courseId,
+        title: title.trim(),
+        code: courseCode,
+        slug: courseSlug,
+        message: "Course created successfully."
+      }
+    });
+  } catch (err: any) {
+    console.error("[Create Course Error]:", err);
+    return res.status(500).json({ success: false, error: { code: "SERVER_ERROR", message: err.message } });
+  }
+});
+
+// GET /api/admin/courses/:id (Full course detail: instructor, students, syllabus, seasons)
+router.get("/courses/:id", async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const [cRows]: [any[], any] = await query(`
+      SELECT c.*, cat.name as category_name, u.name as teacher_name, u.email as teacher_email, u.avatar_url as teacher_avatar
+      FROM courses c
+      LEFT JOIN course_categories cat ON c.category_id = cat.id
+      LEFT JOIN users u ON c.teacher_id = u.id
+      WHERE c.id = ? AND c.deleted_at IS NULL
+    `, [id]);
+
+    if (cRows.length === 0) {
+      return res.status(404).json({ success: false, error: { code: "NOT_FOUND", message: "Course not found." } });
+    }
+
+    const course = cRows[0];
+
+    // Enrolled students
+    const [students]: [any[], any] = await query(`
+      SELECT e.id as enrollment_id, e.student_id, e.status as enrollment_status, e.progress, e.avg_grade, e.joined_date,
+             u.name as student_name, u.email as student_email, u.avatar_url as student_avatar, u.phone as student_phone
+      FROM enrollments e
+      JOIN users u ON e.student_id = u.id
+      WHERE e.course_id = ? AND u.deleted_at IS NULL
+      ORDER BY e.joined_date DESC
+    `, [id]);
+
+    // Syllabus / Lessons
+    const [lessons]: [any[], any] = await query(`
+      SELECT id, title, description, duration, lesson_order, is_preview, status, video_url
+      FROM lessons
+      WHERE course_id = ?
+      ORDER BY lesson_order ASC
+    `, [id]);
+
+    // Seasons
+    const [seasons]: [any[], any] = await query(`
+      SELECT * FROM course_seasons WHERE course_id = ? AND deleted_at IS NULL ORDER BY start_date ASC
+    `, [id]);
+
+    return res.json({
+      success: true,
+      data: {
+        ...course,
+        students,
+        lessons,
+        seasons
+      }
+    });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: { code: "SERVER_ERROR", message: err.message } });
+  }
+});
+
+// PUT /api/admin/courses/:id (Admin updates course)
+router.put("/courses/:id", async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const {
+      title,
+      code,
+      slug,
+      price,
+      description,
+      shortDescription,
+      categoryId,
+      teacherId,
+      sessionsCount,
+      status,
+      image
+    } = req.body;
+
+    await query(`
+      UPDATE courses
+      SET title = COALESCE(?, title),
+          code = COALESCE(?, code),
+          slug = COALESCE(?, slug),
+          price = COALESCE(?, price),
+          description = COALESCE(?, description),
+          short_description = COALESCE(?, short_description),
+          category_id = COALESCE(?, category_id),
+          teacher_id = CASE WHEN ? = 1 THEN ? ELSE teacher_id END,
+          sessions_count = COALESCE(?, sessions_count),
+          status = COALESCE(?, status),
+          image = COALESCE(?, image)
+      WHERE id = ?
+    `, [
+      title ? title.trim() : null,
+      code ? code.trim() : null,
+      slug ? slug.trim() : null,
+      price !== undefined ? price : null,
+      description !== undefined ? description : null,
+      shortDescription !== undefined ? shortDescription : null,
+      categoryId ? Number(categoryId) : null,
+      teacherId !== undefined ? 1 : 0,
+      teacherId || null,
+      sessionsCount ? Number(sessionsCount) : null,
+      status || null,
+      image || null,
+      id
+    ]);
+
+    // Audit log
+    await query("INSERT INTO activity_logs (user_id, action, details) VALUES (?, 'UpdateCourse', ?)", [
+      req.user!.id,
+      `Updated course configurations for "${title || id}"`
+    ]);
+
+    return res.json({ success: true, message: "Course updated successfully." });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: { code: "SERVER_ERROR", message: err.message } });
+  }
+});
+
+// DELETE /api/admin/courses/:id (Soft delete course)
+router.delete("/courses/:id", async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    await query("UPDATE courses SET deleted_at = NOW() WHERE id = ?", [id]);
+    await query("INSERT INTO activity_logs (user_id, action, details) VALUES (?, 'DeleteCourse', ?)", [
+      req.user!.id,
+      `Deleted course ${id}`
+    ]);
+    return res.json({ success: true, message: "Course deleted successfully." });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: { code: "SERVER_ERROR", message: err.message } });
+  }
+});
+
+// PUT /api/admin/courses/:id/teacher (Assign or change course teacher)
+router.put("/courses/:id/teacher", async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { teacherId } = req.body;
+
+    if (teacherId) {
+      const [tRows]: [any[], any] = await query("SELECT id, name FROM users WHERE id = ? AND role_id = 2 AND deleted_at IS NULL", [teacherId]);
+      if (tRows.length === 0) {
+        return res.status(400).json({ success: false, error: { code: "INVALID_TEACHER", message: "Selected user is not an active instructor." } });
+      }
+    }
+
+    await query("UPDATE courses SET teacher_id = ? WHERE id = ?", [teacherId || null, id]);
+
+    return res.json({ success: true, message: "Course instructor updated successfully." });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: { code: "SERVER_ERROR", message: err.message } });
+  }
+});
+
+// GET /api/admin/courses/:id/available-students (Students who can be added to course)
+router.get("/courses/:id/available-students", async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const [rows]: [any[], any] = await query(`
+      SELECT u.id, u.name, u.email, u.avatar_url, u.phone
+      FROM users u
+      WHERE u.role_id = 3 AND u.deleted_at IS NULL
+        AND u.id NOT IN (SELECT student_id FROM enrollments WHERE course_id = ?)
+      ORDER BY u.name ASC
+    `, [id]);
+    return res.json({ success: true, data: rows });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: { code: "SERVER_ERROR", message: err.message } });
+  }
+});
+
+// POST /api/admin/courses/:id/enroll (Admin enrolls a student)
+router.post("/courses/:id/enroll", async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { studentId, seasonId } = req.body;
+
+    if (!studentId) {
+      return res.status(400).json({ success: false, error: { code: "MISSING_STUDENT", message: "Please select a student to enroll." } });
+    }
+
+    // Verify student exists
+    const [uRows]: [any[], any] = await query("SELECT id, name, email FROM users WHERE id = ? AND deleted_at IS NULL", [studentId]);
+    if (uRows.length === 0) {
+      return res.status(404).json({ success: false, error: { code: "STUDENT_NOT_FOUND", message: "Student not found." } });
+    }
+
+    // Check duplicate
+    const [existing]: [any[], any] = await query("SELECT id FROM enrollments WHERE course_id = ? AND student_id = ?", [id, studentId]);
+    if (existing.length > 0) {
+      return res.status(400).json({ success: false, error: { code: "ALREADY_ENROLLED", message: "Student is already enrolled in this course." } });
+    }
+
+    await query(`
+      INSERT INTO enrollments (student_id, course_id, season_id, status, joined_date, progress, attendance_percentage, avg_grade)
+      VALUES (?, ?, ?, 'Active', CURDATE(), 0, 100.00, 0.00)
+    `, [studentId, id, seasonId || null]);
+
+    // Increment students_count
+    await query("UPDATE courses SET students_count = students_count + 1 WHERE id = ?", [id]);
+
+    // Notify student
+    const [cRows]: [any[], any] = await query("SELECT title FROM courses WHERE id = ?", [id]);
+    const courseTitle = cRows.length > 0 ? cRows[0].title : "New Course";
+    await query(`
+      INSERT INTO notifications (user_id, type, title, message)
+      VALUES (?, 'system', ?, ?)
+    `, [studentId, `Enrolled in ${courseTitle}`, `An administrator has enrolled you in ${courseTitle}. Access your materials in My Courses.`]);
+
+    return res.status(201).json({
+      success: true,
+      message: `Enrolled ${uRows[0].name} in ${courseTitle} successfully.`
+    });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: { code: "SERVER_ERROR", message: err.message } });
+  }
+});
+
+// DELETE /api/admin/courses/:id/enroll/:studentId (Admin removes student from course)
+router.delete("/courses/:id/enroll/:studentId", async (req: Request, res: Response) => {
+  try {
+    const { id, studentId } = req.params;
+    await query("DELETE FROM enrollments WHERE course_id = ? AND student_id = ?", [id, studentId]);
+    await query("UPDATE courses SET students_count = GREATEST(0, students_count - 1) WHERE id = ?", [id]);
+
+    return res.json({ success: true, message: "Student removed from course." });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: { code: "SERVER_ERROR", message: err.message } });
+  }
+});
+
+// GET /api/admin/courses/:id/lessons (Get course syllabus)
+router.get("/courses/:id/lessons", async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const [rows]: [any[], any] = await query(`
+      SELECT id, title, description, duration, lesson_order, is_preview, status, video_url
+      FROM lessons
+      WHERE course_id = ?
+      ORDER BY lesson_order ASC
+    `, [id]);
+    return res.json({ success: true, data: rows });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: { code: "SERVER_ERROR", message: err.message } });
+  }
+});
+
+// POST /api/admin/courses/:id/lessons (Add lesson to syllabus)
+router.post("/courses/:id/lessons", async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { title, description, duration, lessonOrder, isPreview, videoUrl } = req.body;
+
+    if (!title || !title.trim()) {
+      return res.status(400).json({ success: false, error: { code: "MISSING_TITLE", message: "Lesson title is required." } });
+    }
+
+    const lessonId = `lsn-${Date.now()}-${crypto.randomBytes(3).toString("hex")}`;
+    const order = lessonOrder ? Number(lessonOrder) : 1;
+
+    await query(`
+      INSERT INTO lessons (id, course_id, title, description, duration, lesson_order, is_preview, status, video_url)
+      VALUES (?, ?, ?, ?, ?, ?, ?, 'Published', ?)
+    `, [
+      lessonId,
+      id,
+      title.trim(),
+      description || "",
+      duration || "45 mins",
+      order,
+      isPreview ? 1 : 0,
+      videoUrl || null
+    ]);
+
+    return res.status(201).json({
+      success: true,
+      data: {
+        id: lessonId,
+        title: title.trim(),
+        duration: duration || "45 mins",
+        lessonOrder: order
+      },
+      message: "Lesson added to course syllabus."
+    });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: { code: "SERVER_ERROR", message: err.message } });
+  }
+});
+
+// PUT /api/admin/courses/:id/lessons/:lessonId (Update syllabus lesson)
+router.put("/courses/:id/lessons/:lessonId", async (req: Request, res: Response) => {
+  try {
+    const { lessonId } = req.params;
+    const { title, description, duration, lessonOrder, isPreview, videoUrl } = req.body;
+
+    await query(`
+      UPDATE lessons
+      SET title = COALESCE(?, title),
+          description = COALESCE(?, description),
+          duration = COALESCE(?, duration),
+          lesson_order = COALESCE(?, lesson_order),
+          is_preview = COALESCE(?, is_preview),
+          video_url = COALESCE(?, video_url)
+      WHERE id = ?
+    `, [
+      title ? title.trim() : null,
+      description !== undefined ? description : null,
+      duration || null,
+      lessonOrder ? Number(lessonOrder) : null,
+      isPreview !== undefined ? (isPreview ? 1 : 0) : null,
+      videoUrl !== undefined ? videoUrl : null,
+      lessonId
+    ]);
+
+    return res.json({ success: true, message: "Lesson updated successfully." });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: { code: "SERVER_ERROR", message: err.message } });
+  }
+});
+
+// DELETE /api/admin/courses/:id/lessons/:lessonId (Delete lesson)
+router.delete("/courses/:id/lessons/:lessonId", async (req: Request, res: Response) => {
+  try {
+    const { lessonId } = req.params;
+    await query("DELETE FROM lessons WHERE id = ?", [lessonId]);
+    return res.json({ success: true, message: "Lesson removed from syllabus." });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: { code: "SERVER_ERROR", message: err.message } });
+  }
+});
+
+// -------------------------------------------------------------
+// EXAMS MANAGEMENT FOR ADMINISTRATOR
+// -------------------------------------------------------------
+
+// GET /api/admin/exams (List of all exams)
+router.get("/exams", async (req: Request, res: Response) => {
+  try {
+    const [rows]: [any[], any] = await query(`
+      SELECT e.*, c.title as course_title, u.name as teacher_name,
+             (SELECT COUNT(*) FROM exam_submissions es WHERE es.exam_id = e.id) as submissions_count,
+             (SELECT AVG(es.score) FROM exam_submissions es WHERE es.exam_id = e.id) as avg_score,
+             (SELECT COUNT(*) FROM exam_submissions es WHERE es.exam_id = e.id AND es.passed = 1) as passed_count
+      FROM exams e
+      LEFT JOIN courses c ON e.course_id = c.id
+      LEFT JOIN users u ON e.teacher_id = u.id
+      WHERE e.deleted_at IS NULL
+      ORDER BY e.created_at DESC
+    `);
+
+    const formatted = rows.map((r: any) => ({
+      id: r.id,
+      title: r.title,
+      courseId: r.course_id,
+      courseTitle: r.course_title || "General",
+      teacherName: r.teacher_name || "Instructor",
+      description: r.description || "",
+      durationMinutes: r.duration_minutes || 60,
+      dueDate: r.due_date ? (r.due_date instanceof Date ? r.due_date.toISOString().split("T")[0] : String(r.due_date)) : "",
+      maxPoints: r.max_points || 100,
+      passPercentage: r.pass_percentage || 60,
+      status: r.status || "Published",
+      submissionsCount: Number(r.submissions_count || 0),
+      avgScore: Math.round(Number(r.avg_score || 0)),
+      passRate: r.submissions_count > 0 ? Math.round((Number(r.passed_count || 0) / Number(r.submissions_count)) * 100) : 0
+    }));
+
+    return res.json({ success: true, data: formatted });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: { code: "SERVER_ERROR", message: err.message } });
+  }
+});
+
+// POST /api/admin/exams (Create exam)
+router.post("/exams", async (req: Request, res: Response) => {
+  try {
+    const { title, courseId, teacherId, description, durationMinutes, dueDate, maxPoints, passPercentage } = req.body;
+
+    if (!title || !title.trim() || !courseId) {
+      return res.status(400).json({ success: false, error: { code: "MISSING_FIELDS", message: "Title and Course are required." } });
+    }
+
+    const examId = `ex-${Date.now()}-${crypto.randomBytes(3).toString("hex")}`;
+    await query(`
+      INSERT INTO exams (id, course_id, teacher_id, title, description, duration_minutes, due_date, max_points, pass_percentage, status)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'Published')
+    `, [
+      examId,
+      courseId,
+      teacherId || null,
+      title.trim(),
+      description || "",
+      durationMinutes ? Number(durationMinutes) : 60,
+      dueDate || null,
+      maxPoints ? Number(maxPoints) : 100,
+      passPercentage ? Number(passPercentage) : 60
+    ]);
+
+    return res.status(201).json({
+      success: true,
+      data: {
+        id: examId,
+        title: title.trim(),
+        courseId,
+        message: "Exam created and published."
+      }
+    });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: { code: "SERVER_ERROR", message: err.message } });
+  }
+});
+
+// PATCH /api/admin/exams/:id/publish (Publish exam results)
+router.patch("/exams/:id/publish", async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    await query("UPDATE exams SET status = 'Graded' WHERE id = ?", [id]);
+    return res.json({ success: true, message: "Exam results published." });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: { code: "SERVER_ERROR", message: err.message } });
+  }
+});
+
+// DELETE /api/admin/exams/:id (Delete exam)
+router.delete("/exams/:id", async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    await query("UPDATE exams SET deleted_at = NOW() WHERE id = ?", [id]);
+    return res.json({ success: true, message: "Exam removed." });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: { code: "SERVER_ERROR", message: err.message } });
+  }
+});
+
 export default router;

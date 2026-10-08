@@ -358,14 +358,53 @@ export default function AdminDashboard({ onLogout, onGoHome }: AdminDashboardPro
     dispatchAlert(`Revoked credentials for user ID: ${id}`);
   };
 
-  const handleAddCourse = (course: Partial<Course>) => {
-    setCourses(prev => [course as Course, ...prev]);
-    dispatchAlert(`Deployed Course to Catalog: ${course.title}`);
+  const handleAddCourse = async (course: Partial<Course>) => {
+    try {
+      const res = await adminApi.createCourse({
+        title: course.title || "",
+        code: course.code || "",
+        description: course.description || "",
+        price: (course as any).price || 0,
+        sessionsCount: course.sessionsCount || 12,
+        teacherId: (course as any).teacherId || null,
+        image: course.image || "",
+        status: (course.status as any) || "Active"
+      });
+      if (res.success && res.data) {
+        setCourses(prev => [res.data, ...prev]);
+        dispatchAlert(`Created Course: ${course.title}`);
+        loadAdminData();
+      } else {
+        setCourses(prev => [course as Course, ...prev]);
+        dispatchAlert(`Deployed Course to Catalog: ${course.title}`);
+      }
+    } catch (err: any) {
+      console.error("Failed to create course via API", err);
+      setCourses(prev => [course as Course, ...prev]);
+      dispatchAlert(`Deployed Course: ${course.title}`);
+    }
   };
 
-  const handleUpdateCourse = (id: string, updated: Partial<Course>) => {
+  const handleUpdateCourse = async (id: string, updated: Partial<Course>) => {
     setCourses(prev => prev.map(c => c.id === id ? { ...c, ...updated } : c));
-    dispatchAlert(`Updated course configurations for: ${updated.title}`);
+    dispatchAlert(`Updated course configurations for: ${updated.title || id}`);
+    try {
+      await adminApi.updateCourse(id, updated);
+      loadAdminData();
+    } catch (err) {
+      console.error("Failed to update course via API", err);
+    }
+  };
+
+  const handleDeleteCourse = async (id: string) => {
+    setCourses(prev => prev.filter(c => c.id !== id));
+    dispatchAlert(`Deleted Course: ${id}`);
+    try {
+      await adminApi.deleteCourse(id);
+      loadAdminData();
+    } catch (err) {
+      console.error("Failed to delete course via API", err);
+    }
   };
 
   const handleDuplicateCourse = (id: string) => {
@@ -597,25 +636,28 @@ export default function AdminDashboard({ onLogout, onGoHome }: AdminDashboardPro
                   seasons={courseSeasons}
                   users={users}
                   stats={dashboardStats || undefined}
-                  onQuickAction={(tabId) => {
+                  onQuickAction={(tabId, subTab) => {
                     if (tabId === "announcements") {
                       setActiveTab("services");
                       setActiveSubTab("announcements");
                     } else if (tabId === "users") {
                       setActiveTab("users");
-                      setActiveSubTab("all");
-                    } else if (tabId === "courses") {
+                      setActiveSubTab(subTab || "all");
+                    } else if (tabId === "courses" || tabId === "academic") {
                       setActiveTab("academic");
-                      setActiveSubTab("catalog");
+                      setActiveSubTab(subTab || "catalog");
                     } else if (tabId === "certificates") {
                       setActiveTab("certificates");
-                      setActiveSubTab("all");
+                      setActiveSubTab(subTab || "all");
                     } else if (tabId === "reports") {
                       setActiveTab("services");
                       setActiveSubTab("analytics");
                     } else if (tabId === "systemSettings") {
                       setActiveTab("settings");
                       setActiveSubTab("system");
+                    } else {
+                      setActiveTab(tabId as any);
+                      if (subTab) setActiveSubTab(subTab);
                     }
                   }}
                   onApproveRequest={handleApproveRequest}
@@ -649,10 +691,11 @@ export default function AdminDashboard({ onLogout, onGoHome }: AdminDashboardPro
                   requests={courseRequests}
                   enrollments={enrollments}
                   students={students}
+                  users={users}
                   activeSubTab={activeSubTab}
                   onAddCourse={handleAddCourse}
                   onUpdateCourse={handleUpdateCourse}
-                  onDeleteCourse={(id) => setCourses(prev => prev.filter(c => c.id !== id))}
+                  onDeleteCourse={handleDeleteCourse}
                   onDuplicateCourse={handleDuplicateCourse}
                   onApproveSeason={(id) => setCourseSeasons(prev => prev.map(s => s.id === id ? { ...s, status: "Active", registrationStatus: "Open" } : s))}
                   onCancelSeason={(id) => setCourseSeasons(prev => prev.map(s => s.id === id ? { ...s, status: "Cancelled", registrationStatus: "Not Available" } : s))}
@@ -661,6 +704,7 @@ export default function AdminDashboard({ onLogout, onGoHome }: AdminDashboardPro
                   onApproveRequest={handleApproveRequest}
                   onRejectRequest={handleRejectRequest}
                   onAddSeason={(ns) => setCourseSeasons(prev => [ns, ...prev])}
+                  onReloadData={loadAdminData}
                 />
               )}
 

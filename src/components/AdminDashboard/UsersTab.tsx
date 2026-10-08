@@ -65,6 +65,8 @@ export default function UsersTab({
   const [userTab, setUserTab] = useState<"all" | "students" | "teachers" | "normal" | "admins">(() => {
     if (activeSubTab === "students") return "students";
     if (activeSubTab === "teachers") return "teachers";
+    if (activeSubTab === "normal") return "normal";
+    if (activeSubTab === "admins") return "admins";
     return "all";
   });
 
@@ -79,6 +81,10 @@ export default function UsersTab({
       setUserTab("students");
     } else if (activeSubTab === "teachers") {
       setUserTab("teachers");
+    } else if (activeSubTab === "normal") {
+      setUserTab("normal");
+    } else if (activeSubTab === "admins") {
+      setUserTab("admins");
     } else if (activeSubTab === "all") {
       setUserTab("all");
     }
