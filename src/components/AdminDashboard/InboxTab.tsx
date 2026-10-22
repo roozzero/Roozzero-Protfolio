@@ -7,6 +7,7 @@ import {
   Calendar, Award, ArrowLeft, ArrowUpRight, Copy, CheckCircle, RefreshCw, X
 } from "lucide-react";
 import { adminApi } from "../../lib/api";
+import DeleteConfirmModal from "../common/DeleteConfirmModal";
 
 // Types
 export interface AdminMessage {
@@ -186,6 +187,53 @@ export default function InboxTab({
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // 2nd Confirmation Delete Modal State
+  const [deleteModalState, setDeleteModalState] = useState<{
+    isOpen: boolean;
+    type: "conv" | "announcement" | "sent";
+    id: string;
+    name: string;
+  }>({
+    isOpen: false,
+    type: "conv",
+    id: "",
+    name: ""
+  });
+  const [isDeletingItem, setIsDeletingItem] = useState(false);
+
+  const handleConfirmDelete = async () => {
+    setIsDeletingItem(true);
+    try {
+      if (deleteModalState.type === "conv") {
+        const conv = conversations.find(c => c.id === deleteModalState.id);
+        const targetId = conv?.backendId ? String(conv.backendId) : deleteModalState.id.replace("conv-msg-", "");
+        await adminApi.deleteMessage(targetId);
+        setConversations(prev => prev.filter(c => c.id !== deleteModalState.id));
+        if (selectedConv && selectedConv.id === deleteModalState.id) {
+          setSelectedConv(null);
+        }
+        showCustomToast("Conversation thread deleted permanently from database.", "success");
+      } else if (deleteModalState.type === "announcement") {
+        await adminApi.deleteAnnouncement(deleteModalState.id);
+        onDeleteAnnouncement(deleteModalState.id);
+        showCustomToast("Announcement deleted permanently from database.", "success");
+      } else if (deleteModalState.type === "sent") {
+        await adminApi.deleteMessage(deleteModalState.id);
+        setSentMessages(prev => prev.filter(s => s.id !== deleteModalState.id));
+        if (selectedSent?.id === deleteModalState.id) {
+          setSelectedSent(null);
+        }
+        showCustomToast("Sent message deleted from database archive.", "success");
+      }
+    } catch (err: any) {
+      console.error("Delete failed:", err);
+      showCustomToast(err.message || "Failed to delete item from database.", "warning");
+    } finally {
+      setIsDeletingItem(false);
+      setDeleteModalState(prev => ({ ...prev, isOpen: false }));
+    }
+  };
+
   // Auto Scroll thread
   useEffect(() => {
     if (selectedConv) {
@@ -249,13 +297,13 @@ export default function InboxTab({
   };
 
   const handleDeleteConv = (convId: string) => {
-    if (confirm("Are you sure you want to delete this entire conversation thread? This action is irreversible.")) {
-      setConversations(prev => prev.filter(c => c.id !== convId));
-      if (selectedConv && selectedConv.id === convId) {
-        setSelectedConv(null);
-      }
-      showCustomToast("Conversation thread deleted permanently.", "success");
-    }
+    const conv = conversations.find(c => c.id === convId);
+    setDeleteModalState({
+      isOpen: true,
+      type: "conv",
+      id: convId,
+      name: conv?.subject || "Conversation Thread"
+    });
   };
 
   const handleCloseConv = (conv: Conversation) => {
@@ -1670,10 +1718,12 @@ export default function InboxTab({
                             <span className="text-white/10">•</span>
                             <button
                               onClick={() => {
-                                if (confirm("Deleting this announcement removes it permanently from all recipient dashboards. Continue?")) {
-                                  onDeleteAnnouncement(ann.id);
-                                  showCustomToast("Announcement deleted permanently.", "success");
-                                }
+                                setDeleteModalState({
+                                  isOpen: true,
+                                  type: "announcement",
+                                  id: ann.id,
+                                  name: ann.title || "Announcement"
+                                });
                               }}
                               className="text-[10px] text-rose-400 hover:text-rose-300 flex items-center gap-1 cursor-pointer transition-colors"
                             >
@@ -1771,11 +1821,12 @@ export default function InboxTab({
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            if (confirm("Delete this sent message from your admin archive?")) {
-                              setSentMessages(prev => prev.filter(s => s.id !== sent.id));
-                              if (selectedSent?.id === sent.id) setSelectedSent(null);
-                              showCustomToast("Sent message record deleted.", "success");
-                            }
+                            setDeleteModalState({
+                              isOpen: true,
+                              type: "sent",
+                              id: sent.id,
+                              name: sent.subject || "Sent Message"
+                            });
                           }}
                           className="absolute right-3.5 bottom-3.5 p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 opacity-0 group-hover:opacity-100 transition-opacity"
                         >
@@ -1833,11 +1884,12 @@ export default function InboxTab({
                       </button>
                       <button
                         onClick={() => {
-                          if (confirm("Delete this sent record completely?")) {
-                            setSentMessages(prev => prev.filter(s => s.id !== selectedSent.id));
-                            setSelectedSent(null);
-                            showCustomToast("Sent message record deleted.", "success");
-                          }
+                          setDeleteModalState({
+                            isOpen: true,
+                            type: "sent",
+                            id: selectedSent.id,
+                            name: selectedSent.subject || "Sent Message"
+                          });
                         }}
                         className="p-2 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400"
                         title="Delete"
@@ -1933,6 +1985,23 @@ export default function InboxTab({
         )}
 
       </div>
+
+      {/* 2ND CONFIRMATION DELETE MODAL */}
+      <DeleteConfirmModal
+        isOpen={deleteModalState.isOpen}
+        title={
+          deleteModalState.type === "conv"
+            ? "Permanently Delete Conversation"
+            : deleteModalState.type === "announcement"
+            ? "Permanently Delete Announcement"
+            : "Permanently Delete Sent Message"
+        }
+        message="This action will permanently delete this record from the MySQL database. Are you sure you want to proceed?"
+        itemName={deleteModalState.name}
+        isDeleting={isDeletingItem}
+        onConfirm={handleConfirmDelete}
+        onClose={() => setDeleteModalState(prev => ({ ...prev, isOpen: false }))}
+      />
 
     </div>
   );

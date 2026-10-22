@@ -9,6 +9,67 @@ import { DEFAULT_CMS_CONFIG } from "../../src/constants/defaultCms";
 
 const router = Router();
 
+async function getPublishedCoursesForLanding(): Promise<any[]> {
+  try {
+    const [rows]: [any[], any] = await query(`
+      SELECT c.*, cat.name as category_name, u.name as teacher_name
+      FROM courses c
+      LEFT JOIN course_categories cat ON c.category_id = cat.id
+      LEFT JOIN users u ON c.teacher_id = u.id
+      WHERE (c.status = 'Published' OR c.is_published = 1) AND c.deleted_at IS NULL
+      ORDER BY c.created_at DESC
+    `);
+
+    const [cmsClasses]: [any[], any] = await query("SELECT id, syllabus_json, tags_json, display_order FROM cms_classes").catch(() => [[], []]);
+    const cmsMap = new Map((cmsClasses || []).map((c: any) => [c.id, c]));
+
+    return rows.map((r: any, idx: number) => {
+      let syllabusList: any[] = [];
+      if (r.syllabus_json) {
+        try {
+          syllabusList = typeof r.syllabus_json === "string" ? JSON.parse(r.syllabus_json) : r.syllabus_json;
+        } catch {}
+      }
+      const cms = cmsMap.get(r.id);
+      let cmsTags: string[] = [r.category_name || "Engineering", "Academy"];
+      if (cms?.tags_json) {
+        try {
+          cmsTags = typeof cms.tags_json === "string" ? JSON.parse(cms.tags_json) : cms.tags_json;
+        } catch {}
+      }
+      let cmsSyllabus: any[] = [];
+      if (cms?.syllabus_json) {
+        try {
+          cmsSyllabus = typeof cms.syllabus_json === "string" ? JSON.parse(cms.syllabus_json) : cms.syllabus_json;
+        } catch {}
+      }
+      const imgUrl = r.image || "https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop";
+      return {
+        id: r.id,
+        courseImage: imgUrl,
+        image: imgUrl,
+        courseName: r.title,
+        title: r.title,
+        code: r.code,
+        instructor: r.teacher_name || "Roozbeh",
+        price: r.price || "Free",
+        description: r.description || "",
+        shortDescription: r.short_description || r.description || "",
+        sessions: r.sessions_count || 16,
+        sessionsCount: r.sessions_count || 16,
+        status: "Published",
+        displayOrder: cms?.display_order ?? idx,
+        startDate: r.start_date ? String(r.start_date).split("T")[0] : "",
+        endDate: r.end_date ? String(r.end_date).split("T")[0] : "",
+        tags: Array.isArray(cmsTags) ? cmsTags : ["Engineering", "Web"],
+        syllabus: (Array.isArray(syllabusList) && syllabusList.length > 0) ? syllabusList : (Array.isArray(cmsSyllabus) ? cmsSyllabus : [])
+      };
+    });
+  } catch {
+    return [];
+  }
+}
+
 // -------------------------------------------------------------
 // GET /api/cms (Public)
 // -------------------------------------------------------------
@@ -17,6 +78,8 @@ router.get("/", async (req: Request, res: Response) => {
     if (!isDbConnected()) {
       return res.json({ success: true, data: DEFAULT_CMS_CONFIG });
     }
+
+    const publishedCourses = await getPublishedCoursesForLanding();
 
     // Check if published config exists in cms_versions
     try {
@@ -32,7 +95,7 @@ router.get("/", async (req: Request, res: Response) => {
             aboutMe: { ...DEFAULT_CMS_CONFIG.aboutMe, ...(parsed.aboutMe || {}) },
             skills: { ...DEFAULT_CMS_CONFIG.skills, ...(parsed.skills || {}) },
             projects: { ...DEFAULT_CMS_CONFIG.projects, ...(parsed.projects || {}) },
-            classes: Array.isArray(parsed.classes) && parsed.classes.length > 0 ? parsed.classes : DEFAULT_CMS_CONFIG.classes,
+            classes: publishedCourses.length > 0 ? publishedCourses : (Array.isArray(parsed.classes) && parsed.classes.length > 0 ? parsed.classes : DEFAULT_CMS_CONFIG.classes),
             testimonials: { ...DEFAULT_CMS_CONFIG.testimonials, ...(parsed.testimonials || {}) },
             contact: { ...DEFAULT_CMS_CONFIG.contact, ...(parsed.contact || {}) },
             footer: { ...DEFAULT_CMS_CONFIG.footer, ...(parsed.footer || {}) }
@@ -131,7 +194,7 @@ router.get("/", async (req: Request, res: Response) => {
         })) : DEFAULT_CMS_CONFIG.projects.projects
       },
 
-      classes: classes.length > 0 ? classes.map(c => ({
+      classes: publishedCourses.length > 0 ? publishedCourses : (classes.length > 0 ? classes.map(c => ({
         id: c.id,
         courseImage: c.course_image,
         courseName: c.course_name,
@@ -141,9 +204,9 @@ router.get("/", async (req: Request, res: Response) => {
         sessions: c.sessions,
         status: c.status,
         displayOrder: c.display_order,
-        tags: c.tags_json || [],
-        syllabus: c.syllabus_json || []
-      })) : DEFAULT_CMS_CONFIG.classes,
+        tags: typeof c.tags_json === "string" ? JSON.parse(c.tags_json || "[]") : (c.tags_json || []),
+        syllabus: typeof c.syllabus_json === "string" ? JSON.parse(c.syllabus_json || "[]") : (c.syllabus_json || [])
+      })) : DEFAULT_CMS_CONFIG.classes),
 
       classesHeader: DEFAULT_CMS_CONFIG.classesHeader,
 

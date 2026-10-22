@@ -13,8 +13,8 @@ dotenv.config();
 
 // Ensure local MySQL/MariaDB service is running if present
 try {
-  if (fs.existsSync("/usr/bin/mysqld_safe") || fs.existsSync("/usr/sbin/mysqld")) {
-    execSync("pgrep -x mysqld > /dev/null || pgrep -x mariadbd > /dev/null || (/usr/bin/mysqld_safe --user=mysql --nowatch 2>&1 & sleep 2)");
+  if (fs.existsSync("/etc/init.d/mariadb") || fs.existsSync("/etc/init.d/mysql") || fs.existsSync("/usr/bin/mysqld_safe") || fs.existsSync("/usr/sbin/mysqld")) {
+    execSync("pgrep -x mysqld > /dev/null || pgrep -x mariadbd > /dev/null || (/etc/init.d/mariadb start 2>&1 || /etc/init.d/mysql start 2>&1 || /usr/bin/mysqld_safe --user=mysql --nowatch 2>&1 & sleep 2)");
   }
 } catch {}
 

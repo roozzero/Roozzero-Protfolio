@@ -3,7 +3,7 @@ import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import { query, getDbPool } from "../db/pool";
 import { requireAuth, requireRole } from "../middleware/auth";
-import { uploadResourceFile, uploadCorrectedFile, uploadProfile } from "../middleware/upload";
+import { uploadResourceFile, uploadCorrectedFile, uploadProfile, uploadMedia } from "../middleware/upload";
 
 const router = Router();
 
@@ -124,27 +124,150 @@ router.get("/courses", async (req: Request, res: Response) => {
 
     const [rows]: [any[], any] = await query(`
       SELECT c.*, cat.name as category_name,
-             (SELECT COUNT(*) FROM enrollments e WHERE e.course_id = c.id) as studentsCount,
-             (SELECT COUNT(*) FROM sessions s WHERE s.course_id = c.id AND s.deleted_at IS NULL) as sessionsCount
+             (SELECT COUNT(*) FROM enrollments e WHERE e.course_id = c.id) as realStudentsCount,
+             (SELECT COUNT(*) FROM sessions s WHERE s.course_id = c.id AND s.deleted_at IS NULL) as realSessionsCount
       FROM courses c
       LEFT JOIN course_categories cat ON c.category_id = cat.id
-      WHERE ${isSuperAdmin ? "c.deleted_at IS NULL" : "c.teacher_id = ? AND c.deleted_at IS NULL"}
+      WHERE (${isSuperAdmin ? "c.deleted_at IS NULL" : "(c.teacher_id = ? OR c.requested_by = ?) AND c.deleted_at IS NULL"})
       ORDER BY c.created_at DESC
-    `, isSuperAdmin ? [] : [teacherId]);
+    `, isSuperAdmin ? [] : [teacherId, teacherId]);
 
-    const formatted = rows.map(r => ({
-      id: r.id,
-      title: r.title,
-      code: r.code,
-      studentsCount: r.studentsCount || 0,
-      sessionsCount: r.sessionsCount || 0,
-      progress: r.progress || 0,
-      status: r.status,
-      image: r.image
-    }));
+    const formatted = rows.map((r: any) => {
+      let syllabusList: any[] = [];
+      if (r.syllabus_json) {
+        try {
+          syllabusList = typeof r.syllabus_json === "string" ? JSON.parse(r.syllabus_json) : r.syllabus_json;
+        } catch {
+          syllabusList = [];
+        }
+      }
+
+      return {
+        id: r.id,
+        title: r.title,
+        courseName: r.title,
+        code: r.code,
+        price: r.price || "$0",
+        description: r.description || "",
+        shortDescription: r.short_description || r.description || "",
+        categoryId: r.category_id,
+        categoryName: r.category_name || "General",
+        studentsCount: r.realStudentsCount || r.students_count || 0,
+        sessionsCount: r.realSessionsCount || r.sessions_count || 12,
+        sessions: r.realSessionsCount || r.sessions_count || 12,
+        progress: r.progress || 0,
+        status: r.status,
+        image: r.image || "",
+        courseImage: r.image || "",
+        startDate: r.start_date ? (r.start_date instanceof Date ? r.start_date.toISOString().split("T")[0] : String(r.start_date).split("T")[0]) : "",
+        endDate: r.end_date ? (r.end_date instanceof Date ? r.end_date.toISOString().split("T")[0] : String(r.end_date).split("T")[0]) : "",
+        syllabusJson: syllabusList,
+        syllabus: syllabusList,
+        isPublished: Boolean(r.is_published || r.status === "Published"),
+        approvalStatus: r.approval_status || "Approved",
+        requestedBy: r.requested_by,
+        isMyRequest: r.requested_by === teacherId
+      };
+    });
 
     return res.json({ success: true, data: formatted });
   } catch (err: any) {
+    return res.status(500).json({ success: false, error: { code: "SERVER_ERROR", message: err.message } });
+  }
+});
+
+// POST /api/teacher/courses/upload-image (Upload course cover image)
+router.post("/courses/upload-image", uploadMedia.single("image"), async (req: Request, res: Response) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, error: { code: "NO_FILE", message: "No image file uploaded." } });
+    }
+    const publicUrl = `/uploads/media/${req.file.filename}`;
+    return res.json({ success: true, url: publicUrl, filename: req.file.filename });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: { code: "UPLOAD_ERROR", message: err.message } });
+  }
+});
+
+// POST /api/teacher/courses/request (Teacher proposes new course to Admin)
+router.post("/courses/request", async (req: Request, res: Response) => {
+  try {
+    const teacherId = req.user!.id;
+    const teacherName = req.user!.name || "Instructor";
+    const {
+      title,
+      code,
+      price,
+      description,
+      shortDescription,
+      categoryId,
+      sessionsCount,
+      image,
+      startDate,
+      endDate,
+      syllabusJson
+    } = req.body;
+
+    if (!title || !title.trim()) {
+      return res.status(400).json({ success: false, error: { code: "MISSING_TITLE", message: "Course title is required." } });
+    }
+
+    const courseId = `crs-${Date.now()}-${crypto.randomBytes(3).toString("hex")}`;
+    const courseCode = (code && code.trim()) || `CRS-${Math.floor(100 + Math.random() * 900)}`;
+    const courseSlug = title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+    const syllabusStr = syllabusJson ? (typeof syllabusJson === "string" ? syllabusJson : JSON.stringify(syllabusJson)) : JSON.stringify([]);
+
+    await query(`
+      INSERT INTO courses (
+        id, title, code, slug, price, description, short_description,
+        category_id, teacher_id, sessions_count, students_count, status,
+        image, start_date, end_date, syllabus_json, is_published,
+        requested_by, approval_status
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 'PendingApproval', ?, ?, ?, ?, 0, ?, 'Pending')
+    `, [
+      courseId,
+      title.trim(),
+      courseCode,
+      courseSlug,
+      typeof price === "number" ? `$${price}` : (price || "$0"),
+      description || "",
+      shortDescription || description || "",
+      categoryId ? Number(categoryId) : 1,
+      teacherId,
+      sessionsCount ? Number(sessionsCount) : 12,
+      image || null,
+      startDate ? startDate.substring(0, 10) : null,
+      endDate ? endDate.substring(0, 10) : null,
+      syllabusStr,
+      teacherId
+    ]);
+
+    // Audit log
+    await query("INSERT INTO activity_logs (user_id, action, details) VALUES (?, 'ProposeCourse', ?)", [
+      teacherId,
+      `Instructor ${teacherName} submitted proposal for course "${title.trim()}"`
+    ]);
+
+    // Internal notification to admin
+    await query("INSERT INTO notifications (user_id, type, title, message) VALUES ('admin-1', 'course_request', ?, ?)", [
+      `New Course Proposal: ${title.trim()}`,
+      `Instructor ${teacherName} has requested a new course "${title.trim()}". Review and approve in Academic catalog.`
+    ]);
+
+    return res.status(201).json({
+      success: true,
+      message: "Course proposal submitted successfully to Administrator for review.",
+      data: {
+        id: courseId,
+        title: title.trim(),
+        code: courseCode,
+        status: "PendingApproval",
+        approvalStatus: "Pending"
+      }
+    });
+  } catch (err: any) {
+    console.error("[Teacher Propose Course Error]:", err);
     return res.status(500).json({ success: false, error: { code: "SERVER_ERROR", message: err.message } });
   }
 });
@@ -943,6 +1066,52 @@ router.patch("/messages/:id/read", async (req: Request, res: Response) => {
 });
 
 // -------------------------------------------------------------
+// GET /api/teacher/messages/:id/thread (Chat-Style Conversation Thread with Admin)
+// -------------------------------------------------------------
+router.get("/messages/:id/thread", async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const teacherId = req.user!.id;
+
+    // Fetch parent or initial message
+    const [origRows]: [any[], any] = await query("SELECT * FROM internal_messages WHERE id = ?", [id]);
+    if (origRows.length === 0) {
+      return res.status(404).json({ success: false, error: { code: "NOT_FOUND", message: "Message thread not found." } });
+    }
+
+    const orig = origRows[0];
+    const rootId = orig.reply_to_id || orig.id;
+
+    // Fetch all messages in this conversation thread (root and all replies)
+    const [threadRows]: [any[], any] = await query(`
+      SELECT m.*, u.avatar_url, u.name as current_user_name
+      FROM internal_messages m
+      LEFT JOIN users u ON m.sender_id = u.id
+      WHERE m.id = ? OR m.reply_to_id = ? OR (m.reply_to_id IS NOT NULL AND m.reply_to_id IN (SELECT id FROM internal_messages WHERE reply_to_id = ?))
+      ORDER BY m.created_at ASC
+    `, [rootId, rootId, rootId]);
+
+    const messages = threadRows.map((m: any) => ({
+      id: m.id,
+      replyToId: m.reply_to_id,
+      senderId: m.sender_id,
+      senderName: m.sender_name || m.current_user_name || (m.sender_role === "admin" ? "Administrator" : "Instructor"),
+      senderRole: m.sender_role,
+      senderAvatar: m.avatar_url || "",
+      subject: m.subject,
+      content: m.content,
+      isFromMe: m.sender_id === teacherId,
+      timestamp: m.created_at instanceof Date ? m.created_at.toISOString() : String(m.created_at)
+    }));
+
+    return res.json({ success: true, data: messages });
+  } catch (err: any) {
+    console.error("[Get Message Thread Error]:", err);
+    return res.status(500).json({ success: false, error: { code: "SERVER_ERROR", message: err.message } });
+  }
+});
+
+// -------------------------------------------------------------
 // POST /api/teacher/messages/:id/reply
 // -------------------------------------------------------------
 router.post("/messages/:id/reply", async (req: Request, res: Response) => {
@@ -980,7 +1149,20 @@ router.post("/messages/:id/reply", async (req: Request, res: Response) => {
       VALUES (?, 'message', ?, ?)
     `, [targetUserId, `Instructor Reply: ${orig.subject}`, `${teacherName} replied: "${replyText.trim().substring(0, 100)}"`]);
 
-    return res.json({ success: true, message: "Reply dispatched successfully." });
+    const newMsg = {
+      id: replyId,
+      replyToId: id,
+      senderId: teacherId,
+      senderName: teacherName,
+      senderRole: "teacher",
+      senderAvatar: req.user!.avatarUrl || "",
+      subject: `Re: ${orig.subject}`,
+      content: replyText.trim(),
+      isFromMe: true,
+      timestamp: new Date().toISOString()
+    };
+
+    return res.json({ success: true, message: "Reply dispatched successfully.", data: newMsg });
   } catch (err: any) {
     console.error("[Teacher Reply Error]:", err);
     return res.status(500).json({ success: false, error: { code: "SERVER_ERROR", message: err.message } });

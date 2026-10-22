@@ -11,6 +11,8 @@ import {
 } from "lucide-react";
 import { Course, Student, Session, Assignment, DiscussionThread, Resource } from "../types/teacher";
 import { teacherApi, authApi } from "../lib/api";
+import ImageCropperModal from "./common/ImageCropperModal";
+import CourseSyllabusModal, { SyllabusItem } from "./common/CourseSyllabusModal";
 
 interface TeacherDashboardProps {
   currentUser?: any;
@@ -31,14 +33,50 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
 
   // Teacher Data from authoritative MySQL Backend
   const [courses, setCourses] = useState<Course[]>([]);
+  const [proposedCourses, setProposedCourses] = useState<any[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [discussions, setDiscussions] = useState<DiscussionThread[]>([]);
   const [messages, setMessages] = useState<any[]>([]);
   const [selectedMessageId, setSelectedMessageId] = useState<string | null>(null);
+  const [threadMessages, setThreadMessages] = useState<any[]>([]);
+  const [isLoadingThread, setIsLoadingThread] = useState(false);
+  const chatEndRef = useRef<HTMLDivElement>(null);
   const [teacherReplyText, setTeacherReplyText] = useState("");
   const [isSendingTeacherReply, setIsSendingTeacherReply] = useState(false);
+
+  // Course Request Modal State (for teacher proposing a new course)
+  const [showCourseRequestModal, setShowCourseRequestModal] = useState(false);
+  const [showCourseCropperModal, setShowCourseCropperModal] = useState(false);
+  const [showCourseSyllabusModal, setShowCourseSyllabusModal] = useState(false);
+  const [isSubmittingCourseRequest, setIsSubmittingCourseRequest] = useState(false);
+  const [courseRequestForm, setCourseRequestForm] = useState<{
+    title: string;
+    code: string;
+    categoryId: number;
+    price: string;
+    sessionsCount: number;
+    description: string;
+    shortDescription: string;
+    image: string;
+    startDate: string;
+    endDate: string;
+    syllabus: SyllabusItem[];
+  }>({
+    title: "",
+    code: "",
+    categoryId: 1,
+    price: "$199",
+    sessionsCount: 16,
+    description: "",
+    shortDescription: "",
+    image: "https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop",
+    startDate: new Date().toISOString().split("T")[0],
+    endDate: new Date(Date.now() + 90 * 86400000).toISOString().split("T")[0],
+    syllabus: []
+  });
+
   const [messageSearch, setMessageSearch] = useState("");
   const [resources, setResources] = useState<Resource[]>([]);
   const [dashboardStats, setDashboardStats] = useState<any>(null);
@@ -180,10 +218,13 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
         setDashboardStats(dashRes.data);
       }
       if (cRes.success && Array.isArray(cRes.data)) {
-        setCourses(cRes.data);
-        if (cRes.data.length > 0) {
-          setNewSessionData((prev) => ({ ...prev, courseId: prev.courseId || cRes.data[0].id }));
-          setNewAssignmentData((prev) => ({ ...prev, courseId: prev.courseId || cRes.data[0].id }));
+        const activeTeaching = cRes.data.filter((c: any) => c.approvalStatus !== "Pending" && c.status !== "PendingApproval");
+        const pendingProposals = cRes.data.filter((c: any) => c.approvalStatus === "Pending" || c.status === "PendingApproval");
+        setCourses(activeTeaching);
+        setProposedCourses(pendingProposals);
+        if (activeTeaching.length > 0) {
+          setNewSessionData((prev) => ({ ...prev, courseId: prev.courseId || activeTeaching[0].id }));
+          setNewAssignmentData((prev) => ({ ...prev, courseId: prev.courseId || activeTeaching[0].id }));
         }
       }
       if (sRes.success && Array.isArray(sRes.data)) setStudents(sRes.data);
@@ -208,13 +249,68 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
     loadTeacherData();
   }, []);
 
+  // Load message thread for active conversation
+  useEffect(() => {
+    if (selectedMessageId) {
+      setIsLoadingThread(true);
+      teacherApi.getMessageThread(selectedMessageId)
+        .then((res) => {
+          if (res.success && Array.isArray(res.data) && res.data.length > 0) {
+            setThreadMessages(res.data);
+          } else {
+            const base = messages.find(m => m.id === selectedMessageId);
+            if (base) {
+              setThreadMessages([{
+                id: base.id,
+                senderName: base.from || "Administrator",
+                senderRole: "admin",
+                content: base.body || base.content || "",
+                timestamp: base.date || "Today",
+                isFromMe: false
+              }]);
+            }
+          }
+        })
+        .catch(() => {
+          const base = messages.find(m => m.id === selectedMessageId);
+          if (base) {
+            setThreadMessages([{
+              id: base.id,
+              senderName: base.from || "Administrator",
+              senderRole: "admin",
+              content: base.body || base.content || "",
+              timestamp: base.date || "Today",
+              isFromMe: false
+            }]);
+          }
+        })
+        .finally(() => {
+          setIsLoadingThread(false);
+          setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
+        });
+    }
+  }, [selectedMessageId, messages]);
+
   const handleSendTeacherReply = async (msgId: string) => {
     if (!teacherReplyText.trim()) return;
+    const textToSend = teacherReplyText.trim();
     setIsSendingTeacherReply(true);
     try {
-      await teacherApi.replyMessage(msgId, teacherReplyText.trim());
-      showToast("Reply sent safely and stored in database.", "success");
+      await teacherApi.replyMessage(msgId, textToSend);
+      showToast("Reply sent successfully and synced with database.", "success");
       setTeacherReplyText("");
+      // Instant AJAX append to chat thread
+      const newReply = {
+        id: `rep-${Date.now()}`,
+        senderName: profile?.name || "You",
+        senderRole: "teacher",
+        content: textToSend,
+        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        isFromMe: true
+      };
+      setThreadMessages(prev => [...prev, newReply]);
+      setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
+
       const mRes = await teacherApi.getMessages();
       if (mRes.success && Array.isArray(mRes.data)) {
         setMessages(mRes.data);
@@ -223,6 +319,80 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
       showToast(err.message || "Failed to send reply.", "error");
     } finally {
       setIsSendingTeacherReply(false);
+    }
+  };
+
+  // Open Course Proposal Modal for Teacher
+  const handleOpenRequestCourse = () => {
+    const today = new Date();
+    const futureDate = new Date();
+    futureDate.setDate(today.getDate() + 90);
+
+    setCourseRequestForm({
+      title: "",
+      code: `CRS-${Math.floor(100 + Math.random() * 900)}`,
+      categoryId: 1,
+      price: "$199",
+      sessionsCount: 16,
+      description: "",
+      shortDescription: "",
+      image: "https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop",
+      startDate: today.toISOString().split("T")[0],
+      endDate: futureDate.toISOString().split("T")[0],
+      syllabus: []
+    });
+    setShowCourseRequestModal(true);
+  };
+
+  // Submit Course Proposal to Admin
+  const handleCourseRequestSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!courseRequestForm.title.trim()) {
+      showToast("Course title is required.", "error");
+      return;
+    }
+    setIsSubmittingCourseRequest(true);
+    try {
+      const payload = {
+        title: courseRequestForm.title.trim(),
+        code: courseRequestForm.code.trim(),
+        categoryId: Number(courseRequestForm.categoryId),
+        price: courseRequestForm.price,
+        sessionsCount: Number(courseRequestForm.sessionsCount),
+        description: courseRequestForm.description,
+        shortDescription: courseRequestForm.shortDescription || courseRequestForm.description,
+        image: courseRequestForm.image,
+        startDate: courseRequestForm.startDate || null,
+        endDate: courseRequestForm.endDate || null,
+        syllabusJson: courseRequestForm.syllabus
+      };
+
+      const res = await teacherApi.requestNewCourse(payload);
+      if (res.success) {
+        showToast("Course proposal submitted to Administrator for review and publication.", "success");
+        setShowCourseRequestModal(false);
+        setProposedCourses(prev => [
+          {
+            id: res.data?.id || `req-${Date.now()}`,
+            title: payload.title,
+            code: payload.code,
+            price: payload.price,
+            sessionsCount: payload.sessionsCount,
+            status: "Pending Approval",
+            approvalStatus: "Pending",
+            image: payload.image,
+            startDate: payload.startDate,
+            endDate: payload.endDate,
+            syllabus: payload.syllabusJson
+          },
+          ...prev
+        ]);
+        loadTeacherData();
+      }
+    } catch (err: any) {
+      showToast(err.message || "Failed to submit course proposal.", "error");
+    } finally {
+      setIsSubmittingCourseRequest(false);
     }
   };
 
@@ -1030,23 +1200,66 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
           {/* TAB 2: MY COURSES */}
           {activeTab === "courses" && (
             <div className="space-y-6">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
                   <h3 className="text-base font-bold text-white">My Teaching Courses</h3>
                   <p className="text-xs text-white/40 mt-0.5">Comprehensive roster of courses assigned to your instruction</p>
                 </div>
+                <button
+                  type="button"
+                  onClick={handleOpenRequestCourse}
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-indigo-600/20 flex items-center gap-1.5 cursor-pointer self-start sm:self-center"
+                >
+                  <Plus size={14} />
+                  <span>Propose New Course</span>
+                </button>
               </div>
+
+              {/* Proposed Courses Section (Awaiting Admin Review & Publishing) */}
+              {proposedCourses.length > 0 && (
+                <div className="space-y-3 p-5 rounded-2xl bg-amber-500/[0.03] border border-amber-500/20 text-left">
+                  <div className="flex items-center gap-2">
+                    <Clock size={15} className="text-amber-400" />
+                    <h4 className="text-xs font-bold text-amber-300 uppercase tracking-wider">
+                      My Submitted Course Proposals ({proposedCourses.length})
+                    </h4>
+                  </div>
+                  <p className="text-[11px] text-white/50">
+                    These proposals have been sent to the administrator. Once approved, the admin can publish them to make them live on the public landing page.
+                  </p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+                    {proposedCourses.map((req) => (
+                      <div key={req.id} className="p-4 rounded-xl bg-white/[0.02] border border-amber-500/25 space-y-2">
+                        <div className="flex justify-between items-start gap-2">
+                          <div>
+                            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/30 font-bold uppercase">{req.code || "PROPOSAL"}</span>
+                            <h5 className="text-sm font-bold text-white mt-1.5">{req.title}</h5>
+                          </div>
+                          <span className="text-[9px] font-mono px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-bold shrink-0">
+                            Pending Admin Review
+                          </span>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-3 text-[11px] font-mono text-white/50 pt-2 border-t border-white/[0.04]">
+                          <span>Price: <strong className="text-white">{req.price || "$199"}</strong></span>
+                          <span>Sessions: <strong className="text-white">{req.sessionsCount || 16}</strong></span>
+                          <span>Syllabus: <strong className="text-indigo-400">{Array.isArray(req.syllabus) ? req.syllabus.length : 0} Topics</strong></span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {courses.length === 0 ? (
                 <div className="p-12 text-center rounded-2xl bg-white/[0.02] border border-white/[0.06] text-white/40 text-xs font-mono">
-                  No courses have been assigned to your account yet.
+                  No published courses have been assigned to your account yet. You can propose a new course above.
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {courses.map((course) => (
                     <div
                       key={course.id}
-                      className="p-6 rounded-2xl bg-white/[0.02] border border-white/[0.06] backdrop-blur-md space-y-4 hover:border-indigo-500/30 transition-all"
+                      className="p-6 rounded-2xl bg-white/[0.02] border border-white/[0.06] backdrop-blur-md space-y-4 hover:border-indigo-500/30 transition-all text-left"
                     >
                       <div className="flex items-start justify-between">
                         <div>
@@ -1458,57 +1671,99 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
                 </div>
               </div>
 
-              {/* Message Details */}
-              <div className="lg:col-span-2 bg-[#08080c] border border-white/[0.06] rounded-3xl p-6 space-y-6 text-left">
+              {/* Message Details & Chat Conversation */}
+              <div className="lg:col-span-2 bg-[#08080c] border border-white/[0.06] rounded-3xl p-6 flex flex-col h-[620px] text-left">
                 {(() => {
                   const currentMsg = messages.find(m => m.id === selectedMessageId) || messages[0];
-                  if (!currentMsg) return <div className="text-white/40 text-sm text-left">No message selected.</div>;
+                  if (!currentMsg) return <div className="text-white/40 text-sm text-left m-auto">No message selected.</div>;
                   return (
-                    <>
-                      <div className="border-b border-white/[0.05] pb-4 space-y-2 text-left animate-fade-in">
-                        <div className="flex items-center justify-between">
-                          <span className="font-sans text-xs text-white/40">From: <strong className="text-white">{currentMsg.from}</strong></span>
-                          <span className="font-mono text-[10px] text-white/40">{currentMsg.date}</span>
+                    <div className="flex flex-col h-full space-y-4">
+                      {/* Thread Top Header */}
+                      <div className="border-b border-white/[0.05] pb-3 shrink-0 flex items-center justify-between">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-sans text-xs text-indigo-400 font-bold">From: {currentMsg.from || "Administrator"}</span>
+                            <span className="text-[10px] text-white/30 font-mono">({currentMsg.date || "Recent"})</span>
+                          </div>
+                          <h2 className="font-sans text-base font-extrabold text-white leading-tight mt-0.5">{currentMsg.subject}</h2>
                         </div>
-                        <h2 className="font-sans text-lg font-black text-white leading-tight">{currentMsg.subject}</h2>
-                      </div>
-                      <div className="bg-white/[0.01] border border-white/[0.03] p-5 rounded-2xl min-h-[160px] text-left animate-fade-in">
-                        <p className="font-sans text-xs text-white/80 leading-relaxed whitespace-pre-line">{currentMsg.body || currentMsg.content}</p>
+                        <span className="px-2.5 py-1 rounded-full text-[10px] font-mono font-bold bg-indigo-500/15 text-indigo-300 border border-indigo-500/30">
+                          Interactive Chat
+                        </span>
                       </div>
 
-                      {/* Attachments rendering */}
+                      {/* Scrollable Chat Messages Container */}
+                      <div className="flex-1 overflow-y-auto space-y-3.5 pr-2 select-text scrollbar-thin scrollbar-thumb-white/10">
+                        {/* Initial Root Message from Sender */}
+                        <div className="flex flex-col items-start">
+                          <div className="flex items-center gap-1.5 mb-1 px-1">
+                            <span className="text-[10px] font-bold text-white/60">{currentMsg.from || "Administrator"}</span>
+                            <span className="text-[9px] text-white/30 font-mono">{currentMsg.date}</span>
+                          </div>
+                          <div className="max-w-[85%] p-4 rounded-2xl rounded-tl-none bg-[#111116] border border-white/10 text-xs text-white/90 leading-relaxed whitespace-pre-line shadow-md">
+                            {currentMsg.body || currentMsg.content}
+                          </div>
+                        </div>
+
+                        {/* Thread Replies (Exchanged Messages in Chat Format) */}
+                        {threadMessages
+                          .filter(m => m.id !== currentMsg.id && m.content !== (currentMsg.body || currentMsg.content))
+                          .map((m, idx) => (
+                            <div
+                              key={m.id || idx}
+                              className={`flex flex-col ${m.isFromMe ? "items-end" : "items-start"}`}
+                            >
+                              <div className="flex items-center gap-1.5 mb-1 px-1">
+                                <span className={`text-[10px] font-bold ${m.isFromMe ? "text-indigo-400" : "text-white/60"}`}>
+                                  {m.isFromMe ? "You (Instructor)" : (m.senderName || "Administrator")}
+                                </span>
+                                <span className="text-[9px] text-white/30 font-mono">
+                                  {m.timestamp ? String(m.timestamp).split("T")[0] : ""}
+                                </span>
+                              </div>
+                              <div
+                                className={`max-w-[85%] p-4 rounded-2xl text-xs leading-relaxed whitespace-pre-line shadow-md ${
+                                  m.isFromMe
+                                    ? "bg-gradient-to-br from-indigo-600 to-indigo-700 text-white rounded-tr-none border border-indigo-400/20"
+                                    : "bg-[#111116] text-white/90 rounded-tl-none border border-white/10"
+                                }`}
+                              >
+                                {m.content}
+                              </div>
+                            </div>
+                          ))}
+                        <div ref={chatEndRef} />
+                      </div>
+
+                      {/* Attachments (if available) */}
                       {currentMsg.attachments && currentMsg.attachments.length > 0 && (
-                        <div className="pt-4 border-t border-white/[0.05] space-y-2.5 mt-4 text-left animate-fade-in">
-                          <span className="text-[10px] text-white/40 font-mono uppercase tracking-wider block font-bold">Attachments ({currentMsg.attachments.length})</span>
-                          <div className="flex flex-wrap gap-2.5">
+                        <div className="pt-2 border-t border-white/[0.04] shrink-0">
+                          <span className="text-[9px] text-white/40 font-mono uppercase tracking-wider block font-bold mb-1.5">Attachments</span>
+                          <div className="flex flex-wrap gap-2">
                             {currentMsg.attachments.map((att: any, i: number) => (
                               <button
                                 type="button"
                                 key={i}
                                 onClick={() => showToast(`Downloading "${att.name}"...`)}
-                                className="flex items-center gap-2 text-xs text-indigo-400 hover:text-indigo-300 font-sans transition-colors bg-white/[0.02] hover:bg-white/[0.04] border border-white/10 rounded-xl px-3.5 py-2 cursor-pointer"
+                                className="flex items-center gap-1.5 text-[11px] text-indigo-400 hover:text-indigo-300 font-sans bg-white/[0.02] border border-white/10 rounded-lg px-2.5 py-1 cursor-pointer"
                               >
-                                <FileText size={13} className="text-indigo-400" />
-                                <span className="underline font-medium">{att.name}</span>
-                                {att.size && <span className="text-[10px] text-white/30 font-mono font-normal">({att.size})</span>}
+                                <FileText size={12} className="text-indigo-400" />
+                                <span className="underline">{att.name}</span>
                               </button>
                             ))}
                           </div>
                         </div>
                       )}
 
-                      {/* Reply to Sender form */}
-                      <div className="pt-4 border-t border-white/[0.05] space-y-2.5 mt-4 text-left animate-fade-in">
-                        <span className="text-[10px] text-white/40 font-mono uppercase tracking-wider block font-bold">
-                          Direct Reply to Academy
-                        </span>
+                      {/* Bottom Chat Composer */}
+                      <div className="pt-3 border-t border-white/[0.06] shrink-0">
                         <div className="flex gap-2">
                           <input
                             type="text"
                             value={teacherReplyText}
                             onChange={(e) => setTeacherReplyText(e.target.value)}
-                            placeholder="Type your response to the sender..."
-                            className="flex-1 bg-white/[0.02] border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white placeholder-white/30 focus:outline-none focus:border-indigo-500/50 transition-all font-sans"
+                            placeholder="Write your chat response to administrator..."
+                            className="flex-1 bg-white/[0.03] border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white placeholder-white/30 focus:outline-none focus:border-indigo-500/50 transition-all font-sans"
                             onKeyDown={(e) => {
                               if (e.key === "Enter" && teacherReplyText.trim()) {
                                 handleSendTeacherReply(currentMsg.id);
@@ -1522,11 +1777,11 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
                             className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white text-xs font-bold transition-all shadow-md shadow-indigo-600/20 cursor-pointer flex items-center gap-1.5"
                           >
                             <Send size={13} />
-                            <span>{isSendingTeacherReply ? "Sending..." : "Reply"}</span>
+                            <span>{isSendingTeacherReply ? "Sending..." : "Send"}</span>
                           </button>
                         </div>
                       </div>
-                    </>
+                    </div>
                   );
                 })()}
               </div>
@@ -2466,6 +2721,254 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
           </div>
         )}
       </AnimatePresence>
+
+      {/* TEACHER PROPOSE NEW COURSE MODAL (Matches Admin Modal) */}
+      <AnimatePresence>
+        {showCourseRequestModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="w-full max-w-2xl bg-[#0d0d12] border border-white/10 rounded-3xl p-6 text-left space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto font-sans"
+            >
+              <div className="flex justify-between items-center border-b border-white/[0.05] pb-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400">
+                    <BookOpen size={16} />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-white">Propose New Course to Administrator</h3>
+                    <p className="text-[11px] text-zinc-400">Specify curriculum syllabus, dates, and cover photo for admin approval</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowCourseRequestModal(false)}
+                  className="p-1 rounded-lg text-white/40 hover:text-white cursor-pointer"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              <form onSubmit={handleCourseRequestSubmit} className="space-y-4 text-xs">
+                {/* Title & Code */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="sm:col-span-2 space-y-1">
+                    <label className="text-[10px] text-white/50 uppercase font-mono font-bold">Course Title *</label>
+                    <input 
+                      type="text" 
+                      required
+                      placeholder="e.g. Distributed Cloud Systems & Microservices"
+                      value={courseRequestForm.title}
+                      onChange={(e) => setCourseRequestForm({ ...courseRequestForm, title: e.target.value })}
+                      className="w-full bg-white/[0.02] border border-white/10 rounded-xl py-2 px-3 text-white focus:outline-none focus:border-indigo-500"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] text-white/50 uppercase font-mono font-bold">Course Code</label>
+                    <input 
+                      type="text" 
+                      placeholder="CRS-202"
+                      value={courseRequestForm.code}
+                      onChange={(e) => setCourseRequestForm({ ...courseRequestForm, code: e.target.value })}
+                      className="w-full bg-white/[0.02] border border-white/10 rounded-xl py-2 px-3 text-white focus:outline-none focus:border-indigo-500 font-mono"
+                    />
+                  </div>
+                </div>
+
+                {/* Category & Price */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-[10px] text-white/50 uppercase font-mono font-bold">Category</label>
+                    <select
+                      value={courseRequestForm.categoryId}
+                      onChange={(e) => setCourseRequestForm({ ...courseRequestForm, categoryId: parseInt(e.target.value, 10) || 1 })}
+                      className="w-full bg-zinc-900 border border-white/10 rounded-xl py-2 px-3 text-white focus:outline-none focus:border-indigo-500"
+                    >
+                      <option value="1">Web & Software Engineering</option>
+                      <option value="2">Cybersecurity & Systems</option>
+                      <option value="3">AI & Machine Learning</option>
+                      <option value="4">UI/UX & Design Systems</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] text-white/50 uppercase font-mono font-bold">Tuition / Price</label>
+                    <input
+                      type="text"
+                      placeholder="$199 or Free"
+                      value={courseRequestForm.price}
+                      onChange={(e) => setCourseRequestForm({ ...courseRequestForm, price: e.target.value })}
+                      className="w-full bg-white/[0.02] border border-white/10 rounded-xl py-2 px-3 text-white focus:outline-none focus:border-indigo-500"
+                    />
+                  </div>
+                </div>
+
+                {/* Start Date, End Date, Sessions */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-[10px] text-white/50 uppercase font-mono font-bold">Start Date *</label>
+                    <input
+                      type="date"
+                      required
+                      value={courseRequestForm.startDate}
+                      onChange={(e) => setCourseRequestForm({ ...courseRequestForm, startDate: e.target.value })}
+                      className="w-full bg-white/[0.02] border border-white/10 rounded-xl py-2 px-3 text-white focus:outline-none focus:border-indigo-500 font-mono"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] text-white/50 uppercase font-mono font-bold">End Date *</label>
+                    <input
+                      type="date"
+                      required
+                      value={courseRequestForm.endDate}
+                      onChange={(e) => setCourseRequestForm({ ...courseRequestForm, endDate: e.target.value })}
+                      className="w-full bg-white/[0.02] border border-white/10 rounded-xl py-2 px-3 text-white focus:outline-none focus:border-indigo-500 font-mono"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] text-white/50 uppercase font-mono font-bold">Total Sessions</label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={courseRequestForm.sessionsCount}
+                      onChange={(e) => setCourseRequestForm({ ...courseRequestForm, sessionsCount: parseInt(e.target.value, 10) || 16 })}
+                      className="w-full bg-white/[0.02] border border-white/10 rounded-xl py-2 px-3 text-white focus:outline-none focus:border-indigo-500 font-mono"
+                    />
+                  </div>
+                </div>
+
+                {/* Syllabus Configuration Builder Button */}
+                <div className="p-3.5 rounded-2xl bg-white/[0.02] border border-white/[0.05] flex items-center justify-between">
+                  <div>
+                    <h4 className="text-xs font-bold text-white flex items-center gap-1.5">
+                      <BookOpen size={14} className="text-indigo-400" />
+                      <span>Course Syllabus & Modules</span>
+                    </h4>
+                    <p className="text-[10px] text-zinc-400 mt-0.5">
+                      {courseRequestForm.syllabus.length > 0 
+                        ? `${courseRequestForm.syllabus.length} curriculum module(s) defined.`
+                        : "No modules specified yet. Click button to configure curriculum topics."}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowCourseSyllabusModal(true)}
+                    className="px-3 py-1.5 rounded-xl bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/40 text-indigo-300 hover:text-white text-xs font-bold transition-all cursor-pointer"
+                  >
+                    Manage Syllabus
+                  </button>
+                </div>
+
+                {/* Description */}
+                <div className="space-y-1">
+                  <label className="text-[10px] text-white/50 uppercase font-mono font-bold">Description & Scope</label>
+                  <textarea
+                    rows={3}
+                    placeholder="Provide curriculum scope, learning objectives, and prerequisites..."
+                    value={courseRequestForm.description}
+                    onChange={(e) => setCourseRequestForm({ ...courseRequestForm, description: e.target.value })}
+                    className="w-full bg-white/[0.02] border border-white/10 rounded-xl py-2 px-3 text-white focus:outline-none focus:border-indigo-500 leading-relaxed resize-none"
+                  />
+                </div>
+
+                {/* Cover Photo Upload & Crop */}
+                <div className="space-y-2 p-3.5 rounded-2xl bg-white/[0.02] border border-white/[0.05]">
+                  <label className="text-[10px] text-white/50 uppercase font-mono font-bold block">
+                    Course Artwork & Cover Photo
+                  </label>
+
+                  <div className="flex flex-col sm:flex-row items-center gap-3">
+                    {courseRequestForm.image ? (
+                      <div className="relative aspect-[16/10] w-36 rounded-xl overflow-hidden border border-white/10 bg-zinc-900 shrink-0">
+                        <img
+                          src={courseRequestForm.image}
+                          alt="Cover Preview"
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    ) : (
+                      <div className="aspect-[16/10] w-36 rounded-xl border border-dashed border-white/15 bg-white/[0.02] flex items-center justify-center text-zinc-500 text-[10px] shrink-0">
+                        No image
+                      </div>
+                    )}
+
+                    <div className="flex-1 space-y-2 w-full">
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setShowCourseCropperModal(true)}
+                          className="px-3.5 py-2 rounded-xl bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/40 text-indigo-300 hover:text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+                        >
+                          <Upload size={14} />
+                          <span>Upload & Crop Image</span>
+                        </button>
+                      </div>
+
+                      <input
+                        type="text"
+                        placeholder="Or direct image URL..."
+                        value={courseRequestForm.image}
+                        onChange={(e) => setCourseRequestForm({ ...courseRequestForm, image: e.target.value })}
+                        className="w-full bg-zinc-900 border border-white/10 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-indigo-500 font-mono text-[11px]"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-3 flex gap-2 border-t border-white/10">
+                  <button
+                    type="button"
+                    onClick={() => setShowCourseRequestModal(false)}
+                    className="px-4 py-2.5 rounded-xl bg-white/[0.04] hover:bg-white/10 text-white/60 hover:text-white font-bold text-xs cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    type="submit"
+                    disabled={isSubmittingCourseRequest}
+                    className="flex-1 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-md shadow-indigo-600/20 disabled:opacity-50"
+                  >
+                    <CheckCircle2 size={14} />
+                    <span>{isSubmittingCourseRequest ? "Submitting Proposal..." : "Submit Proposal to Administrator"}</span>
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* IMAGE CROPPER MODAL FOR TEACHER */}
+      <ImageCropperModal
+        isOpen={showCourseCropperModal}
+        initialImageUrl={courseRequestForm.image}
+        aspectRatio="16:9"
+        onCropComplete={(croppedUrl) => {
+          setCourseRequestForm((prev) => ({ ...prev, image: croppedUrl }));
+          setShowCourseCropperModal(false);
+          showToast("Cover artwork cropped successfully.", "success");
+        }}
+        onClose={() => setShowCourseCropperModal(false)}
+      />
+
+      {/* COURSE SYLLABUS MODAL FOR TEACHER */}
+      <CourseSyllabusModal
+        isOpen={showCourseSyllabusModal}
+        courseId="proposal"
+        courseTitle={courseRequestForm.title || "Proposed Course"}
+        initialSyllabus={courseRequestForm.syllabus}
+        onSaveSyllabus={(newSyllabus) => {
+          setCourseRequestForm((prev) => ({ ...prev, syllabus: newSyllabus }));
+          setShowCourseSyllabusModal(false);
+          showToast(`Syllabus configured with ${newSyllabus.length} topic(s).`, "success");
+        }}
+        onClose={() => setShowCourseSyllabusModal(false)}
+        showCustomToast={(msg, type) => showToast(msg, type === "warning" ? "error" : "success")}
+      />
     </div>
   );
 }

@@ -20,6 +20,7 @@ import AdminSettingsTab from "./AdminDashboard/SettingsTab";
 import SecurityTab from "./AdminDashboard/SecurityTab";
 import InboxTab from "./AdminDashboard/InboxTab";
 import HomepageManagementTab from "./AdminDashboard/HomepageManagementTab";
+import AcademyFeedTab from "./AdminDashboard/AcademyFeedTab";
 
 // Type references
 import { AdminUser, CourseRequest, Enrollment, Exam, ActivityLog, RolePermission, DashboardStats } from "./AdminDashboard/types";
@@ -35,7 +36,7 @@ export default function AdminDashboard({ onLogout, onGoHome }: AdminDashboardPro
   // Sidebar expand state
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [activeTab, setActiveTab] = useState<
-    "overview" | "users" | "academic" | "assignments" | "exams" | "certificates" | "discussions" | "resources" | "lms" | "services" | "settings" | "security" | "inbox" | "homepage-management"
+    "overview" | "users" | "academic" | "assignments" | "exams" | "certificates" | "discussions" | "resources" | "lms" | "services" | "settings" | "security" | "inbox" | "homepage-management" | "notifications"
   >("overview");
   const [activeSubTab, setActiveSubTab] = useState("all");
 
@@ -99,6 +100,7 @@ export default function AdminDashboard({ onLogout, onGoHome }: AdminDashboardPro
   // Toast / System alerting state
   const [alerts, setAlerts] = useState<string[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
   const [showNotificationDropdown, setShowNotificationDropdown] = useState(false);
 
   // Core state populated authoritatively from MySQL backend APIs (Empty initial states, strictly zero mock data)
@@ -129,6 +131,18 @@ export default function AdminDashboard({ onLogout, onGoHome }: AdminDashboardPro
     { role: "student", permissions: { certificateApproval: false, courseManagement: false, userManagement: false, systemSettings: false } }
   ]);
 
+  // Fetch unread inbox messages count for sidebar alarm & badge
+  const refreshUnreadMessages = async () => {
+    try {
+      const res = await adminApi.getUnreadMessagesCount();
+      if (res.success) {
+        setUnreadMessagesCount(res.count || 0);
+      }
+    } catch {
+      // ignore
+    }
+  };
+
   // Load authoritative data from MySQL backend APIs
   const loadAdminData = async () => {
     setIsUsersLoading(true);
@@ -143,7 +157,7 @@ export default function AdminDashboard({ onLogout, onGoHome }: AdminDashboardPro
         adminApi.getAnnouncements().catch(() => ({ success: false, data: [] })),
         adminApi.getCourseSeasons().catch(() => ({ success: false, data: [] })),
         adminApi.getActivityLogs().catch(() => ({ success: false, data: [] })),
-        coursesApi.getAllCourses().catch(() => ({ success: false, data: [] })),
+        adminApi.getAllCourses().catch(() => ({ success: false, data: [] })),
         teacherApi.getStudents().catch(() => ({ success: false, data: [] })),
         teacherApi.getSessions().catch(() => ({ success: false, data: [] })),
         teacherApi.getAssignments().catch(() => ({ success: false, data: [] })),
@@ -182,6 +196,11 @@ export default function AdminDashboard({ onLogout, onGoHome }: AdminDashboardPro
       }
       if (coursesRes.success && Array.isArray(coursesRes.data)) {
         setCourses(coursesRes.data);
+        // Extract teacher proposals for course requests sub-tab
+        const pendingProposals = coursesRes.data.filter(
+          (c: any) => c.approvalStatus === "Pending" || c.approval_status === "Pending" || c.status === "PendingApproval"
+        );
+        setCourseRequests(pendingProposals);
       }
       if (studentsRes.success && Array.isArray(studentsRes.data)) {
         setStudents(studentsRes.data);
@@ -198,6 +217,8 @@ export default function AdminDashboard({ onLogout, onGoHome }: AdminDashboardPro
       if (resourcesRes.success && Array.isArray(resourcesRes.data)) {
         setResources(resourcesRes.data);
       }
+
+      await refreshUnreadMessages();
     } catch (err) {
       console.error("Failed to load admin backend data", err);
     } finally {
@@ -207,6 +228,10 @@ export default function AdminDashboard({ onLogout, onGoHome }: AdminDashboardPro
 
   useEffect(() => {
     loadAdminData();
+    const timer = setInterval(() => {
+      refreshUnreadMessages();
+    }, 12000);
+    return () => clearInterval(timer);
   }, []);
 
   const handleUpdateUserRole = async (id: string, newRole: "User" | "Student" | "Teacher" | "Administrator") => {
@@ -353,35 +378,47 @@ export default function AdminDashboard({ onLogout, onGoHome }: AdminDashboardPro
     dispatchAlert(`Account ${id} set to ${status}.`);
   };
 
-  const handleDeleteUser = (id: string) => {
+  const handleDeleteUser = async (id: string) => {
     setUsers(prev => prev.filter(u => u.id !== id));
-    dispatchAlert(`Revoked credentials for user ID: ${id}`);
+    try {
+      await adminApi.deleteUser(id);
+      dispatchAlert(`User account ${id} permanently deleted from database.`);
+      await loadAdminData();
+    } catch (err: any) {
+      console.error("Failed to delete user via API:", err);
+      dispatchAlert(err.message || "Failed to delete user account.");
+    }
   };
 
-  const handleAddCourse = async (course: Partial<Course>) => {
+  const handleAddCourse = async (course: Partial<Course> | any) => {
     try {
       const res = await adminApi.createCourse({
         title: course.title || "",
         code: course.code || "",
         description: course.description || "",
-        price: (course as any).price || 0,
+        shortDescription: course.shortDescription || course.description || "",
+        price: course.price || 0,
         sessionsCount: course.sessionsCount || 12,
-        teacherId: (course as any).teacherId || null,
+        teacherId: course.teacherId || null,
+        categoryId: course.categoryId || 1,
         image: course.image || "",
-        status: (course.status as any) || "Active"
+        startDate: course.startDate || null,
+        endDate: course.endDate || null,
+        isPublished: course.isPublished ?? true,
+        status: course.isPublished ? "Published" : (course.status || "Active"),
+        syllabusJson: course.syllabusJson || course.syllabus || []
       });
       if (res.success && res.data) {
         setCourses(prev => [res.data, ...prev]);
         dispatchAlert(`Created Course: ${course.title}`);
-        loadAdminData();
+        await loadAdminData();
       } else {
         setCourses(prev => [course as Course, ...prev]);
         dispatchAlert(`Deployed Course to Catalog: ${course.title}`);
       }
     } catch (err: any) {
       console.error("Failed to create course via API", err);
-      setCourses(prev => [course as Course, ...prev]);
-      dispatchAlert(`Deployed Course: ${course.title}`);
+      dispatchAlert(err.message || `Failed to create course: ${course.title}`);
     }
   };
 
@@ -461,6 +498,7 @@ export default function AdminDashboard({ onLogout, onGoHome }: AdminDashboardPro
               { id: "inbox", label: "Inbox", icon: Mail, tab: "inbox", sub: "all" },
               { id: "users", label: "Users", icon: Users, tab: "users", sub: "all" },
               { id: "courses", label: "Courses", icon: BookOpen, tab: "academic", sub: "catalog" },
+              { id: "notifications", label: "Notifications", icon: Bell, tab: "notifications", sub: "all" },
               { id: "certificates", label: "Certificates", icon: Award, tab: "certificates", sub: "all" },
               { id: "exams", label: "Exams", icon: Sliders, tab: "exams", sub: "all" },
               { id: "discussions", label: "Discussions", icon: MessageSquare, tab: "discussions", sub: "all" },
@@ -470,6 +508,7 @@ export default function AdminDashboard({ onLogout, onGoHome }: AdminDashboardPro
             ].map((menu) => {
               const isSec = menu.isSecurity;
               const active = isSec ? activeTab === "security" : activeTab === menu.tab;
+              const isInboxWithUnread = menu.id === "inbox" && unreadMessagesCount > 0;
               return (
                 <button
                   key={menu.id}
@@ -482,13 +521,25 @@ export default function AdminDashboard({ onLogout, onGoHome }: AdminDashboardPro
                       ? isSec 
                         ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/25 shadow-inner"
                         : "bg-white/[0.04] text-white border-white/5 shadow-inner"
-                      : "text-white/45 hover:text-white/80 hover:bg-white/[0.01] border-transparent"
+                      : isInboxWithUnread
+                        ? "text-rose-300 bg-rose-500/10 border-rose-500/30 hover:bg-rose-500/15"
+                        : "text-white/45 hover:text-white/80 hover:bg-white/[0.01] border-transparent"
                   }`}
                 >
                   <div className="flex items-center gap-3">
-                    <menu.icon size={14} className={active ? isSec ? "text-emerald-400" : "text-indigo-400" : ""} />
+                    <menu.icon size={14} className={active ? (isSec ? "text-emerald-400" : "text-indigo-400") : isInboxWithUnread ? "text-rose-400" : ""} />
                     <span>{menu.label}</span>
                   </div>
+
+                  {/* Sidebar Inbox Unread Messages Alarm & Badge */}
+                  {menu.id === "inbox" && unreadMessagesCount > 0 && (
+                    <span className="flex items-center gap-1.5">
+                      <span className="h-2 w-2 rounded-full bg-rose-500 animate-ping" />
+                      <span className="px-1.5 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-500 text-white shadow-sm shadow-rose-500/50">
+                        {unreadMessagesCount}
+                      </span>
+                    </span>
+                  )}
                 </button>
               );
             })}
@@ -549,6 +600,19 @@ export default function AdminDashboard({ onLogout, onGoHome }: AdminDashboardPro
             >
               Back to Home
             </button>
+
+            {/* Inbox Quick Alarm Indicator */}
+            {unreadMessagesCount > 0 && (
+              <button
+                onClick={() => { setActiveTab("inbox"); setActiveSubTab("all"); }}
+                className="px-2.5 py-1.5 rounded-xl bg-rose-500/15 border border-rose-500/35 text-rose-300 hover:bg-rose-500/25 transition-all flex items-center gap-1.5 cursor-pointer text-xs font-bold animate-pulse shadow-sm shadow-rose-500/20"
+                title={`${unreadMessagesCount} unread message(s) in inbox - click to view`}
+              >
+                <Mail size={13} className="text-rose-400" />
+                <span>{unreadMessagesCount} New</span>
+                <span className="h-1.5 w-1.5 rounded-full bg-rose-500 animate-ping" />
+              </button>
+            )}
 
             {/* Notifications feed bell */}
             <div className="relative">
@@ -888,6 +952,13 @@ export default function AdminDashboard({ onLogout, onGoHome }: AdminDashboardPro
                 <SecurityTab 
                   users={users}
                   students={students}
+                  showCustomToast={(msg) => dispatchAlert(msg)}
+                />
+              )}
+
+              {activeTab === "notifications" && (
+                <AcademyFeedTab 
+                  courses={courses}
                   showCustomToast={(msg) => dispatchAlert(msg)}
                 />
               )}

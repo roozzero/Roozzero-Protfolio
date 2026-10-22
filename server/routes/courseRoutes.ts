@@ -21,31 +21,54 @@ router.get("/", async (req: Request, res: Response) => {
       FROM courses c
       LEFT JOIN course_categories cat ON c.category_id = cat.id
       LEFT JOIN users u ON c.teacher_id = u.id
-      WHERE c.status = 'Published' AND c.deleted_at IS NULL
+      WHERE (c.status = 'Published' OR c.is_published = 1) AND c.deleted_at IS NULL
       ORDER BY c.created_at DESC
     `);
 
     // Fetch syllabus from cms_classes if stored there as well
-    const [cmsClasses]: [any[], any] = await query("SELECT id, syllabus_json, tags_json FROM cms_classes");
-    const cmsMap = new Map(cmsClasses.map(c => [c.id, c]));
+    const [cmsClasses]: [any[], any] = await query("SELECT id, syllabus_json, tags_json FROM cms_classes").catch(() => [[], []]);
+    const cmsMap = new Map((cmsClasses || []).map((c: any) => [c.id, c]));
 
-    const courses = rows.map(r => {
+    const courses = rows.map((r: any, idx: number) => {
+      let syllabusList: any[] = [];
+      if (r.syllabus_json) {
+        try {
+          syllabusList = typeof r.syllabus_json === "string" ? JSON.parse(r.syllabus_json) : r.syllabus_json;
+        } catch {}
+      }
       const cms = cmsMap.get(r.id);
+      let cmsTags: string[] = ["Engineering", "Web"];
+      if (cms?.tags_json) {
+        try {
+          cmsTags = typeof cms.tags_json === "string" ? JSON.parse(cms.tags_json) : cms.tags_json;
+        } catch {}
+      }
+      let cmsSyllabus: any[] = [];
+      if (cms?.syllabus_json) {
+        try {
+          cmsSyllabus = typeof cms.syllabus_json === "string" ? JSON.parse(cms.syllabus_json) : cms.syllabus_json;
+        } catch {}
+      }
+      const imgUrl = r.image || "https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop";
       return {
         id: r.id,
         courseName: r.title,
         title: r.title,
         code: r.code,
-        price: r.price,
+        price: r.price || "$0",
         instructor: r.teacher_name || "Roozbeh",
         sessions: r.sessions_count || 16,
-        description: r.description,
-        shortDescription: r.short_description,
-        courseImage: r.image,
-        image: r.image,
-        status: r.status,
-        tags: cms?.tags_json || ["Engineering", "Web"],
-        syllabus: cms?.syllabus_json || []
+        sessionsCount: r.sessions_count || 16,
+        description: r.description || "",
+        shortDescription: r.short_description || r.description || "",
+        courseImage: imgUrl,
+        image: imgUrl,
+        status: "Published",
+        displayOrder: idx,
+        startDate: r.start_date ? String(r.start_date).split("T")[0] : "",
+        endDate: r.end_date ? String(r.end_date).split("T")[0] : "",
+        tags: Array.isArray(cmsTags) ? cmsTags : ["Engineering", "Web"],
+        syllabus: (Array.isArray(syllabusList) && syllabusList.length > 0) ? syllabusList : (Array.isArray(cmsSyllabus) ? cmsSyllabus : [])
       };
     });
 

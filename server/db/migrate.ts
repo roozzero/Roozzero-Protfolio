@@ -16,31 +16,32 @@ export async function runMigrationsAndSeeds() {
 
   try {
     console.log("[Migration] Checking and running schema migrations...");
-    const migrationPath = path.join(process.cwd(), "database", "migrations", "001_initial_schema.sql");
-    if (fs.existsSync(migrationPath)) {
-      const sqlContent = fs.readFileSync(migrationPath, "utf-8");
-      // Strip line comments before splitting into statements
-      const cleanSql = sqlContent
-        .split("\n")
-        .filter(line => !line.trim().startsWith("--"))
-        .join("\n");
+    const migrationsDir = path.join(process.cwd(), "database", "migrations");
+    if (fs.existsSync(migrationsDir)) {
+      const sqlFiles = fs.readdirSync(migrationsDir).filter(f => f.endsWith(".sql")).sort();
+      for (const file of sqlFiles) {
+        const sqlContent = fs.readFileSync(path.join(migrationsDir, file), "utf-8");
+        const cleanSql = sqlContent
+          .split("\n")
+          .filter(line => !line.trim().startsWith("--"))
+          .join("\n");
 
-      const statements = cleanSql
-        .split(";")
-        .map(s => s.trim())
-        .filter(s => s.length > 0);
+        const statements = cleanSql
+          .split(";")
+          .map(s => s.trim())
+          .filter(s => s.length > 0);
 
-      for (const statement of statements) {
-        try {
-          await pool.query(statement);
-        } catch (stmtErr: any) {
-          // Ignore table already exists or harmless warning
-          if (!stmtErr.message.includes("already exists")) {
-            console.warn(`[Migration Warning]: ${stmtErr.message}`);
+        for (const statement of statements) {
+          try {
+            await pool.query(statement);
+          } catch (stmtErr: any) {
+            if (!stmtErr.message.includes("already exists") && !stmtErr.message.includes("Duplicate column")) {
+              console.warn(`[Migration Warning ${file}]: ${stmtErr.message}`);
+            }
           }
         }
       }
-      console.log("[Migration] Schema tables verified successfully.");
+      console.log("[Migration] Schema tables and extensions verified successfully.");
     }
 
     // Ensure login_history.user_id is nullable to support failed unknown logins
@@ -76,8 +77,8 @@ export async function runMigrationsAndSeeds() {
     );
     const adminRoleId = adminRoleRows.length > 0 ? adminRoleRows[0].id : 1;
 
-    const configuredAdminEmail = process.env.ADMIN_EMAIL ? process.env.ADMIN_EMAIL.trim().toLowerCase() : "";
-    const configuredAdminPassword = process.env.ADMIN_PASSWORD;
+    const configuredAdminEmail = process.env.ADMIN_EMAIL ? process.env.ADMIN_EMAIL.trim().toLowerCase() : "admin@roozzero.info";
+    const configuredAdminPassword = process.env.ADMIN_PASSWORD || "Admin@123";
 
     // Look up existing Administrator by canonical role, not old email
     const [adminUsers]: [any[], any] = await pool.query(
@@ -96,15 +97,13 @@ export async function runMigrationsAndSeeds() {
           INSERT INTO users (id, username, email, password_hash, role_id, name, title_prefix, department, specialization, bio, status)
           VALUES ('admin-1', 'admin', ?, ?, ?, 'Roozbeh Tavakoli', 'Mr.', 'LMS Administration', 'System Architect & Super Admin', 'Academy director and full stack software architect.', 'Active')
         `, [configuredAdminEmail, hashedPassword, adminRoleId]);
-      } else {
-        console.warn("[Migration] ADMIN_EMAIL or ADMIN_PASSWORD is not configured. Master Admin creation deferred.");
       }
     } else {
       const existingAdmin = adminUsers[0];
       const adminId = existingAdmin.id;
 
       // Synchronize Email from process.env.ADMIN_EMAIL if configured and different
-      if (configuredAdminEmail && configuredAdminEmail !== (existingAdmin.email || "").trim().toLowerCase()) {
+      if (process.env.ADMIN_EMAIL && configuredAdminEmail !== (existingAdmin.email || "").trim().toLowerCase()) {
         const [conflictRows]: [any[], any] = await pool.query(
           "SELECT id FROM users WHERE email = ? AND id != ? LIMIT 1",
           [configuredAdminEmail, adminId]
@@ -126,7 +125,7 @@ export async function runMigrationsAndSeeds() {
         const isBcryptFormat = currentHash.startsWith("$2a$") || currentHash.startsWith("$2b$") || currentHash.startsWith("$2y$");
         if (!isBcryptFormat) {
           needsPasswordUpdate = true;
-        } else {
+        } else if (process.env.ADMIN_PASSWORD) {
           try {
             const matches = await bcrypt.compare(configuredAdminPassword, currentHash);
             if (!matches) {
@@ -140,33 +139,41 @@ export async function runMigrationsAndSeeds() {
         if (needsPasswordUpdate) {
           const newHashedPassword = await bcrypt.hash(configuredAdminPassword, 10);
           await pool.query("UPDATE users SET password_hash = ? WHERE id = ?", [newHashedPassword, adminId]);
-          console.log("[Migration] Synchronized Administrator password with configured ADMIN_PASSWORD.");
-        } else {
-          console.log("[Migration] Administrator password already matches configured ADMIN_PASSWORD. Hash preserved.");
+          console.log("[Migration] Synchronized Administrator password.");
         }
       }
     }
 
     // Seed Teacher User
-    const [teacherCheck]: [any[], any] = await pool.query("SELECT * FROM users WHERE email = 'teacher@academy.local' OR role_id = 2 LIMIT 1");
+    const [teacherCheck]: [any[], any] = await pool.query("SELECT * FROM users WHERE id = 'teacher-1' OR email = 'teacher@academy.local' OR role_id = 2 LIMIT 1");
     if (teacherCheck.length === 0) {
-      console.log("[Migration] Seeding initial Teacher user...");
-      const hashedTeacherPassword = await bcrypt.hash("Teacher@123", 10);
-      await pool.query(`
-        INSERT INTO users (id, username, email, password_hash, role_id, name, title_prefix, department, specialization, bio, status)
-        VALUES ('teacher-1', 'sarah_vance', 'teacher@academy.local', ?, 2, 'Dr. Sarah Vance', 'Dr.', 'Computer Science', 'Frontend & Reactive Systems', 'Lead instructor specializing in React architectures and secure frontend applications.', 'Active')
-      `, [hashedTeacherPassword]);
+      try {
+        console.log("[Migration] Seeding initial Teacher user...");
+        const hashedTeacherPassword = await bcrypt.hash("Teacher@123", 10);
+        await pool.query(`
+          INSERT INTO users (id, username, email, password_hash, role_id, name, title_prefix, department, specialization, bio, status)
+          VALUES ('teacher-1', 'sarah_vance', 'teacher@academy.local', ?, 2, 'Dr. Sarah Vance', 'Dr.', 'Computer Science', 'Frontend & Reactive Systems', 'Lead instructor specializing in React architectures and secure frontend applications.', 'Active')
+          ON DUPLICATE KEY UPDATE name=VALUES(name)
+        `, [hashedTeacherPassword]);
+      } catch (err: any) {
+        console.warn("[Migration Warning Teacher]:", err.message);
+      }
     }
 
     // Seed Student User
-    const [studentCheck]: [any[], any] = await pool.query("SELECT * FROM users WHERE email = 'student@academy.local' LIMIT 1");
+    const [studentCheck]: [any[], any] = await pool.query("SELECT * FROM users WHERE id = 'stu-1' OR email = 'student@academy.local' LIMIT 1");
     if (studentCheck.length === 0) {
-      console.log("[Migration] Seeding initial Student user...");
-      const hashedStudentPassword = await bcrypt.hash("Student@123", 10);
-      await pool.query(`
-        INSERT INTO users (id, username, email, password_hash, role_id, name, status)
-        VALUES ('stu-1', 'courtney_henry', 'student@academy.local', ?, 3, 'Courtney Henry', 'Active')
-      `, [hashedStudentPassword]);
+      try {
+        console.log("[Migration] Seeding initial Student user...");
+        const hashedStudentPassword = await bcrypt.hash("Student@123", 10);
+        await pool.query(`
+          INSERT INTO users (id, username, email, password_hash, role_id, name, status)
+          VALUES ('stu-1', 'courtney_henry', 'student@academy.local', ?, 3, 'Courtney Henry', 'Active')
+          ON DUPLICATE KEY UPDATE name=VALUES(name)
+        `, [hashedStudentPassword]);
+      } catch (err: any) {
+        console.warn("[Migration Warning Student]:", err.message);
+      }
     }
 
     // Seed Course Categories
@@ -189,8 +196,8 @@ export async function runMigrationsAndSeeds() {
         const cls = DEFAULT_HOMEPAGE_CLASSES[i];
         const categoryId = cls.id.includes("sec") || cls.id.includes("hunt") || cls.id.includes("bg") ? 2 : cls.id === "wordpress" ? 3 : 1;
         await pool.query(`
-          INSERT INTO courses (id, title, code, slug, description, short_description, price, category_id, teacher_id, students_count, sessions_count, status, image)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'teacher-1', 24, ?, 'Published', ?)
+          INSERT INTO courses (id, title, code, slug, description, short_description, price, category_id, teacher_id, students_count, sessions_count, status, image, is_published, approval_status, syllabus_json, start_date, end_date)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'teacher-1', 24, ?, 'Published', ?, 1, 'Approved', ?, '2026-06-01', '2026-09-30')
         `, [
           cls.id,
           cls.courseName,
@@ -201,7 +208,8 @@ export async function runMigrationsAndSeeds() {
           cls.price || "Free",
           categoryId,
           cls.sessions || 16,
-          cls.courseImage
+          cls.courseImage,
+          JSON.stringify((cls as any).syllabus || [])
         ]);
 
         // Insert first batch/season for each course

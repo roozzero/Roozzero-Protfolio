@@ -12,7 +12,7 @@ import AdminDashboard from "./components/AdminDashboard";
 import TeacherDashboard from "./components/TeacherDashboard";
 import { loadCmsConfig, saveCmsConfig, DEFAULT_HOMEPAGE_CLASSES } from "./constants/defaultCms";
 import { CMSFullConfig } from "./types/cms";
-import { authApi, cmsApi } from "./lib/api";
+import { authApi, cmsApi, coursesApi } from "./lib/api";
 
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -68,43 +68,54 @@ export default function App() {
 
   const [cmsConfig, setCmsConfig] = useState<CMSFullConfig>(() => loadCmsConfig());
 
-  // Dynamic Classes state synchronized with the CMS Admin Dashboard
+  // Dynamic Classes state synchronized with the Database & CMS Admin Dashboard
   const [homepageClasses, setHomepageClasses] = useState<any[]>(DEFAULT_HOMEPAGE_CLASSES);
 
-  // Load published CMS configuration from backend /api/cms on application startup
-  useEffect(() => {
-    let isMounted = true;
+  const refreshLandingData = () => {
     cmsApi.getCms()
       .then((res) => {
-        if (!isMounted) return;
         if (res.success && res.data) {
           saveCmsConfig(res.data);
           setCmsConfig(res.data);
-          if (Array.isArray(res.data.classes) && res.data.classes.length > 0) {
-            setHomepageClasses(res.data.classes);
-          }
         }
       })
       .catch((err) => {
         console.error("Failed to load CMS from server:", err);
       });
-    return () => {
-      isMounted = false;
-    };
-  }, []);
 
-  // Real-time listener for homepage updates saved or published in the Admin CMS Dashboard
+    coursesApi.getAll()
+      .then((res: any) => {
+        if (res.success && Array.isArray(res.data)) {
+          setHomepageClasses(res.data);
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to load published courses from server:", err);
+      });
+  };
+
+  // Load published CMS and Courses from backend on startup and when returning to Landing Page
+  useEffect(() => {
+    if (!isDashboardPage && !isAdminPage) {
+      refreshLandingData();
+    }
+  }, [isDashboardPage, isAdminPage]);
+
+  // Real-time listener for homepage & course catalog updates saved or published in the Admin Dashboard
   useEffect(() => {
     const handleCmsUpdate = () => {
       const fresh = loadCmsConfig();
       setCmsConfig(fresh);
-      if (Array.isArray(fresh.classes) && fresh.classes.length > 0) {
-        setHomepageClasses(fresh.classes);
-      }
+      refreshLandingData();
+    };
+    const handleCoursesUpdate = () => {
+      refreshLandingData();
     };
     window.addEventListener("cms_config_updated", handleCmsUpdate);
+    window.addEventListener("courses_updated", handleCoursesUpdate);
     return () => {
       window.removeEventListener("cms_config_updated", handleCmsUpdate);
+      window.removeEventListener("courses_updated", handleCoursesUpdate);
     };
   }, []);
 

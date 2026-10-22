@@ -142,6 +142,10 @@ export const coursesApi = {
     return this.getAll();
   },
 
+  async getCourses() {
+    return this.getAll();
+  },
+
   async getById(id: string) {
     return request<{ success: boolean; data: any }>(`/courses/${id}`);
   },
@@ -386,9 +390,27 @@ export const teacherApi = {
   },
 
   async replyMessage(id: string | number, replyText: string) {
-    return request<{ success: boolean }>(`/teacher/messages/${id}/reply`, {
+    return request<{ success: boolean; message: string; data?: any }>(`/teacher/messages/${id}/reply`, {
       method: "POST",
       body: JSON.stringify({ replyText })
+    });
+  },
+
+  async getMessageThread(id: string | number) {
+    return request<{ success: boolean; data: any[] }>(`/teacher/messages/${id}/thread`);
+  },
+
+  async requestNewCourse(data: any) {
+    return request<{ success: boolean; message: string; data: any }>("/teacher/courses/request", {
+      method: "POST",
+      body: JSON.stringify(data)
+    });
+  },
+
+  async uploadCourseImage(formData: FormData) {
+    return request<{ success: boolean; url: string; filename: string }>("/teacher/courses/upload-image", {
+      method: "POST",
+      body: formData
     });
   },
 
@@ -545,6 +567,12 @@ export const adminApi = {
     return request<{ success: boolean; data: any[] }>("/admin/messages/sent");
   },
 
+  async deleteMessage(id: string) {
+    return request<{ success: boolean; message: string }>(`/admin/messages/${id}`, {
+      method: "DELETE"
+    });
+  },
+
   async getActivityLogs() {
     return request<{ success: boolean; data: any[] }>("/admin/activity-logs");
   },
@@ -579,12 +607,58 @@ export const adminApi = {
     });
   },
 
+  async deleteAnnouncement(id: string) {
+    return request<{ success: boolean; message: string }>(`/admin/announcements/${id}`, {
+      method: "DELETE"
+    });
+  },
+
   async getCourseSeasons() {
     return request<{ success: boolean; data: any[] }>("/admin/course-seasons");
   },
 
   async getTeachers() {
     return request<{ success: boolean; data: any[] }>("/admin/teachers");
+  },
+
+  async getAllCourses() {
+    return request<{ success: boolean; data: any[] }>("/admin/courses");
+  },
+
+  async getCourses() {
+    return this.getAllCourses();
+  },
+
+  async togglePublishCourse(id: string, isPublished: boolean) {
+    return request<{ success: boolean; isPublished: boolean; status: string; message: string }>(`/admin/courses/${id}/publish`, {
+      method: "PATCH",
+      body: JSON.stringify({ isPublished })
+    });
+  },
+
+  async updateCourseSyllabus(id: string, syllabus: any[]) {
+    return request<{ success: boolean; data: any[]; message: string }>(`/admin/courses/${id}/syllabus`, {
+      method: "POST",
+      body: JSON.stringify({ syllabus })
+    });
+  },
+
+  async approveCourseProposal(id: string, publish?: boolean) {
+    return request<{ success: boolean; message: string }>(`/admin/courses/${id}/approve`, {
+      method: "PATCH",
+      body: JSON.stringify({ publish: Boolean(publish) })
+    });
+  },
+
+  async uploadCourseImage(formData: FormData) {
+    return request<{ success: boolean; url: string; filename: string }>("/admin/courses/upload-image", {
+      method: "POST",
+      body: formData
+    });
+  },
+
+  async getUnreadMessagesCount() {
+    return request<{ success: boolean; count: number; contactCount?: number; internalCount?: number }>("/admin/messages/unread-count");
   },
 
   async createCourse(data: any) {

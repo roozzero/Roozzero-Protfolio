@@ -3,7 +3,7 @@ import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import { query } from "../db/pool";
 import { requireAuth, requireRole } from "../middleware/auth";
-import { uploadProfile } from "../middleware/upload";
+import { uploadProfile, uploadMedia } from "../middleware/upload";
 
 const router = Router();
 
@@ -675,6 +675,29 @@ router.patch("/messages/:id/read", async (req: Request, res: Response) => {
 });
 
 // -------------------------------------------------------------
+// GET /api/admin/messages/unread-count (Unread Inbox Messages Count for Sidebar Alarm & Badge)
+// -------------------------------------------------------------
+router.get("/messages/unread-count", async (req: Request, res: Response) => {
+  try {
+    const adminId = req.user!.id;
+    const [contactRows]: [any[], any] = await query("SELECT COUNT(*) as cnt FROM contact_messages WHERE is_read = 0");
+    const [internalRows]: [any[], any] = await query(`
+      SELECT COUNT(*) as cnt FROM internal_message_recipients
+      WHERE (recipient_id = ? OR recipient_id = 'admin-1' OR recipient_id = 'all-admins')
+        AND is_read = 0
+    `, [adminId]);
+
+    const contactCount = Number(contactRows[0]?.cnt || 0);
+    const internalCount = Number(internalRows[0]?.cnt || 0);
+    const total = contactCount + internalCount;
+
+    return res.json({ success: true, count: total, contactCount, internalCount });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, count: 0 });
+  }
+});
+
+// -------------------------------------------------------------
 // POST /api/admin/messages/:id/reply (Reply to Contact or Internal Message)
 // -------------------------------------------------------------
 router.post("/messages/:id/reply", async (req: Request, res: Response) => {
@@ -722,6 +745,25 @@ router.post("/messages/:id/reply", async (req: Request, res: Response) => {
     return res.json({ success: true, message: "Reply saved and dispatched." });
   } catch (err: any) {
     console.error("[Reply Message Error]:", err);
+    return res.status(500).json({ success: false, error: { code: "SERVER_ERROR", message: err.message } });
+  }
+});
+
+// -------------------------------------------------------------
+// DELETE /api/admin/messages/:id (Delete Message Thread from Database)
+// -------------------------------------------------------------
+router.delete("/messages/:id", async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    if (!isNaN(Number(id))) {
+      await query("DELETE FROM contact_messages WHERE id = ?", [id]);
+    } else {
+      await query("DELETE FROM internal_message_recipients WHERE message_id = ?", [id]);
+      await query("DELETE FROM internal_messages WHERE id = ? OR reply_to_id = ?", [id, id]);
+    }
+    return res.json({ success: true, message: "Message deleted from database permanently." });
+  } catch (err: any) {
+    console.error("[Delete Message Error]:", err);
     return res.status(500).json({ success: false, error: { code: "SERVER_ERROR", message: err.message } });
   }
 });
@@ -855,6 +897,20 @@ router.post("/announcements", async (req: Request, res: Response) => {
     `, [newId, title, description, courseId || "all", adminId, audience || "Everyone", status || "Published"]);
     return res.status(201).json({ success: true, data: { id: newId } });
   } catch (err: any) {
+    return res.status(500).json({ success: false, error: { code: "SERVER_ERROR", message: err.message } });
+  }
+});
+
+// -------------------------------------------------------------
+// DELETE /api/admin/announcements/:id (Delete Announcement from Database)
+// -------------------------------------------------------------
+router.delete("/announcements/:id", async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    await query("DELETE FROM announcements WHERE id = ?", [id]);
+    return res.json({ success: true, message: "Announcement deleted from database permanently." });
+  } catch (err: any) {
+    console.error("[Delete Announcement Error]:", err);
     return res.status(500).json({ success: false, error: { code: "SERVER_ERROR", message: err.message } });
   }
 });
@@ -1094,7 +1150,89 @@ router.get("/teachers", async (req: Request, res: Response) => {
   }
 });
 
-// POST /api/admin/courses (Admin creates new course)
+// -------------------------------------------------------------
+// GET /api/admin/courses (All courses in academy: Published, Active, Draft, and Pending)
+// -------------------------------------------------------------
+router.get("/courses", async (req: Request, res: Response) => {
+  try {
+    const [rows]: [any[], any] = await query(`
+      SELECT c.*, cat.name as category_name, u.name as teacher_name, u.email as teacher_email, u.avatar_url as teacher_avatar,
+             req.name as requested_by_name,
+             (SELECT COUNT(*) FROM enrollments e WHERE e.course_id = c.id) as real_students_count
+      FROM courses c
+      LEFT JOIN course_categories cat ON c.category_id = cat.id
+      LEFT JOIN users u ON c.teacher_id = u.id
+      LEFT JOIN users req ON c.requested_by = req.id
+      WHERE c.deleted_at IS NULL
+      ORDER BY c.created_at DESC
+    `);
+
+    const formatted = rows.map((r: any) => {
+      let syllabusList: any[] = [];
+      if (r.syllabus_json) {
+        try {
+          syllabusList = typeof r.syllabus_json === "string" ? JSON.parse(r.syllabus_json) : r.syllabus_json;
+        } catch {
+          syllabusList = [];
+        }
+      }
+
+      return {
+        id: r.id,
+        title: r.title,
+        courseName: r.title,
+        code: r.code,
+        slug: r.slug,
+        price: r.price || "$0",
+        description: r.description || "",
+        shortDescription: r.short_description || r.description || "",
+        categoryId: r.category_id,
+        categoryName: r.category_name || "General",
+        teacherId: r.teacher_id,
+        instructor: r.teacher_name || "Unassigned",
+        teacherName: r.teacher_name || "Unassigned",
+        teacherAvatar: r.teacher_avatar || "",
+        teacherEmail: r.teacher_email || "",
+        studentsCount: r.real_students_count || r.students_count || 0,
+        sessionsCount: r.sessions_count || 12,
+        sessions: r.sessions_count || 12,
+        progress: r.progress || 0,
+        status: r.status || "Active",
+        image: r.image || "",
+        courseImage: r.image || "",
+        startDate: r.start_date ? (r.start_date instanceof Date ? r.start_date.toISOString().split("T")[0] : String(r.start_date).split("T")[0]) : "",
+        endDate: r.end_date ? (r.end_date instanceof Date ? r.end_date.toISOString().split("T")[0] : String(r.end_date).split("T")[0]) : "",
+        syllabusJson: syllabusList,
+        syllabus: syllabusList,
+        isPublished: Boolean(r.is_published || r.status === "Published"),
+        approvalStatus: r.approval_status || "Approved",
+        requestedBy: r.requested_by,
+        requestedByName: r.requested_by_name,
+        createdAt: r.created_at
+      };
+    });
+
+    return res.json({ success: true, data: formatted });
+  } catch (err: any) {
+    console.error("[Get Admin Courses Error]:", err);
+    return res.status(500).json({ success: false, error: { code: "SERVER_ERROR", message: err.message } });
+  }
+});
+
+// POST /api/admin/courses/upload-image (Upload course cover image)
+router.post("/courses/upload-image", uploadMedia.single("image"), async (req: Request, res: Response) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, error: { code: "NO_FILE", message: "No image file uploaded." } });
+    }
+    const publicUrl = `/uploads/media/${req.file.filename}`;
+    return res.json({ success: true, url: publicUrl, filename: req.file.filename });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: { code: "UPLOAD_ERROR", message: err.message } });
+  }
+});
+
+// POST /api/admin/courses (Admin creates new course - AJAX persisted to MySQL)
 router.post("/courses", async (req: Request, res: Response) => {
   try {
     const {
@@ -1108,7 +1246,11 @@ router.post("/courses", async (req: Request, res: Response) => {
       teacherId,
       sessionsCount,
       status,
-      image
+      image,
+      startDate,
+      endDate,
+      syllabusJson,
+      isPublished
     } = req.body;
 
     if (!title || !title.trim()) {
@@ -1119,46 +1261,94 @@ router.post("/courses", async (req: Request, res: Response) => {
     const courseCode = (code && code.trim()) || `CRS-${Math.floor(100 + Math.random() * 900)}`;
     const courseSlug = (slug && slug.trim()) || title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
 
+    const isPub = Boolean(isPublished || status === "Published");
+    const courseStatus = isPub ? "Published" : (status || "Active");
+    const syllabusStr = syllabusJson ? (typeof syllabusJson === "string" ? syllabusJson : JSON.stringify(syllabusJson)) : JSON.stringify([]);
+
     await query(`
-      INSERT INTO courses (id, title, code, slug, price, description, short_description, category_id, teacher_id, sessions_count, students_count, status, image)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
+      INSERT INTO courses (
+        id, title, code, slug, price, description, short_description,
+        category_id, teacher_id, sessions_count, students_count, status,
+        image, start_date, end_date, syllabus_json, is_published, approval_status
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, 'Approved')
     `, [
       courseId,
       title.trim(),
       courseCode,
       courseSlug,
-      price || "$0",
+      typeof price === "number" ? `$${price}` : (price || "$0"),
       description || "",
       shortDescription || description || "",
       categoryId ? Number(categoryId) : 1,
       teacherId || null,
       sessionsCount ? Number(sessionsCount) : 12,
-      status || "Published",
-      image || null
+      courseStatus,
+      image || null,
+      startDate ? startDate.substring(0, 10) : null,
+      endDate ? endDate.substring(0, 10) : null,
+      syllabusStr,
+      isPub ? 1 : 0
     ]);
-
-    // Create default cohort season for this course
-    const seasonId = `season-${Date.now()}`;
-    await query(`
-      INSERT INTO course_seasons (id, name, course_id, start_date, end_date, max_capacity, registration_status, status)
-      VALUES (?, ?, ?, CURDATE(), DATE_ADD(CURDATE(), INTERVAL 90 DAY), 25, 'Open', 'Active')
-    `, [seasonId, `${title.trim()} - Cohort 1`, courseId]);
 
     // Audit log
     await query("INSERT INTO activity_logs (user_id, action, details) VALUES (?, 'CreateCourse', ?)", [
       req.user!.id,
-      `Created course "${title.trim()}" (${courseCode})`
+      `Created course "${title.trim()}" (${courseCode}) - Published: ${isPub ? 'Yes' : 'No'}`
     ]);
+
+    // Return full course object for instant AJAX update
+    const [createdRows]: [any[], any] = await query(`
+      SELECT c.*, cat.name as category_name, u.name as teacher_name, u.email as teacher_email
+      FROM courses c
+      LEFT JOIN course_categories cat ON c.category_id = cat.id
+      LEFT JOIN users u ON c.teacher_id = u.id
+      WHERE c.id = ?
+    `, [courseId]);
+
+    const created = createdRows[0];
+    let syllabusList: any[] = [];
+    if (created.syllabus_json) {
+      try {
+        syllabusList = typeof created.syllabus_json === "string" ? JSON.parse(created.syllabus_json) : created.syllabus_json;
+      } catch {
+        syllabusList = [];
+      }
+    }
+
+    const formattedCreated = {
+      id: created.id,
+      title: created.title,
+      courseName: created.title,
+      code: created.code,
+      slug: created.slug,
+      price: created.price || "$0",
+      description: created.description || "",
+      shortDescription: created.short_description || "",
+      categoryId: created.category_id,
+      categoryName: created.category_name || "General",
+      teacherId: created.teacher_id,
+      instructor: created.teacher_name || "Unassigned",
+      teacherName: created.teacher_name || "Unassigned",
+      studentsCount: 0,
+      sessionsCount: created.sessions_count || 12,
+      sessions: created.sessions_count || 12,
+      progress: 0,
+      status: created.status,
+      image: created.image || "",
+      courseImage: created.image || "",
+      startDate: created.start_date ? (created.start_date instanceof Date ? created.start_date.toISOString().split("T")[0] : String(created.start_date).split("T")[0]) : "",
+      endDate: created.end_date ? (created.end_date instanceof Date ? created.end_date.toISOString().split("T")[0] : String(created.end_date).split("T")[0]) : "",
+      syllabusJson: syllabusList,
+      syllabus: syllabusList,
+      isPublished: Boolean(created.is_published || created.status === "Published"),
+      approvalStatus: created.approval_status || "Approved"
+    };
 
     return res.status(201).json({
       success: true,
-      data: {
-        id: courseId,
-        title: title.trim(),
-        code: courseCode,
-        slug: courseSlug,
-        message: "Course created successfully."
-      }
+      data: formattedCreated,
+      message: "Course created successfully."
     });
   } catch (err: any) {
     console.error("[Create Course Error]:", err);
@@ -1166,7 +1356,7 @@ router.post("/courses", async (req: Request, res: Response) => {
   }
 });
 
-// GET /api/admin/courses/:id (Full course detail: instructor, students, syllabus, seasons)
+// GET /api/admin/courses/:id (Full course detail: instructor, students, syllabus)
 router.get("/courses/:id", async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -1194,26 +1384,23 @@ router.get("/courses/:id", async (req: Request, res: Response) => {
       ORDER BY e.joined_date DESC
     `, [id]);
 
-    // Syllabus / Lessons
-    const [lessons]: [any[], any] = await query(`
-      SELECT id, title, description, duration, lesson_order, is_preview, status, video_url
-      FROM lessons
-      WHERE course_id = ?
-      ORDER BY lesson_order ASC
-    `, [id]);
-
-    // Seasons
-    const [seasons]: [any[], any] = await query(`
-      SELECT * FROM course_seasons WHERE course_id = ? AND deleted_at IS NULL ORDER BY start_date ASC
-    `, [id]);
+    let parsedSyllabus = [];
+    if (course.syllabus_json) {
+      try {
+        parsedSyllabus = typeof course.syllabus_json === "string" ? JSON.parse(course.syllabus_json) : course.syllabus_json;
+      } catch {
+        parsedSyllabus = [];
+      }
+    }
 
     return res.json({
       success: true,
       data: {
         ...course,
         students,
-        lessons,
-        seasons
+        syllabus: parsedSyllabus,
+        syllabusJson: parsedSyllabus,
+        isPublished: Boolean(course.is_published || course.status === "Published")
       }
     });
   } catch (err: any) {
@@ -1221,7 +1408,7 @@ router.get("/courses/:id", async (req: Request, res: Response) => {
   }
 });
 
-// PUT /api/admin/courses/:id (Admin updates course)
+// PUT /api/admin/courses/:id (Admin updates any course, including teacher-defined courses)
 router.put("/courses/:id", async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -1236,8 +1423,16 @@ router.put("/courses/:id", async (req: Request, res: Response) => {
       teacherId,
       sessionsCount,
       status,
-      image
+      image,
+      startDate,
+      endDate,
+      syllabusJson,
+      isPublished,
+      approvalStatus
     } = req.body;
+
+    const isPub = isPublished !== undefined ? Boolean(isPublished) : (status === "Published" ? true : undefined);
+    const syllabusStr = syllabusJson !== undefined ? (typeof syllabusJson === "string" ? syllabusJson : JSON.stringify(syllabusJson)) : undefined;
 
     await query(`
       UPDATE courses
@@ -1251,46 +1446,132 @@ router.put("/courses/:id", async (req: Request, res: Response) => {
           teacher_id = CASE WHEN ? = 1 THEN ? ELSE teacher_id END,
           sessions_count = COALESCE(?, sessions_count),
           status = COALESCE(?, status),
-          image = COALESCE(?, image)
+          image = COALESCE(?, image),
+          start_date = COALESCE(?, start_date),
+          end_date = COALESCE(?, end_date),
+          syllabus_json = COALESCE(?, syllabus_json),
+          is_published = COALESCE(?, is_published),
+          approval_status = COALESCE(?, approval_status)
       WHERE id = ?
     `, [
       title ? title.trim() : null,
       code ? code.trim() : null,
       slug ? slug.trim() : null,
-      price !== undefined ? price : null,
+      price !== undefined ? (typeof price === "number" ? `$${price}` : price) : null,
       description !== undefined ? description : null,
       shortDescription !== undefined ? shortDescription : null,
       categoryId ? Number(categoryId) : null,
       teacherId !== undefined ? 1 : 0,
       teacherId || null,
       sessionsCount ? Number(sessionsCount) : null,
-      status || null,
-      image || null,
+      status || (isPub !== undefined ? (isPub ? "Published" : "Active") : null),
+      image !== undefined ? image : null,
+      startDate !== undefined ? (startDate ? startDate.substring(0, 10) : null) : null,
+      endDate !== undefined ? (endDate ? endDate.substring(0, 10) : null) : null,
+      syllabusStr !== undefined ? syllabusStr : null,
+      isPub !== undefined ? (isPub ? 1 : 0) : null,
+      approvalStatus || null,
       id
     ]);
 
     // Audit log
     await query("INSERT INTO activity_logs (user_id, action, details) VALUES (?, 'UpdateCourse', ?)", [
       req.user!.id,
-      `Updated course configurations for "${title || id}"`
+      `Updated course configuration for "${title || id}"`
     ]);
 
-    return res.json({ success: true, message: "Course updated successfully." });
+    return res.json({ success: true, message: "Course updated successfully in database." });
+  } catch (err: any) {
+    console.error("[Update Course Error]:", err);
+    return res.status(500).json({ success: false, error: { code: "SERVER_ERROR", message: err.message } });
+  }
+});
+
+// PATCH /api/admin/courses/:id/publish (Toggle Course Publishing to Landing Page)
+router.patch("/courses/:id/publish", async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { isPublished } = req.body;
+    const pubVal = isPublished ? 1 : 0;
+    const newStatus = isPublished ? "Published" : "Active";
+
+    await query("UPDATE courses SET is_published = ?, status = ? WHERE id = ?", [pubVal, newStatus, id]);
+    await query("INSERT INTO activity_logs (user_id, action, details) VALUES (?, 'TogglePublish', ?)", [
+      req.user!.id,
+      `Course ${id} publication set to: ${isPublished ? 'Published (Live on Landing)' : 'Unpublished (Draft)'}`
+    ]);
+
+    return res.json({
+      success: true,
+      isPublished: Boolean(isPublished),
+      status: newStatus,
+      message: isPublished ? "Course is now published on landing page." : "Course unpublished from landing page."
+    });
   } catch (err: any) {
     return res.status(500).json({ success: false, error: { code: "SERVER_ERROR", message: err.message } });
   }
 });
 
-// DELETE /api/admin/courses/:id (Soft delete course)
+// POST /api/admin/courses/:id/syllabus (Update Course Syllabus in Database)
+router.post("/courses/:id/syllabus", async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { syllabus } = req.body;
+    const syllabusList = Array.isArray(syllabus) ? syllabus : [];
+    const syllabusStr = JSON.stringify(syllabusList);
+
+    await query("UPDATE courses SET syllabus_json = ? WHERE id = ?", [syllabusStr, id]);
+    await query("INSERT INTO activity_logs (user_id, action, details) VALUES (?, 'UpdateSyllabus', ?)", [
+      req.user!.id,
+      `Updated syllabus (${syllabusList.length} items) for course ${id}`
+    ]);
+
+    return res.json({ success: true, data: syllabusList, message: "Course syllabus synchronized successfully." });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: { code: "SERVER_ERROR", message: err.message } });
+  }
+});
+
+// PATCH /api/admin/courses/:id/approve (Admin Approves Teacher Course Proposal)
+router.patch("/courses/:id/approve", async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { publish } = req.body;
+    const isPub = Boolean(publish);
+    const newStatus = isPub ? "Published" : "Active";
+
+    await query(`
+      UPDATE courses
+      SET approval_status = 'Approved',
+          status = ?,
+          is_published = ?
+      WHERE id = ?
+    `, [newStatus, isPub ? 1 : 0, id]);
+
+    await query("INSERT INTO activity_logs (user_id, action, details) VALUES (?, 'ApproveCourse', ?)", [
+      req.user!.id,
+      `Approved course proposal ${id} (Published: ${isPub ? 'Yes' : 'No'})`
+    ]);
+
+    return res.json({
+      success: true,
+      message: `Course proposal approved successfully${isPub ? ' and published to landing page' : ''}.`
+    });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: { code: "SERVER_ERROR", message: err.message } });
+  }
+});
+
+// DELETE /api/admin/courses/:id (Permanently or soft delete course from MySQL)
 router.delete("/courses/:id", async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    await query("UPDATE courses SET deleted_at = NOW() WHERE id = ?", [id]);
+    await query("UPDATE courses SET deleted_at = NOW(), status = 'Inactive', is_published = 0 WHERE id = ?", [id]);
     await query("INSERT INTO activity_logs (user_id, action, details) VALUES (?, 'DeleteCourse', ?)", [
       req.user!.id,
-      `Deleted course ${id}`
+      `Deleted course ${id} from database`
     ]);
-    return res.json({ success: true, message: "Course deleted successfully." });
+    return res.json({ success: true, message: "Course removed from database successfully." });
   } catch (err: any) {
     return res.status(500).json({ success: false, error: { code: "SERVER_ERROR", message: err.message } });
   }

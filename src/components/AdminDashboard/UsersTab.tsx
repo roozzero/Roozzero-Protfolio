@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { AdminUser } from "./types";
 import { Student, Course } from "../../types/teacher";
+import DeleteConfirmModal from "../common/DeleteConfirmModal";
 
 interface UsersTabProps {
   users: AdminUser[];
@@ -74,6 +75,7 @@ export default function UsersTab({
   const [roleFilter, setRoleFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [showAddModal, setShowAddModal] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
 
   // Sync tab with external activeSubTab prop when changed
   useEffect(() => {
@@ -528,7 +530,7 @@ export default function UsersTab({
 
                           {onDeleteUser && !isMasterAdmin && (
                             <button
-                              onClick={() => onDeleteUser(u.id)}
+                              onClick={() => setDeleteTarget({ id: u.id, name: u.name || u.email || u.username })}
                               className="p-1.5 rounded-lg bg-white/[0.03] hover:bg-red-500/10 text-white/60 hover:text-red-400 border border-white/5 transition-all cursor-pointer"
                               title="Delete User"
                             >
@@ -734,6 +736,22 @@ export default function UsersTab({
           </div>
         )}
       </AnimatePresence>
+
+      {/* Delete User 2nd Confirmation Modal */}
+      <DeleteConfirmModal
+        isOpen={!!deleteTarget}
+        title="Delete User Account"
+        itemName={deleteTarget?.name || "User Account"}
+        message={`Are you sure you want to permanently delete the user account "${deleteTarget?.name}"? All associated credentials and enrollment records will be removed from the database.`}
+        confirmLabel="Permanently Delete User"
+        onConfirm={() => {
+          if (deleteTarget && onDeleteUser) {
+            onDeleteUser(deleteTarget.id);
+            setDeleteTarget(null);
+          }
+        }}
+        onClose={() => setDeleteTarget(null)}
+      />
     </div>
   );
 }

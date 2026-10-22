@@ -16,6 +16,7 @@ import {
   DEFAULT_CMS_CONFIG, DEFAULT_HOMEPAGE_CLASSES, loadCmsConfig, saveCmsConfig
 } from "../../constants/defaultCms";
 import { cmsApi } from "../../lib/api";
+import DeleteConfirmModal from "../common/DeleteConfirmModal";
 
 // Curated developer & design high-resolution images for quick 1-click selection
 const CURATED_IMAGE_SUGGESTIONS = [
@@ -96,6 +97,9 @@ export default function HomepageManagementTab({ showCustomToast }: HomepageManag
     title: string;
   } | null>(null);
 
+  const [showResetAllConfirm, setShowResetAllConfirm] = useState(false);
+  const [isResettingAll, setIsResettingAll] = useState(false);
+
   // Check if draft has unsaved changes compared to published state
   const hasUnpublishedChanges = JSON.stringify(draftConfig) !== JSON.stringify(publishedConfig);
 
@@ -158,17 +162,23 @@ export default function HomepageManagementTab({ showCustomToast }: HomepageManag
   };
 
   // Reset everything to factory defaults
-  const handleResetAllToDefaults = async () => {
-    if (window.confirm("Are you sure you want to reset ALL homepage sections to factory default configuration?")) {
-      try {
-        await cmsApi.updateSection("all", DEFAULT_CMS_CONFIG);
-        setDraftConfig(DEFAULT_CMS_CONFIG);
-        setPublishedConfig(DEFAULT_CMS_CONFIG);
-        saveCmsConfig(DEFAULT_CMS_CONFIG);
-        showCustomToast("Reset entire website configuration to factory defaults.", "warning");
-      } catch (err: any) {
-        showCustomToast(err.message || "Failed to reset website defaults.", "warning");
-      }
+  const handleResetAllToDefaults = () => {
+    setShowResetAllConfirm(true);
+  };
+
+  const executeResetAllToDefaults = async () => {
+    setIsResettingAll(true);
+    try {
+      await cmsApi.updateSection("all", DEFAULT_CMS_CONFIG);
+      setDraftConfig(DEFAULT_CMS_CONFIG);
+      setPublishedConfig(DEFAULT_CMS_CONFIG);
+      saveCmsConfig(DEFAULT_CMS_CONFIG);
+      showCustomToast("Reset entire website configuration to factory defaults.", "warning");
+      setShowResetAllConfirm(false);
+    } catch (err: any) {
+      showCustomToast(err.message || "Failed to reset website defaults.", "warning");
+    } finally {
+      setIsResettingAll(false);
     }
   };
 
@@ -2708,6 +2718,16 @@ export default function HomepageManagementTab({ showCustomToast }: HomepageManag
           </div>
         )}
       </AnimatePresence>
+
+      {/* RESET ALL SECTIONS CONFIRMATION MODAL */}
+      <DeleteConfirmModal
+        isOpen={showResetAllConfirm}
+        title="Reset Entire Website to Defaults"
+        message="This action will reset ALL homepage sections, testimonials, statistics, and showcase items to factory defaults. Are you sure you want to proceed?"
+        isDeleting={isResettingAll}
+        onConfirm={executeResetAllToDefaults}
+        onClose={() => setShowResetAllConfirm(false)}
+      />
 
     </div>
   );
