@@ -2,12 +2,13 @@ import React, { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
   BookOpen, Plus, Trash2, Edit3, Check, X, Clock, Layers,
-  ListOrdered, ChevronDown, ChevronRight, Save, AlertCircle
+  ListOrdered, ChevronDown, ChevronRight, Save, AlertCircle, CheckCircle2
 } from "lucide-react";
-import { adminApi } from "../../lib/api";
+import { adminApi, teacherApi } from "../../lib/api";
 
 export interface SyllabusItem {
   id: string;
+  moduleNumber?: number;
   title: string;
   duration?: string;
   description?: string;
@@ -23,6 +24,7 @@ interface CourseSyllabusModalProps {
   onSaveSyllabus: (updatedSyllabus: SyllabusItem[]) => void;
   onClose: () => void;
   showCustomToast?: (msg: string, type?: "success" | "info" | "warning") => void;
+  isTeacherMode?: boolean;
 }
 
 export default function CourseSyllabusModal({
@@ -32,12 +34,14 @@ export default function CourseSyllabusModal({
   initialSyllabus = [],
   onSaveSyllabus,
   onClose,
-  showCustomToast
+  showCustomToast,
+  isTeacherMode = false
 }: CourseSyllabusModalProps) {
   const [syllabus, setSyllabus] = useState<SyllabusItem[]>(initialSyllabus || []);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [expandedIndex, setExpandedIndex] = useState<number | null>(0);
+  const [modalAlert, setModalAlert] = useState<{ type: "error" | "success" | "warning"; text: string } | null>(null);
 
   // Form state for adding/editing a module
   const [formState, setFormState] = useState<SyllabusItem>({
@@ -54,6 +58,7 @@ export default function CourseSyllabusModal({
     if (isOpen) {
       setSyllabus(initialSyllabus || []);
       setEditingIndex(null);
+      setModalAlert(null);
       setFormState({
         id: "",
         title: "",
@@ -67,6 +72,7 @@ export default function CourseSyllabusModal({
   }, [isOpen, initialSyllabus]);
 
   const handleStartAdd = () => {
+    setModalAlert(null);
     setEditingIndex(-1); // -1 signifies new module
     setFormState({
       id: `mod-${Date.now()}`,
@@ -80,6 +86,7 @@ export default function CourseSyllabusModal({
   };
 
   const handleStartEdit = (index: number) => {
+    setModalAlert(null);
     setEditingIndex(index);
     setFormState({ ...syllabus[index] });
     setNewTopicText("");
@@ -103,19 +110,31 @@ export default function CourseSyllabusModal({
 
   const handleSaveModule = () => {
     if (!formState.title.trim()) {
+      setModalAlert({ type: "error", text: "Module title is required before saving the module." });
       showCustomToast?.("Module title is required", "warning");
       return;
     }
 
+    const mergedTopics = newTopicText.trim()
+      ? [...(formState.topics || []), newTopicText.trim()]
+      : (formState.topics || []);
+
+    const moduleToSave: SyllabusItem = {
+      ...formState,
+      id: formState.id || `mod-${Date.now()}`,
+      title: formState.title.trim(),
+      topics: mergedTopics
+    };
+
     if (editingIndex === -1) {
-      // Add new
-      setSyllabus((prev) => [...prev, { ...formState, id: formState.id || `mod-${Date.now()}` }]);
+      setSyllabus((prev) => [...prev, moduleToSave]);
     } else if (editingIndex !== null && editingIndex >= 0) {
-      // Update existing
-      setSyllabus((prev) => prev.map((item, idx) => (idx === editingIndex ? { ...formState } : item)));
+      setSyllabus((prev) => prev.map((item, idx) => (idx === editingIndex ? moduleToSave : item)));
     }
 
+    setNewTopicText("");
     setEditingIndex(null);
+    setModalAlert({ type: "success", text: `Module "${moduleToSave.title}" added to syllabus list. Click "Save Syllabus" below to commit changes.` });
   };
 
   const handleDeleteModule = (index: number) => {
@@ -126,22 +145,79 @@ export default function CourseSyllabusModal({
   };
 
   const handleSaveAllToDatabase = async () => {
+    setModalAlert(null);
+
+    // Auto-commit any in-progress module form if the user typed a title and clicked Save Syllabus directly
+    let finalSyllabus = [...syllabus];
+    if (editingIndex !== null) {
+      if (formState.title.trim()) {
+        const mergedTopics = newTopicText.trim()
+          ? [...(formState.topics || []), newTopicText.trim()]
+          : (formState.topics || []);
+        const pendingMod: SyllabusItem = {
+          ...formState,
+          id: formState.id || `mod-${Date.now()}`,
+          title: formState.title.trim(),
+          topics: mergedTopics
+        };
+        if (editingIndex === -1) {
+          finalSyllabus.push(pendingMod);
+        } else if (editingIndex >= 0) {
+          finalSyllabus = finalSyllabus.map((item, idx) => (idx === editingIndex ? pendingMod : item));
+        }
+        setSyllabus(finalSyllabus);
+        setEditingIndex(null);
+        setNewTopicText("");
+      } else if (finalSyllabus.length === 0) {
+        setModalAlert({ type: "error", text: "Please enter a Module Title and add at least one module before saving." });
+        return;
+      }
+    }
+
+    if (finalSyllabus.length === 0) {
+      setModalAlert({ type: "error", text: "Please add at least one syllabus module before saving." });
+      showCustomToast?.("Please add at least one syllabus module", "warning");
+      return;
+    }
+
+    // If this is an unsaved draft/proposal course, save locally to parent form state
+    if (!courseId || courseId === "proposal" || courseId === "draft" || courseId === "new") {
+      onSaveSyllabus(finalSyllabus);
+      showCustomToast?.(`Syllabus (${finalSyllabus.length} modules) attached to course form`, "success");
+      onClose();
+      return;
+    }
+
     setIsSaving(true);
     try {
-      const res = await adminApi.updateCourseSyllabus(courseId, syllabus);
-      if (res.success) {
-        onSaveSyllabus(syllabus);
+      let res: any;
+      if (isTeacherMode) {
+        res = await teacherApi.updateCourseSyllabus(courseId, finalSyllabus);
+      } else {
+        try {
+          res = await adminApi.updateCourseSyllabus(courseId, finalSyllabus);
+        } catch (adminErr: any) {
+          if (adminErr?.status === 403) {
+            res = await teacherApi.updateCourseSyllabus(courseId, finalSyllabus);
+          } else {
+            throw adminErr;
+          }
+        }
+      }
+
+      if (res && res.success) {
+        onSaveSyllabus(finalSyllabus);
+        window.dispatchEvent(new CustomEvent("courses_updated"));
         showCustomToast?.("Syllabus synchronized to database successfully", "success");
         onClose();
       } else {
+        setModalAlert({ type: "error", text: res?.error?.message || "Failed to synchronize syllabus with database." });
         showCustomToast?.("Failed to synchronize syllabus", "warning");
       }
     } catch (err: any) {
       console.error("Failed to save syllabus to database:", err);
-      // Fallback local update
-      onSaveSyllabus(syllabus);
-      showCustomToast?.("Syllabus saved locally", "info");
-      onClose();
+      setModalAlert({ type: "error", text: err?.message || "Database error while saving syllabus." });
+      showCustomToast?.(err?.message || "Failed to save syllabus to database", "warning");
     } finally {
       setIsSaving(false);
     }
@@ -181,6 +257,26 @@ export default function CourseSyllabusModal({
 
           {/* Body */}
           <div className="p-5 overflow-y-auto space-y-4 flex-1">
+            {modalAlert && (
+              <div
+                className={`p-3.5 rounded-xl border text-xs flex items-center justify-between gap-3 ${
+                  modalAlert.type === "error"
+                    ? "bg-red-500/10 border-red-500/30 text-red-300"
+                    : modalAlert.type === "warning"
+                    ? "bg-amber-500/10 border-amber-500/30 text-amber-300"
+                    : "bg-emerald-500/10 border-emerald-500/30 text-emerald-300"
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  {modalAlert.type === "success" ? <CheckCircle2 size={15} className="shrink-0" /> : <AlertCircle size={15} className="shrink-0" />}
+                  <span>{modalAlert.text}</span>
+                </div>
+                <button type="button" onClick={() => setModalAlert(null)} className="text-white/50 hover:text-white">
+                  <X size={14} />
+                </button>
+              </div>
+            )}
+
             {/* Top Bar: Add Module button */}
             {editingIndex === null && (
               <div className="flex justify-between items-center">

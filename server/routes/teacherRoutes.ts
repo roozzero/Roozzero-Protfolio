@@ -205,17 +205,58 @@ router.post("/courses/request", async (req: Request, res: Response) => {
       image,
       startDate,
       endDate,
-      syllabusJson
+      syllabusJson,
+      syllabus
     } = req.body;
 
     if (!title || !title.trim()) {
       return res.status(400).json({ success: false, error: { code: "MISSING_TITLE", message: "Course title is required." } });
     }
 
+    const rawSyllabus = syllabusJson !== undefined ? syllabusJson : syllabus;
+    let parsedSyllabus: any[] = [];
+    if (Array.isArray(rawSyllabus)) {
+      parsedSyllabus = rawSyllabus;
+    } else if (typeof rawSyllabus === "string" && rawSyllabus.trim()) {
+      try {
+        parsedSyllabus = JSON.parse(rawSyllabus);
+      } catch {
+        parsedSyllabus = [];
+      }
+    }
+
+    if (!Array.isArray(parsedSyllabus) || parsedSyllabus.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: "MISSING_SYLLABUS",
+          message: "Please add at least one syllabus module before submitting your course proposal."
+        }
+      });
+    }
+
     const courseId = `crs-${Date.now()}-${crypto.randomBytes(3).toString("hex")}`;
-    const courseCode = (code && code.trim()) || `CRS-${Math.floor(100 + Math.random() * 900)}`;
-    const courseSlug = title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
-    const syllabusStr = syllabusJson ? (typeof syllabusJson === "string" ? syllabusJson : JSON.stringify(syllabusJson)) : JSON.stringify([]);
+    let courseCode = (code && String(code).trim()) || `CRS-${Math.floor(100 + Math.random() * 900)}`;
+
+    // Ensure unique course code to prevent UNIQUE constraint failure
+    const [existingCode]: [any[], any] = await query("SELECT id FROM courses WHERE code = ?", [courseCode]);
+    if (existingCode && existingCode.length > 0) {
+      courseCode = `${courseCode}-${Math.floor(100 + Math.random() * 900)}`;
+    }
+
+    // Ensure valid category_id
+    let validCatId = categoryId ? Number(categoryId) : 1;
+    const [catRows]: [any[], any] = await query("SELECT id FROM course_categories WHERE id = ?", [validCatId]);
+    if (!catRows || catRows.length === 0) {
+      validCatId = 1;
+    }
+
+    const courseSlug = `${title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "")}-${Date.now().toString().slice(-4)}`;
+    const syllabusStr = JSON.stringify(parsedSyllabus);
+    const formattedPrice = typeof price === "number" ? `$${price}` : (price || "$0");
+    const numSessions = sessionsCount ? Number(sessionsCount) : 12;
+    const cleanStart = startDate ? String(startDate).substring(0, 10) : null;
+    const cleanEnd = endDate ? String(endDate).substring(0, 10) : null;
 
     await query(`
       INSERT INTO courses (
@@ -230,15 +271,15 @@ router.post("/courses/request", async (req: Request, res: Response) => {
       title.trim(),
       courseCode,
       courseSlug,
-      typeof price === "number" ? `$${price}` : (price || "$0"),
+      formattedPrice,
       description || "",
       shortDescription || description || "",
-      categoryId ? Number(categoryId) : 1,
+      validCatId,
       teacherId,
-      sessionsCount ? Number(sessionsCount) : 12,
+      numSessions,
       image || null,
-      startDate ? startDate.substring(0, 10) : null,
-      endDate ? endDate.substring(0, 10) : null,
+      cleanStart,
+      cleanEnd,
       syllabusStr,
       teacherId
     ]);
@@ -252,7 +293,7 @@ router.post("/courses/request", async (req: Request, res: Response) => {
     // Internal notification to admin
     await query("INSERT INTO notifications (user_id, type, title, message) VALUES ('admin-1', 'course_request', ?, ?)", [
       `New Course Proposal: ${title.trim()}`,
-      `Instructor ${teacherName} has requested a new course "${title.trim()}". Review and approve in Academic catalog.`
+      `Instructor ${teacherName} has requested a new course "${title.trim()}" (${parsedSyllabus.length} syllabus modules). Review and approve in Academic catalog.`
     ]);
 
     return res.status(201).json({
@@ -261,13 +302,64 @@ router.post("/courses/request", async (req: Request, res: Response) => {
       data: {
         id: courseId,
         title: title.trim(),
+        courseName: title.trim(),
         code: courseCode,
+        price: formattedPrice,
+        description: description || "",
+        shortDescription: shortDescription || description || "",
+        categoryId: validCatId,
+        sessionsCount: numSessions,
+        sessions: numSessions,
+        studentsCount: 0,
+        image: image || "",
+        courseImage: image || "",
+        startDate: cleanStart || "",
+        endDate: cleanEnd || "",
+        syllabus: parsedSyllabus,
+        syllabusJson: parsedSyllabus,
         status: "PendingApproval",
-        approvalStatus: "Pending"
+        approvalStatus: "Pending",
+        isPublished: false,
+        requestedBy: teacherId,
+        isMyRequest: true
       }
     });
   } catch (err: any) {
     console.error("[Teacher Propose Course Error]:", err);
+    return res.status(500).json({ success: false, error: { code: "SERVER_ERROR", message: err.message } });
+  }
+});
+
+// PUT /api/teacher/courses/:id/syllabus (Teacher updates syllabus for their course)
+router.put("/courses/:id/syllabus", async (req: Request, res: Response) => {
+  try {
+    const courseId = req.params.id;
+    const teacherId = req.user!.id;
+    const isSuperAdmin = req.user!.roleName === "Administrator" || req.user!.roleName === "admin";
+    const { syllabus } = req.body;
+
+    const [rows]: [any[], any] = await query(
+      "SELECT id, teacher_id, requested_by FROM courses WHERE id = ? AND deleted_at IS NULL",
+      [courseId]
+    );
+    if (!rows || rows.length === 0) {
+      return res.status(404).json({ success: false, error: { code: "NOT_FOUND", message: "Course not found." } });
+    }
+    if (!isSuperAdmin && rows[0].teacher_id !== teacherId && rows[0].requested_by !== teacherId) {
+      return res.status(403).json({ success: false, error: { code: "FORBIDDEN", message: "You do not have permission to update this course syllabus." } });
+    }
+
+    const syllabusList = Array.isArray(syllabus) ? syllabus : [];
+    const syllabusStr = JSON.stringify(syllabusList);
+    await query("UPDATE courses SET syllabus_json = ? WHERE id = ?", [syllabusStr, courseId]);
+    await query("UPDATE cms_classes SET syllabus_json = ? WHERE id = ?", [syllabusStr, courseId]).catch(() => {});
+
+    return res.json({
+      success: true,
+      message: "Course syllabus saved to database.",
+      data: syllabusList
+    });
+  } catch (err: any) {
     return res.status(500).json({ success: false, error: { code: "SERVER_ERROR", message: err.message } });
   }
 });
@@ -363,9 +455,11 @@ router.get("/sessions", async (req: Request, res: Response) => {
 
     const [rows]: [any[], any] = await query(`
       SELECT s.id, s.course_id as courseId, c.title as courseTitle, s.title, s.date, s.time, s.duration, s.link, s.status,
+             COALESCE(u.name, 'Instructor') as teacherName,
              (SELECT COUNT(*) FROM enrollments e WHERE e.course_id = s.course_id) as studentCount
       FROM sessions s
       INNER JOIN courses c ON s.course_id = c.id
+      LEFT JOIN users u ON COALESCE(s.teacher_id, c.teacher_id) = u.id
       WHERE (${isSuperAdmin ? "1=1" : "c.teacher_id = ?"}) AND s.deleted_at IS NULL AND c.deleted_at IS NULL
       ORDER BY s.date ASC
     `, isSuperAdmin ? [] : [teacherId]);
@@ -374,6 +468,7 @@ router.get("/sessions", async (req: Request, res: Response) => {
       id: sess.id,
       courseId: sess.courseId,
       courseTitle: sess.courseTitle,
+      teacherName: sess.teacherName || "Instructor",
       title: sess.title,
       date: sess.date ? (sess.date instanceof Date ? sess.date.toISOString().split("T")[0] : String(sess.date).split("T")[0]) : "",
       time: sess.time,

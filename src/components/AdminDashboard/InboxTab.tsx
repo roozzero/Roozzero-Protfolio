@@ -4,7 +4,8 @@ import {
   Mail, Send, Search, Filter, AlertTriangle, Check, Trash2, Archive,
   Reply, Forward, Eye, EyeOff, Paperclip, ChevronDown, CheckSquare, Square,
   Clock, Plus, MessageSquare, Info, Shield, Users, Megaphone, User, BookOpen,
-  Calendar, Award, ArrowLeft, ArrowUpRight, Copy, CheckCircle, RefreshCw, X
+  Calendar, Award, ArrowLeft, ArrowUpRight, Copy, CheckCircle, RefreshCw, X,
+  AlertCircle, Sparkles
 } from "lucide-react";
 import { adminApi } from "../../lib/api";
 import DeleteConfirmModal from "../common/DeleteConfirmModal";
@@ -24,7 +25,7 @@ export interface AdminMessage {
 
 export interface Conversation {
   id: string;
-  backendId?: number;
+  backendId?: number | string;
   subject: string;
   senderId: string;
   senderName: string;
@@ -37,22 +38,6 @@ export interface Conversation {
   courseId?: string;
   courseTitle?: string;
   lastUpdated: string;
-}
-
-export interface SentMessage {
-  id: string;
-  recipients: string[]; // List of recipient names
-  recipientRole: string; // e.g., "Individual Student", "All Students", "Multiple Users", "React Course Students"
-  subject: string;
-  content: string;
-  timestamp: string;
-  attachments?: { name: string; size: string; type: string }[];
-  deliveryStats: {
-    delivered: number;
-    read: number;
-    unread: number;
-  };
-  isRead: boolean; // General read status or first recipient read status
 }
 
 interface InboxTabProps {
@@ -76,13 +61,16 @@ export default function InboxTab({
   onDeleteAnnouncement,
   showCustomToast
 }: InboxTabProps) {
-  const [activeTab, setActiveTab] = useState<"inbox" | "compose" | "announcements" | "sent">("inbox");
+  const [activeTab, setActiveTab] = useState<"inbox" | "announcements">("inbox");
+  const [isComposeModalOpen, setIsComposeModalOpen] = useState(false);
 
-  // Backend-backed conversations state (strictly empty by default, loaded from MySQL)
+  // Backend-backed conversations state
   const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [isLoadingMessages, setIsLoadingMessages] = useState(false);
 
   // Load authoritative messages from backend API
-  const fetchMessagesAndSent = () => {
+  const fetchMessages = () => {
+    setIsLoadingMessages(true);
     adminApi.getMessages()
       .then((res) => {
         if (res.success && Array.isArray(res.data)) {
@@ -142,6 +130,10 @@ export default function InboxTab({
             };
           });
           setConversations(loaded);
+          if (selectedConv) {
+            const refreshed = loaded.find(c => c.id === selectedConv.id);
+            if (refreshed) setSelectedConv(refreshed);
+          }
         } else {
           setConversations([]);
         }
@@ -151,27 +143,15 @@ export default function InboxTab({
           console.warn("Could not load messages from backend:", err?.message || err);
         }
         setConversations([]);
-      });
-
-    // Load authoritative sent messages from MySQL
-    adminApi.getSentMessages()
-      .then((res) => {
-        if (res.success && Array.isArray(res.data)) {
-          setSentMessages(res.data);
-        } else {
-          setSentMessages([]);
-        }
       })
-      .catch(() => {
-        setSentMessages([]);
+      .finally(() => {
+        setIsLoadingMessages(false);
       });
   };
 
   useEffect(() => {
-    fetchMessagesAndSent();
+    fetchMessages();
   }, []);
-
-  const [sentMessages, setSentMessages] = useState<SentMessage[]>([]);
 
   // --- INBOX SUBTAB STATE ---
   const [selectedConv, setSelectedConv] = useState<Conversation | null>(null);
@@ -182,15 +162,16 @@ export default function InboxTab({
   const [replyText, setReplyText] = useState("");
   const [replyAttachments, setReplyAttachments] = useState<{ name: string; size: string; type: string }[]>([]);
   const [isReplying, setIsReplying] = useState(false);
+  const [replyFeedback, setReplyFeedback] = useState<{ type: "error" | "success"; text: string } | null>(null);
   const [inboxPage, setInboxPage] = useState(1);
-  const itemsPerPage = 5;
+  const itemsPerPage = 7;
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // 2nd Confirmation Delete Modal State
   const [deleteModalState, setDeleteModalState] = useState<{
     isOpen: boolean;
-    type: "conv" | "announcement" | "sent";
+    type: "conv" | "announcement";
     id: string;
     name: string;
   }>({
@@ -217,13 +198,6 @@ export default function InboxTab({
         await adminApi.deleteAnnouncement(deleteModalState.id);
         onDeleteAnnouncement(deleteModalState.id);
         showCustomToast("Announcement deleted permanently from database.", "success");
-      } else if (deleteModalState.type === "sent") {
-        await adminApi.deleteMessage(deleteModalState.id);
-        setSentMessages(prev => prev.filter(s => s.id !== deleteModalState.id));
-        if (selectedSent?.id === deleteModalState.id) {
-          setSelectedSent(null);
-        }
-        showCustomToast("Sent message deleted from database archive.", "success");
       }
     } catch (err: any) {
       console.error("Delete failed:", err);
@@ -241,10 +215,14 @@ export default function InboxTab({
     }
   }, [selectedConv, selectedConv?.messages.length]);
 
-  // Handle Thread Reply Action with authoritative MySQL backend
+  // Handle Thread Reply Action with authoritative backend
   const handleReply = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!replyText.trim() && replyAttachments.length === 0) return;
+    setReplyFeedback(null);
+    if (!replyText.trim() && replyAttachments.length === 0) {
+      setReplyFeedback({ type: "error", text: "Please enter a reply message before sending." });
+      return;
+    }
 
     setIsReplying(true);
 
@@ -254,11 +232,13 @@ export default function InboxTab({
         await adminApi.replyMessage(msgId, replyText.trim());
       }
 
+      setReplyFeedback({ type: "success", text: "Reply sent and saved to conversation history." });
       showCustomToast("Message reply dispatched and stored in database!", "success");
       setReplyText("");
       setReplyAttachments([]);
-      fetchMessagesAndSent();
+      fetchMessages();
     } catch (err: any) {
+      setReplyFeedback({ type: "error", text: err?.message || "Failed to dispatch reply." });
       showCustomToast(err.message || "Failed to dispatch reply.", "warning");
     } finally {
       setIsReplying(false);
@@ -266,11 +246,10 @@ export default function InboxTab({
   };
 
   const handleForwardMessage = (msg: AdminMessage) => {
-    // Fill compose tab with forward information
     setComposeSubject(`Fwd: ${msg.subject}`);
     setComposeContent(`---------- Forwarded message ---------\nFrom: ${msg.senderName} (${msg.senderRole})\nDate: ${new Date(msg.timestamp).toLocaleString()}\nSubject: ${msg.subject}\n\n${msg.content}`);
-    setActiveTab("compose");
-    showCustomToast("Message populated into Composer.", "info");
+    setComposeAlert(null);
+    setIsComposeModalOpen(true);
   };
 
   const handleMarkReadStatus = (conv: Conversation, status: boolean) => {
@@ -317,14 +296,13 @@ export default function InboxTab({
     showCustomToast(`Conversation is now marked as ${newStatus}.`, "success");
   };
 
-  // --- COMPOSE TAB STATE ---
+  // --- COMPOSE MODAL STATE ---
   const [recipientType, setRecipientType] = useState<
-    "Individual" | "Multiple" | "AllStudents" | "AllTeachers" | "AllAdmins" | "Course" | "Season"
+    "Individual" | "Multiple" | "AllStudents" | "AllTeachers" | "AllAdmins" | "Course"
   >("Individual");
   const [selectedIndividual, setSelectedIndividual] = useState("");
   const [selectedMultiple, setSelectedMultiple] = useState<string[]>([]);
   const [selectedCourseId, setSelectedCourseId] = useState("");
-  const [selectedSeasonId, setSelectedSeasonId] = useState("");
   const [composeSubject, setComposeSubject] = useState("");
   const [composeContent, setComposeContent] = useState("");
   const [composeAttachments, setComposeAttachments] = useState<{ name: string; size: string; type: string }[]>([]);
@@ -332,6 +310,7 @@ export default function InboxTab({
   const [isUploading, setIsUploading] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [userSearchTerm, setUserSearchTerm] = useState("");
+  const [composeAlert, setComposeAlert] = useState<{ type: "error" | "success"; text: string } | null>(null);
 
   const handleComposeAttachmentUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -339,7 +318,6 @@ export default function InboxTab({
       setIsUploading(true);
       setUploadProgress(0);
 
-      // Simulate file upload progress bars
       const interval = setInterval(() => {
         setUploadProgress(prev => {
           if (prev >= 100) {
@@ -353,36 +331,38 @@ export default function InboxTab({
                 type: file.name.split(".").pop() || "doc"
               }
             ]);
-            showCustomToast(`Uploaded ${file.name} successfully.`, "success");
+            showCustomToast(`Attached ${file.name} successfully.`, "success");
             return 100;
           }
-          return prev + 20;
+          return prev + 25;
         });
-      }, 150);
+      }, 100);
     }
   };
 
   const handleSendCompose = async (e: React.FormEvent) => {
     e.preventDefault();
+    setComposeAlert(null);
+
     if (!composeSubject.trim() || !composeContent.trim()) {
+      setComposeAlert({ type: "error", text: "Both message subject and content are required." });
       showCustomToast("Subject and message content are required.", "warning");
       return;
     }
 
     if (recipientType === "Individual" && !selectedIndividual) {
+      setComposeAlert({ type: "error", text: "Please select an individual recipient from the dropdown." });
       showCustomToast("Please select a recipient first.", "warning");
       return;
     }
     if (recipientType === "Multiple" && selectedMultiple.length === 0) {
+      setComposeAlert({ type: "error", text: "Please check at least one recipient from the user list." });
       showCustomToast("Please select at least one recipient.", "warning");
       return;
     }
     if (recipientType === "Course" && !selectedCourseId) {
+      setComposeAlert({ type: "error", text: "Please select a target course." });
       showCustomToast("Please select a course first.", "warning");
-      return;
-    }
-    if (recipientType === "Season" && !selectedSeasonId) {
-      showCustomToast("Please select a course season first.", "warning");
       return;
     }
 
@@ -394,34 +374,31 @@ export default function InboxTab({
         targetUserId: recipientType === "Individual" ? selectedIndividual : undefined,
         targetUserIds: recipientType === "Multiple" ? selectedMultiple : undefined,
         courseId: recipientType === "Course" ? selectedCourseId : undefined,
-        seasonId: recipientType === "Season" ? selectedSeasonId : undefined,
         subject: composeSubject.trim(),
         content: composeContent.trim(),
         attachments: composeAttachments
       });
 
       if (res.success) {
-        showCustomToast(`Message sent successfully to ${res.data?.recipientLabel || "recipients"} and recorded in database!`, "success");
+        setComposeAlert({
+          type: "success",
+          text: `Message dispatched to ${res.data?.recipientLabel || "recipients"} and saved to database!`
+        });
+        showCustomToast(`Message sent successfully to ${res.data?.recipientLabel || "recipients"}!`, "success");
         setComposeSubject("");
         setComposeContent("");
         setComposeAttachments([]);
         setSelectedIndividual("");
         setSelectedMultiple([]);
         setSelectedCourseId("");
-        setSelectedSeasonId("");
-
-        // Refresh sent messages from authoritative MySQL
-        adminApi.getSentMessages()
-          .then((sRes) => {
-            if (sRes.success && Array.isArray(sRes.data)) {
-              setSentMessages(sRes.data);
-            }
-          })
-          .catch(() => {});
-
-        setActiveTab("sent");
+        fetchMessages();
+        setTimeout(() => {
+          setIsComposeModalOpen(false);
+          setComposeAlert(null);
+        }, 700);
       }
     } catch (err: any) {
+      setComposeAlert({ type: "error", text: err?.message || "Failed to send message. Please try again." });
       showCustomToast(err.message || "Failed to dispatch message.", "warning");
     } finally {
       setIsSending(false);
@@ -429,7 +406,7 @@ export default function InboxTab({
   };
 
   // --- ANNOUNCEMENTS TAB STATE ---
-  const [annAudience, setAnnAudience] = useState<"Everyone" | "All Students" | "All Teachers" | "Specific Course" | "Specific Season" | "Individual User">("Everyone");
+  const [annAudience, setAnnAudience] = useState<"Everyone" | "All Students" | "All Teachers" | "Specific Course" | "Individual User">("Everyone");
   const [annTargetId, setAnnTargetId] = useState("");
   const [annTitle, setAnnTitle] = useState("");
   const [annDesc, setAnnDesc] = useState("");
@@ -470,17 +447,14 @@ export default function InboxTab({
       };
 
       if (isEditingAnnId) {
-        // Edit Action
         onDeleteAnnouncement(isEditingAnnId);
         onAddAnnouncement(announcementPayload);
         showCustomToast("Academy announcement synchronized and updated successfully!", "success");
       } else {
-        // Create Action
         onAddAnnouncement(announcementPayload);
         showCustomToast("Central academy announcement published to recipient screens!", "success");
       }
 
-      // Reset Form
       setAnnTitle("");
       setAnnDesc("");
       setAnnTargetId("");
@@ -490,7 +464,7 @@ export default function InboxTab({
       setAnnAttachments([]);
       setIsEditingAnnId(null);
       setIsCreatingAnn(false);
-    }, 600);
+    }, 400);
   };
 
   const handleEditAnnTrigger = (ann: any) => {
@@ -538,17 +512,13 @@ export default function InboxTab({
     showCustomToast("Announcement moved to system archives.", "success");
   };
 
-  // --- SENT SUBTAB STATE ---
-  const [selectedSent, setSelectedSent] = useState<SentMessage | null>(null);
-  const [sentSearch, setSentSearch] = useState("");
-
   // Helpers
   const getRoleColor = (role: string) => {
     switch (role) {
-      case "super-admin": return "text-red-400 bg-red-500/5 border-red-500/10";
-      case "admin": return "text-amber-400 bg-amber-500/5 border-amber-500/10";
-      case "teacher": return "text-indigo-400 bg-indigo-500/5 border-indigo-500/10";
-      default: return "text-emerald-400 bg-emerald-500/5 border-emerald-500/10";
+      case "super-admin": return "text-red-400 bg-red-500/10 border-red-500/20";
+      case "admin": return "text-amber-400 bg-amber-500/10 border-amber-500/20";
+      case "teacher": return "text-indigo-400 bg-indigo-500/10 border-indigo-500/20";
+      default: return "text-emerald-400 bg-emerald-500/10 border-emerald-500/20";
     }
   };
 
@@ -579,172 +549,190 @@ export default function InboxTab({
     inboxPage * itemsPerPage
   );
 
-  // Search Sent Messages
-  const filteredSentMessages = sentMessages.filter(s =>
-    s.subject.toLowerCase().includes(sentSearch.toLowerCase()) ||
-    s.content.toLowerCase().includes(sentSearch.toLowerCase()) ||
-    s.recipients.some(r => r.toLowerCase().includes(sentSearch.toLowerCase()))
-  );
+  const unreadCount = conversations.filter(c => !c.isRead && !c.isArchived).length;
 
   return (
     <div className="space-y-6 animate-fade-in text-left font-sans">
       
-      {/* SECTION HEADER */}
-      <div className="space-y-1.5 text-left border-b border-white/[0.04] pb-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <span className="text-[10px] text-indigo-400 font-bold uppercase tracking-wider block font-mono">Communications Hub</span>
-          <h2 className="font-sans text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2">
-            <Mail className="text-indigo-400 animate-pulse" size={24} />
-            <span>Central Communication Center</span>
+      {/* REDESIGNED MODERN HEADER */}
+      <div className="p-6 rounded-3xl bg-gradient-to-br from-[#0d0e17] via-[#090a10] to-[#060609] border border-white/[0.07] shadow-2xl flex flex-col lg:flex-row lg:items-center justify-between gap-5">
+        <div className="space-y-1.5">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-[10px] font-mono uppercase tracking-widest">
+            <Sparkles size={11} />
+            <span>Unified Messaging & Broadcast Center</span>
+          </div>
+          <h2 className="font-sans text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2.5">
+            <span>Academy Inbox & Communications</span>
           </h2>
-          <p className="text-xs text-white/40 max-w-2xl leading-relaxed">
-            Manage student-teacher inquiries, compose group alerts, deploy targeted announcements, and examine delivery statistics from a cohesive portal.
+          <p className="text-xs text-white/45 max-w-2xl leading-relaxed">
+            View and respond to student and instructor conversations in real time, or compose direct and group messages via modal.
           </p>
         </div>
 
-        {/* Global Statistics Banner */}
-        <div className="flex gap-2 shrink-0">
-          <div className="p-3 bg-indigo-500/5 border border-indigo-500/10 rounded-2xl flex items-center gap-3">
+        {/* Action & Quick Stats */}
+        <div className="flex flex-wrap items-center gap-3 shrink-0">
+          <div className="px-4 py-2.5 bg-white/[0.02] border border-white/[0.06] rounded-2xl flex items-center gap-3">
             <div className="p-2 bg-indigo-500/10 rounded-xl text-indigo-400"><Mail size={16} /></div>
             <div>
-              <span className="text-[9px] text-white/40 font-bold block uppercase">Unread Thread</span>
-              <span className="text-sm font-extrabold text-white">{conversations.filter(c => !c.isRead && !c.isArchived).length}</span>
+              <span className="text-[9px] text-white/40 font-bold block uppercase font-mono">Unread</span>
+              <span className="text-sm font-black text-white">{unreadCount}</span>
             </div>
           </div>
-          <div className="p-3 bg-emerald-500/5 border border-emerald-500/10 rounded-2xl flex items-center gap-3">
-            <div className="p-2 bg-emerald-500/10 rounded-xl text-emerald-400"><Send size={16} /></div>
+
+          <div className="px-4 py-2.5 bg-white/[0.02] border border-white/[0.06] rounded-2xl flex items-center gap-3">
+            <div className="p-2 bg-emerald-500/10 rounded-xl text-emerald-400"><MessageSquare size={16} /></div>
             <div>
-              <span className="text-[9px] text-white/40 font-bold block uppercase">Sent Out</span>
-              <span className="text-sm font-extrabold text-white">{sentMessages.length}</span>
+              <span className="text-[9px] text-white/40 font-bold block uppercase font-mono">Total Threads</span>
+              <span className="text-sm font-black text-white">{conversations.length}</span>
             </div>
           </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              setComposeAlert(null);
+              setIsComposeModalOpen(true);
+            }}
+            className="px-5 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs tracking-wide transition-all flex items-center gap-2 shadow-[0_8px_25px_rgba(79,70,229,0.35)] hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+          >
+            <Plus size={16} />
+            <span>Compose Message</span>
+          </button>
         </div>
       </div>
 
-      {/* Modern Tabs Navigation */}
-      <div className="border-b border-white/[0.04] flex items-center gap-2 overflow-x-auto scrollbar-none pb-0.5 select-none">
-        {[
-          { id: "inbox" as const, label: "Inbox Messages", icon: Mail, badge: conversations.filter(c => !c.isRead && !c.isArchived).length },
-          { id: "compose" as const, label: "Compose Message", icon: Plus },
-          { id: "announcements" as const, label: "Publish Announcements", icon: Megaphone, badge: announcements.length },
-          { id: "sent" as const, label: "Sent Messages Archive", icon: Send }
-        ].map((tab) => {
-          const isActive = activeTab === tab.id;
-          const Icon = tab.icon;
-          return (
-            <button
-              key={tab.id}
-              onClick={() => {
-                setActiveTab(tab.id);
-                setSelectedConv(null);
-                setSelectedSent(null);
-              }}
-              className="relative px-5 py-3 text-xs font-bold tracking-wide transition-all shrink-0 cursor-pointer flex items-center gap-2"
-              style={{ WebkitTapHighlightColor: "transparent" }}
-            >
-              {isActive && (
-                <motion.div
-                  layoutId="activeInboxIndicator"
-                  className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-500 shadow-md"
-                  transition={{ type: "spring", stiffness: 380, damping: 30 }}
-                />
-              )}
-              <Icon size={14} className={isActive ? "text-indigo-400 animate-pulse" : "text-white/40"} />
-              <span className={isActive ? "text-white" : "text-white/40 hover:text-white/80"}>
-                {tab.label}
-              </span>
-              {tab.badge !== undefined && tab.badge > 0 && (
-                <span className={`px-2 py-0.5 rounded-full text-[9px] font-black font-mono ${
-                  isActive ? "bg-indigo-500 text-white" : "bg-white/5 text-white/40"
-                }`}>
-                  {tab.badge}
-                </span>
-              )}
-            </button>
-          );
-        })}
+      {/* Navigation Bar (Only Inbox & Announcements — Compose is a Modal button, Sent tab removed) */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/[0.06] pb-3">
+        <div className="flex items-center gap-2">
+          {[
+            { id: "inbox" as const, label: "Inbox Conversations", icon: Mail, badge: unreadCount },
+            { id: "announcements" as const, label: "Academy Announcements", icon: Megaphone, badge: announcements.length }
+          ].map((tab) => {
+            const isActive = activeTab === tab.id;
+            const Icon = tab.icon;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => {
+                  setActiveTab(tab.id);
+                  setSelectedConv(null);
+                }}
+                className={`px-4 py-2.5 rounded-2xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer border ${
+                  isActive
+                    ? "bg-indigo-600/15 border-indigo-500/40 text-white shadow-lg"
+                    : "bg-white/[0.02] border-white/[0.05] text-white/50 hover:text-white hover:bg-white/[0.04]"
+                }`}
+              >
+                <Icon size={14} className={isActive ? "text-indigo-400" : "text-white/40"} />
+                <span>{tab.label}</span>
+                {tab.badge !== undefined && tab.badge > 0 && (
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-black font-mono ${
+                    isActive ? "bg-indigo-500 text-white" : "bg-white/10 text-white/50"
+                  }`}>
+                    {tab.badge}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={fetchMessages}
+            className="px-3.5 py-2 rounded-xl bg-white/[0.03] hover:bg-white/[0.07] border border-white/10 text-xs text-white/70 hover:text-white flex items-center gap-1.5 transition-all cursor-pointer"
+            title="Refresh Inbox"
+          >
+            <RefreshCw size={13} className={isLoadingMessages ? "animate-spin text-indigo-400" : ""} />
+            <span>Sync Inbox</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setComposeAlert(null);
+              setIsComposeModalOpen(true);
+            }}
+            className="px-4 py-2 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/30 text-emerald-300 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
+          >
+            <Send size={13} />
+            <span>New Message</span>
+          </button>
+        </div>
       </div>
 
       {/* Main Tab Viewpanels */}
-      <div className="min-h-[500px]">
+      <div className="min-h-[540px]">
         
         {/* ==================== 1. INBOX TAB ==================== */}
         {activeTab === "inbox" && (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
             
             {/* Conversation Threads List */}
-            <div className={`space-y-4 ${selectedConv ? "lg:col-span-5 hidden lg:block" : "lg:col-span-12"}`}>
+            <div className={`space-y-4 lg:col-span-5 ${selectedConv ? "hidden lg:block" : "col-span-12"}`}>
               
-              {/* AJAX Search & Filter Controls */}
-              <div className="bg-[#08080c] border border-white/[0.05] rounded-3xl p-4 md:p-5 space-y-4">
-                <div className="flex flex-col sm:flex-row gap-3">
-                  {/* Search */}
-                  <div className="relative flex-1">
-                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30"><Search size={14} /></span>
-                    <input
-                      type="text"
-                      placeholder="Search inbox sender, subject, body..."
-                      value={inboxSearch}
-                      onChange={(e) => { setInboxSearch(e.target.value); setInboxPage(1); }}
-                      className="w-full bg-[#030304] border border-white/15 rounded-2xl pl-10 pr-4 py-3 text-xs text-white placeholder-white/30 focus:outline-none focus:border-indigo-500/50 transition-all"
-                    />
-                  </div>
-
-                  {/* Role filter */}
-                  <div className="relative shrink-0">
-                    <select
-                      value={inboxRoleFilter}
-                      onChange={(e) => { setInboxRoleFilter(e.target.value); setInboxPage(1); }}
-                      className="bg-[#030304] border border-white/15 rounded-2xl px-4 py-3 text-xs text-white/80 focus:outline-none focus:border-indigo-500/50 cursor-pointer"
-                    >
-                      <option value="All">All Roles</option>
-                      <option value="Student">Students</option>
-                      <option value="Teacher">Teachers</option>
-                      <option value="Admin">Admin</option>
-                    </select>
-                  </div>
+              {/* Search & Quick Filter Controls */}
+              <div className="bg-[#090a10] border border-white/[0.07] rounded-3xl p-4 space-y-3.5 shadow-xl">
+                <div className="relative">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30"><Search size={14} /></span>
+                  <input
+                    type="text"
+                    placeholder="Search sender, subject, or message content..."
+                    value={inboxSearch}
+                    onChange={(e) => { setInboxSearch(e.target.value); setInboxPage(1); }}
+                    className="w-full bg-[#040407] border border-white/10 rounded-2xl pl-10 pr-4 py-2.5 text-xs text-white placeholder-white/30 focus:outline-none focus:border-indigo-500/50 transition-all"
+                  />
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 border-t border-white/[0.04]">
-                  {/* Status Filter */}
-                  <div className="flex flex-col gap-1">
-                    <label className="text-[9px] text-white/40 uppercase font-bold font-mono">Status criteria</label>
-                    <select
-                      value={inboxStatusFilter}
-                      onChange={(e) => { setInboxStatusFilter(e.target.value); setInboxPage(1); }}
-                      className="bg-[#030304] border border-white/10 rounded-xl px-3 py-2 text-xs text-white/60 focus:outline-none focus:border-indigo-500/30 cursor-pointer"
-                    >
-                      <option value="All">All Statuses</option>
-                      <option value="Unread">Unread Threads</option>
-                      <option value="Read">Read Threads</option>
-                      <option value="Open">Open Conversations</option>
-                      <option value="Closed">Closed Conversations</option>
-                    </select>
-                  </div>
-
-                  {/* Course Context Filter */}
-                  <div className="flex flex-col gap-1">
-                    <label className="text-[9px] text-white/40 uppercase font-bold font-mono">Course Scope</label>
-                    <select
-                      value={inboxCourseFilter}
-                      onChange={(e) => { setInboxCourseFilter(e.target.value); setInboxPage(1); }}
-                      className="bg-[#030304] border border-white/10 rounded-xl px-3 py-2 text-xs text-white/60 focus:outline-none focus:border-indigo-500/30 cursor-pointer"
-                    >
-                      <option value="All">All Course Contexts</option>
-                      {courses.map(c => (
-                        <option key={c.id} value={c.id}>{c.title}</option>
-                      ))}
-                    </select>
-                  </div>
+                {/* Quick Filter Chips */}
+                <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none pb-0.5">
+                  {[
+                    { label: "All", role: "All", status: "All" },
+                    { label: `Unread (${unreadCount})`, role: "All", status: "Unread" },
+                    { label: "Teachers", role: "Teacher", status: "All" },
+                    { label: "Students", role: "Student", status: "All" },
+                    { label: "Sent by Admin", role: "Admin", status: "All" }
+                  ].map((chip, idx) => {
+                    const active = inboxRoleFilter === chip.role && inboxStatusFilter === chip.status;
+                    return (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => {
+                          setInboxRoleFilter(chip.role);
+                          setInboxStatusFilter(chip.status);
+                          setInboxPage(1);
+                        }}
+                        className={`px-3 py-1.5 rounded-xl text-[11px] font-bold shrink-0 transition-all cursor-pointer border ${
+                          active
+                            ? "bg-indigo-600 text-white border-indigo-500 shadow-sm"
+                            : "bg-white/[0.02] text-white/50 border-white/5 hover:text-white hover:bg-white/[0.05]"
+                        }`}
+                      >
+                        {chip.label}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
               {/* Conversations Stack */}
-              <div className="space-y-3">
+              <div className="space-y-2.5">
                 {paginatedConversations.length === 0 ? (
-                  <div className="p-12 text-center bg-[#08080c] border border-dashed border-white/10 rounded-3xl space-y-3">
+                  <div className="p-12 text-center bg-[#090a10] border border-dashed border-white/10 rounded-3xl space-y-3">
                     <Mail className="mx-auto text-white/20" size={32} />
-                    <p className="text-xs text-white/40">No matching conversations found matching search or filter constraints.</p>
+                    <p className="text-xs text-white/40">No conversations match your current filters.</p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setComposeAlert(null);
+                        setIsComposeModalOpen(true);
+                      }}
+                      className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Plus size={14} />
+                      <span>Compose First Message</span>
+                    </button>
                   </div>
                 ) : (
                   paginatedConversations.map((conv) => {
@@ -754,23 +742,22 @@ export default function InboxTab({
                       <div
                         key={conv.id}
                         onClick={() => {
-                          // Mark as read immediately on click
                           if (!conv.isRead && conv.backendId) {
                             adminApi.markMessageRead(conv.backendId).catch(console.error);
                           }
                           const updated = { ...conv, isRead: true };
                           setConversations(prev => prev.map(c => c.id === conv.id ? updated : c));
                           setSelectedConv(updated);
+                          setReplyFeedback(null);
                         }}
-                        className={`p-4 rounded-3xl border transition-all duration-200 cursor-pointer text-left relative overflow-hidden group ${
+                        className={`p-4 rounded-2xl border transition-all duration-200 cursor-pointer text-left relative overflow-hidden group ${
                           isSelected 
-                            ? "bg-indigo-500/[0.04] border-indigo-500/40 shadow-xl" 
+                            ? "bg-indigo-500/[0.08] border-indigo-500/50 shadow-xl" 
                             : conv.isRead 
-                              ? "bg-[#08080c] border-white/[0.05] hover:border-white/15" 
-                              : "bg-[#0b0c16] border-indigo-500/10 hover:border-indigo-500/25"
+                              ? "bg-[#090a10] border-white/[0.06] hover:border-white/15 hover:bg-white/[0.02]" 
+                              : "bg-[#0d0f1d] border-indigo-500/30 hover:border-indigo-500/50"
                         }`}
                       >
-                        {/* Glow accent for unread messages */}
                         {!conv.isRead && (
                           <div className="absolute left-0 top-0 bottom-0 w-1 bg-indigo-500" />
                         )}
@@ -779,40 +766,42 @@ export default function InboxTab({
                           <img
                             src={conv.senderAvatar || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=150"}
                             alt={conv.senderName}
-                            className="h-9 w-9 rounded-full object-cover border border-white/10 shrink-0"
+                            className="h-10 w-10 rounded-2xl object-cover border border-white/10 shrink-0"
                           />
                           <div className="flex-1 min-w-0 space-y-1">
                             <div className="flex items-center justify-between gap-2">
-                              <span className="font-extrabold text-white text-xs truncate">{conv.senderName}</span>
-                              <span className="text-[9px] font-mono text-white/30 shrink-0">
-                                {new Date(conv.lastUpdated).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span className="font-bold text-white text-xs truncate">{conv.senderName}</span>
+                                <span className={`px-2 py-0.5 rounded-md text-[9px] font-bold uppercase border shrink-0 ${getRoleColor(conv.senderRole)}`}>
+                                  {conv.senderRole}
+                                </span>
+                              </div>
+                              <span className="text-[10px] font-mono text-white/35 shrink-0">
+                                {new Date(conv.lastUpdated).toLocaleDateString([], { month: "short", day: "numeric" })}
                               </span>
                             </div>
 
-                            <div className="flex items-center gap-1.5">
-                              <span className={`px-2 py-0.5 rounded-full text-[8px] font-extrabold uppercase font-sans border ${getRoleColor(conv.senderRole)}`}>
-                                {conv.senderRole}
-                              </span>
-                              {conv.courseTitle && (
-                                <span className="text-[9px] text-indigo-400 font-semibold truncate max-w-[150px]">
-                                  {conv.courseTitle}
+                            <div className="flex items-center justify-between gap-2">
+                              <h4 className={`text-xs tracking-tight truncate ${!conv.isRead ? "font-black text-white" : "font-semibold text-white/85"}`}>
+                                {conv.subject}
+                              </h4>
+                              {conv.messages.length > 1 && (
+                                <span className="px-1.5 py-0.5 rounded bg-white/5 text-[9px] font-mono text-indigo-300 shrink-0">
+                                  {conv.messages.length} msgs
                                 </span>
                               )}
                             </div>
 
-                            <h4 className={`text-xs tracking-tight truncate ${!conv.isRead ? "font-black text-white" : "font-semibold text-white/80"}`}>
-                              {conv.subject}
-                            </h4>
-
-                            <p className="text-[11px] text-white/40 line-clamp-1">
-                              {latestMsg ? latestMsg.content : "No messages."}
+                            <p className="text-[11px] text-white/45 line-clamp-1">
+                              {latestMsg ? latestMsg.content : "No message content."}
                             </p>
                           </div>
                         </div>
 
-                        {/* Hover Quick actions overlay */}
-                        <div className="flex items-center justify-end gap-1.5 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        {/* Quick Action Icons */}
+                        <div className="flex items-center justify-end gap-1.5 mt-2 pt-2 border-t border-white/[0.04] opacity-80 group-hover:opacity-100 transition-opacity">
                           <button
+                            type="button"
                             onClick={(e) => { e.stopPropagation(); handleMarkReadStatus(conv, !conv.isRead); }}
                             className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/60 hover:text-white text-[10px]"
                             title={conv.isRead ? "Mark Unread" : "Mark Read"}
@@ -820,6 +809,7 @@ export default function InboxTab({
                             {conv.isRead ? <EyeOff size={11} /> : <Eye size={11} />}
                           </button>
                           <button
+                            type="button"
                             onClick={(e) => { e.stopPropagation(); handleArchiveConv(conv); }}
                             className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/60 hover:text-white"
                             title="Archive"
@@ -827,6 +817,7 @@ export default function InboxTab({
                             <Archive size={11} />
                           </button>
                           <button
+                            type="button"
                             onClick={(e) => { e.stopPropagation(); handleDeleteConv(conv.id); }}
                             className="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400"
                             title="Delete Permanently"
@@ -842,33 +833,22 @@ export default function InboxTab({
 
               {/* Pagination controls */}
               {totalPages > 1 && (
-                <div className="flex items-center justify-between border-t border-white/[0.04] pt-4 select-none">
-                  <span className="text-[10px] text-white/40 font-bold">
-                    Showing {paginatedConversations.length} of {filteredConversations.length} items
+                <div className="flex items-center justify-between border-t border-white/[0.06] pt-3 select-none">
+                  <span className="text-[10px] text-white/40 font-mono">
+                    Page {inboxPage} of {totalPages} ({filteredConversations.length} threads)
                   </span>
                   <div className="flex gap-1">
                     <button
                       onClick={() => setInboxPage(prev => Math.max(1, prev - 1))}
                       disabled={inboxPage === 1}
-                      className="px-2.5 py-1.5 rounded-lg border border-white/10 bg-[#08080c] text-[10px] text-white/60 hover:text-white disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed"
+                      className="px-2.5 py-1.5 rounded-lg border border-white/10 bg-[#090a10] text-[10px] text-white/60 hover:text-white disabled:opacity-30 cursor-pointer"
                     >
                       Prev
                     </button>
-                    {[...Array(totalPages)].map((_, idx) => (
-                      <button
-                        key={idx}
-                        onClick={() => setInboxPage(idx + 1)}
-                        className={`px-2.5 py-1.5 rounded-lg text-[10px] ${
-                          inboxPage === idx + 1 ? "bg-indigo-600 text-white font-extrabold" : "border border-white/10 bg-[#08080c] text-white/60 hover:text-white"
-                        }`}
-                      >
-                        {idx + 1}
-                      </button>
-                    ))}
                     <button
                       onClick={() => setInboxPage(prev => Math.min(totalPages, prev + 1))}
                       disabled={inboxPage === totalPages}
-                      className="px-2.5 py-1.5 rounded-lg border border-white/10 bg-[#08080c] text-[10px] text-white/60 hover:text-white disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed"
+                      className="px-2.5 py-1.5 rounded-lg border border-white/10 bg-[#090a10] text-[10px] text-white/60 hover:text-white disabled:opacity-30 cursor-pointer"
                     >
                       Next
                     </button>
@@ -878,12 +858,12 @@ export default function InboxTab({
             </div>
 
             {/* Active Thread Message Panel */}
-            <div className={`space-y-4 lg:col-span-7 ${!selectedConv ? "hidden lg:block lg:col-span-7" : "col-span-12"}`}>
+            <div className={`lg:col-span-7 ${!selectedConv ? "hidden lg:block" : "col-span-12"}`}>
               {selectedConv ? (
-                <div className="bg-[#08080c] border border-white/[0.06] rounded-3xl overflow-hidden shadow-2xl flex flex-col min-h-[550px]">
+                <div className="bg-[#090a10] border border-white/[0.08] rounded-3xl overflow-hidden shadow-2xl flex flex-col min-h-[560px]">
                   
                   {/* Thread Header */}
-                  <div className="p-4 md:p-5 border-b border-white/[0.05] bg-white/[0.01] flex items-center justify-between gap-4">
+                  <div className="p-4 md:p-5 border-b border-white/[0.06] bg-white/[0.015] flex items-center justify-between gap-4">
                     <div className="flex items-center gap-3">
                       <button
                         onClick={() => setSelectedConv(null)}
@@ -894,45 +874,37 @@ export default function InboxTab({
                       <img
                         src={selectedConv.senderAvatar}
                         alt={selectedConv.senderName}
-                        className="h-9 w-9 rounded-full object-cover border border-white/10"
+                        className="h-10 w-10 rounded-2xl object-cover border border-white/10"
                       />
                       <div className="text-left">
                         <div className="flex items-center gap-2">
-                          <h4 className="text-xs font-bold text-white leading-none">{selectedConv.senderName}</h4>
-                          <span className={`px-1.5 py-0.5 rounded-full text-[8px] font-extrabold uppercase font-sans border ${getRoleColor(selectedConv.senderRole)}`}>
+                          <h4 className="text-sm font-bold text-white leading-none">{selectedConv.senderName}</h4>
+                          <span className={`px-2 py-0.5 rounded-md text-[9px] font-bold uppercase border ${getRoleColor(selectedConv.senderRole)}`}>
                             {selectedConv.senderRole}
                           </span>
                         </div>
-                        <span className="text-[10px] text-white/40 block mt-0.5 font-sans">
-                          Subject: <strong className="text-white/60">{selectedConv.subject}</strong>
+                        <span className="text-xs text-white/50 block mt-1">
+                          {selectedConv.subject}
                         </span>
                       </div>
                     </div>
 
                     {/* Thread Actions */}
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1.5">
                       <button
                         onClick={() => handleCloseConv(selectedConv)}
-                        className={`px-2.5 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider border transition-all ${
+                        className={`px-3 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-wider border transition-all cursor-pointer ${
                           selectedConv.status === "closed"
-                            ? "border-amber-500/20 bg-amber-500/10 text-amber-400"
-                            : "border-white/10 hover:bg-white/5 text-white/40 hover:text-white"
+                            ? "border-amber-500/30 bg-amber-500/10 text-amber-400"
+                            : "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
                         }`}
-                        title={selectedConv.status === "closed" ? "Reopen Inquiry" : "Close Thread"}
                       >
-                        {selectedConv.status === "closed" ? "Closed" : "Open"}
-                      </button>
-                      <button
-                        onClick={() => handleArchiveConv(selectedConv)}
-                        className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-white/40 hover:text-white"
-                        title="Archive Thread"
-                      >
-                        <Archive size={14} />
+                        {selectedConv.status === "closed" ? "Resolved / Closed" : "Active Thread"}
                       </button>
                       <button
                         onClick={() => handleDeleteConv(selectedConv.id)}
-                        className="p-2 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400"
-                        title="Delete Permanently"
+                        className="p-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 cursor-pointer"
+                        title="Delete Thread Permanently"
                       >
                         <Trash2 size={14} />
                       </button>
@@ -940,9 +912,9 @@ export default function InboxTab({
                   </div>
 
                   {/* Messages Bubble Stack */}
-                  <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-5 max-h-[380px] scrollbar-thin scrollbar-thumb-white/10">
+                  <div className="flex-1 overflow-y-auto p-5 space-y-4 max-h-[380px]">
                     {selectedConv.messages.map((msg) => {
-                      const isMe = msg.senderId === "usr-1";
+                      const isMe = msg.senderId === "usr-1" || msg.senderId === "admin-1" || msg.senderRole === "admin" || msg.senderRole === "super-admin";
                       return (
                         <div
                           key={msg.id}
@@ -950,57 +922,50 @@ export default function InboxTab({
                         >
                           {!isMe && (
                             <img
-                              src={msg.senderAvatar}
+                              src={msg.senderAvatar || selectedConv.senderAvatar}
                               alt={msg.senderName}
-                              className="h-8 w-8 rounded-full object-cover border border-white/5 shrink-0"
+                              className="h-8 w-8 rounded-xl object-cover border border-white/10 shrink-0"
                             />
                           )}
                           <div className="space-y-1">
-                            <div className={`text-[10px] text-white/30 flex items-center gap-1.5 ${isMe ? "justify-end" : ""}`}>
-                              <span>{msg.senderName}</span>
+                            <div className={`text-[10px] text-white/35 flex items-center gap-1.5 ${isMe ? "justify-end" : ""}`}>
+                              <span className="font-semibold text-white/60">{msg.senderName}</span>
                               <span>•</span>
                               <span>{new Date(msg.timestamp).toLocaleString()}</span>
                             </div>
-                            <div className={`p-4 rounded-3xl text-xs text-left leading-relaxed ${
+                            <div className={`p-4 rounded-2xl text-xs text-left leading-relaxed ${
                               isMe 
                                 ? "bg-indigo-600 text-white rounded-tr-none shadow-lg shadow-indigo-600/15" 
-                                : "bg-white/[0.02] border border-white/5 text-white/80 rounded-tl-none"
+                                : "bg-white/[0.04] border border-white/10 text-white/90 rounded-tl-none"
                             }`}>
                               <p className="whitespace-pre-line">{msg.content}</p>
 
-                              {/* Message Attachments */}
                               {msg.attachments && msg.attachments.length > 0 && (
-                                <div className="mt-3 pt-3 border-t border-white/5 space-y-1.5">
+                                <div className="mt-3 pt-3 border-t border-white/10 space-y-1.5">
                                   {msg.attachments.map((att, i) => (
                                     <div
                                       key={i}
-                                      className="flex items-center justify-between p-2 rounded-xl bg-white/[0.04] hover:bg-white/10 transition-colors border border-white/5 text-[10px]"
+                                      className="flex items-center justify-between p-2 rounded-xl bg-black/20 border border-white/10 text-[10px]"
                                     >
                                       <div className="flex items-center gap-2">
-                                        <Paperclip size={12} className="text-indigo-400 shrink-0" />
-                                        <span className="text-white/80 truncate max-w-[150px]">{att.name}</span>
-                                        <span className="text-white/30 font-mono">({att.size})</span>
+                                        <Paperclip size={12} className="text-indigo-300 shrink-0" />
+                                        <span className="text-white/90 truncate max-w-[160px]">{att.name}</span>
+                                        <span className="text-white/40 font-mono">({att.size})</span>
                                       </div>
-                                      <button
-                                        onClick={() => showCustomToast(`Downloading asset: ${att.name}`, "info")}
-                                        className="text-indigo-400 hover:text-indigo-300 font-extrabold uppercase text-[9px] cursor-pointer"
-                                      >
-                                        Get
-                                      </button>
                                     </div>
                                   ))}
                                 </div>
                               )}
                             </div>
-                            
-                            {/* Extra Micro Message Actions */}
+
                             <div className={`flex items-center gap-2 mt-1 ${isMe ? "justify-end" : ""}`}>
                               <button
+                                type="button"
                                 onClick={() => handleForwardMessage(msg)}
-                                className="text-[10px] text-white/30 hover:text-white flex items-center gap-1 transition-colors"
+                                className="text-[10px] text-white/35 hover:text-white flex items-center gap-1 transition-colors cursor-pointer"
                               >
                                 <Forward size={11} />
-                                <span>Forward</span>
+                                <span>Forward in Modal</span>
                               </button>
                             </div>
                           </div>
@@ -1011,94 +976,67 @@ export default function InboxTab({
                   </div>
 
                   {/* Reply Composer box */}
-                  <div className="p-4 md:p-5 border-t border-white/[0.05] bg-white/[0.01]">
-                    {selectedConv.status === "closed" ? (
-                      <div className="p-3 bg-amber-500/5 border border-amber-500/15 rounded-2xl text-center text-xs text-amber-400">
-                        This inquiry thread is closed. Reopen the thread at the header actions to submit reply messages.
+                  <div className="p-4 md:p-5 border-t border-white/[0.06] bg-white/[0.01]">
+                    {replyFeedback && (
+                      <div className={`mb-3 p-3 rounded-xl border text-xs flex items-center justify-between ${
+                        replyFeedback.type === "error"
+                          ? "bg-rose-500/10 border-rose-500/30 text-rose-300"
+                          : "bg-emerald-500/10 border-emerald-500/30 text-emerald-300"
+                      }`}>
+                        <div className="flex items-center gap-2">
+                          <AlertCircle size={14} />
+                          <span>{replyFeedback.text}</span>
+                        </div>
+                        <button type="button" onClick={() => setReplyFeedback(null)} className="text-white/40 hover:text-white">
+                          <X size={13} />
+                        </button>
                       </div>
-                    ) : (
-                      <form onSubmit={handleReply} className="space-y-4">
-                        <div className="relative">
-                          <textarea
-                            rows={3}
-                            placeholder="Type a professional administrator response..."
-                            value={replyText}
-                            onChange={(e) => setReplyText(e.target.value)}
-                            className="w-full bg-[#030304] border border-white/10 rounded-2xl p-4 text-xs text-white placeholder-white/20 focus:outline-none focus:border-indigo-500/40 transition-all pr-12"
-                          />
-                          <button
-                            type="submit"
-                            disabled={isReplying || (!replyText.trim() && replyAttachments.length === 0)}
-                            className="absolute right-3.5 bottom-3.5 p-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-30 disabled:hover:bg-indigo-600 cursor-pointer disabled:cursor-not-allowed transition-all"
-                          >
-                            <Send size={14} className={isReplying ? "animate-spin" : ""} />
-                          </button>
-                        </div>
-
-                        {/* Attachments preview & upload triggers */}
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1 border-t border-white/[0.02]">
-                          <div className="flex flex-wrap gap-1.5 items-center">
-                            <label className="p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 text-white/60 hover:text-white text-[11px] font-bold flex items-center gap-1.5 cursor-pointer">
-                              <Paperclip size={13} />
-                              <span>Attach Local File</span>
-                              <input
-                                type="file"
-                                className="hidden"
-                                onChange={(e) => {
-                                  if (e.target.files && e.target.files[0]) {
-                                    const f = e.target.files[0];
-                                    setReplyAttachments(prev => [
-                                      ...prev,
-                                      {
-                                        name: f.name,
-                                        size: `${(f.size / (1024 * 1024)).toFixed(1)} MB`,
-                                        type: f.name.split(".").pop() || "doc"
-                                      }
-                                    ]);
-                                    showCustomToast(`Attached ${f.name} successfully.`, "info");
-                                  }
-                                }}
-                              />
-                            </label>
-
-                            {/* Added list */}
-                            {replyAttachments.map((at, idx) => (
-                              <div
-                                key={idx}
-                                className="px-2.5 py-1 bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 rounded-lg text-[10px] flex items-center gap-1.5"
-                              >
-                                <span className="truncate max-w-[80px]">{at.name}</span>
-                                <button
-                                  type="button"
-                                  onClick={() => setReplyAttachments(prev => prev.filter((_, i) => i !== idx))}
-                                  className="text-rose-400 hover:text-rose-300 font-extrabold"
-                                >
-                                  ×
-                                </button>
-                              </div>
-                            ))}
-                          </div>
-                          
-                          <div className="text-[10px] text-white/30 font-sans">
-                            Signatures appended automatically as: <strong>Super Admin</strong>
-                          </div>
-                        </div>
-                      </form>
                     )}
+
+                    <form onSubmit={handleReply} className="space-y-3">
+                      <div className="relative">
+                        <textarea
+                          rows={3}
+                          placeholder="Write your reply to this conversation..."
+                          value={replyText}
+                          onChange={(e) => setReplyText(e.target.value)}
+                          className="w-full bg-[#040407] border border-white/10 rounded-2xl p-3.5 text-xs text-white placeholder-white/25 focus:outline-none focus:border-indigo-500/50 transition-all pr-24"
+                        />
+                        <button
+                          type="submit"
+                          disabled={isReplying || (!replyText.trim() && replyAttachments.length === 0)}
+                          className="absolute right-3 bottom-3 px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold flex items-center gap-1.5 disabled:opacity-40 cursor-pointer transition-all shadow-lg shadow-indigo-600/20"
+                        >
+                          <Send size={13} className={isReplying ? "animate-spin" : ""} />
+                          <span>Reply</span>
+                        </button>
+                      </div>
+                    </form>
                   </div>
 
                 </div>
               ) : (
-                <div className="h-full bg-[#08080c] border border-white/[0.05] border-dashed rounded-3xl p-12 flex flex-col items-center justify-center text-center space-y-4">
-                  <div className="h-14 w-14 rounded-full bg-white/[0.01] border border-white/5 flex items-center justify-center text-white/25">
-                    <MessageSquare size={24} />
+                <div className="h-full min-h-[540px] bg-[#090a10] border border-white/[0.06] border-dashed rounded-3xl p-12 flex flex-col items-center justify-center text-center space-y-4">
+                  <div className="h-16 w-16 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
+                    <MessageSquare size={28} />
                   </div>
-                  <div className="space-y-1">
-                    <h3 className="font-sans text-sm font-bold text-white">No Message Selected</h3>
+                  <div className="space-y-1.5">
+                    <h3 className="font-sans text-base font-bold text-white">Select a Conversation</h3>
                     <p className="text-xs text-white/40 max-w-xs leading-relaxed">
-                      Select any conversation thread from the left list block to explore diagnostic history or dispatch reply alerts.
+                      Click any message thread on the left to view the full chat history and reply, or start a new conversation.
                     </p>
                   </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setComposeAlert(null);
+                      setIsComposeModalOpen(true);
+                    }}
+                    className="px-5 py-2.5 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold flex items-center gap-2 cursor-pointer shadow-lg shadow-indigo-600/25"
+                  >
+                    <Plus size={15} />
+                    <span>Compose New Message</span>
+                  </button>
                 </div>
               )}
             </div>
@@ -1106,316 +1044,20 @@ export default function InboxTab({
           </div>
         )}
 
-        {/* ==================== 2. COMPOSE MESSAGE TAB ==================== */}
-        {activeTab === "compose" && (
-          <div className="max-w-3xl mx-auto bg-[#08080c] border border-white/[0.06] rounded-3xl p-6 md:p-8 space-y-6 shadow-2xl relative overflow-hidden">
-            
-            <div className="border-b border-white/[0.05] pb-4 text-left">
-              <h3 className="font-sans text-base font-black text-white">New Message Dispatcher</h3>
-              <p className="text-xs text-white/40">Dispatch formal notifications or media attachments targeting custom cohorts</p>
-            </div>
-
-            <form onSubmit={handleSendCompose} className="space-y-5 text-left">
-              
-              {/* Recipient Type Row */}
-              <div className="space-y-1.5">
-                <label className="text-[10px] text-white/50 font-bold uppercase tracking-wider block font-mono">Recipient Criteria</label>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                  {[
-                    { id: "Individual" as const, label: "Individual User" },
-                    { id: "Multiple" as const, label: "Multiple Users" },
-                    { id: "AllStudents" as const, label: "All Students" },
-                    { id: "AllTeachers" as const, label: "All Teachers" },
-                    { id: "AllAdmins" as const, label: "All Administrators" },
-                    { id: "Course" as const, label: "Course Roster" },
-                    { id: "Season" as const, label: "Course Season Intake" }
-                  ].map((opt) => {
-                    const isSelected = recipientType === opt.id;
-                    return (
-                      <button
-                        key={opt.id}
-                        type="button"
-                        onClick={() => {
-                          setRecipientType(opt.id);
-                          setSelectedIndividual("");
-                          setSelectedMultiple([]);
-                          setSelectedCourseId("");
-                          setSelectedSeasonId("");
-                        }}
-                        className={`px-3 py-2.5 rounded-xl border text-[11px] font-bold text-center transition-all cursor-pointer ${
-                          isSelected
-                            ? "bg-indigo-600 border-indigo-500 text-white shadow-lg shadow-indigo-600/10"
-                            : "bg-white/[0.01] hover:bg-white/[0.03] border-white/5 text-white/50 hover:text-white"
-                        }`}
-                      >
-                        {opt.label}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Recipient SELECTORS Conditionally Rendered */}
-              <AnimatePresence mode="wait">
-                
-                {/* 1. Individual User Search */}
-                {recipientType === "Individual" && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 5 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -5 }}
-                    className="space-y-1.5"
-                  >
-                    <label className="text-[10px] text-white/50 font-bold uppercase tracking-wider block font-mono">Search & Select Individual</label>
-                    <div className="relative">
-                      <select
-                        value={selectedIndividual}
-                        onChange={(e) => setSelectedIndividual(e.target.value)}
-                        className="w-full bg-[#030304] border border-white/10 rounded-2xl px-4 py-3.5 text-xs text-white focus:outline-none focus:border-indigo-500/50 cursor-pointer"
-                      >
-                        <option value="">-- Choose User --</option>
-                        {/* Users & Students combine */}
-                        <optgroup label="LMS Instructors / Admins">
-                          {users.map(u => (
-                            <option key={u.id} value={u.id}>{u.name} ({u.role}) - {u.email}</option>
-                          ))}
-                        </optgroup>
-                        <optgroup label="Students">
-                          {students.map(s => (
-                            <option key={s.id} value={s.id}>{s.name} (student) - {s.email}</option>
-                          ))}
-                        </optgroup>
-                      </select>
-                    </div>
-                  </motion.div>
-                )}
-
-                {/* 2. Multiple Users Multi-Select list */}
-                {recipientType === "Multiple" && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 5 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -5 }}
-                    className="space-y-1.5"
-                  >
-                    <label className="text-[10px] text-white/50 font-bold uppercase tracking-wider block font-mono">Select Recipients (Multiple Checkboxes)</label>
-                    
-                    {/* Tiny AJAX Search Filter for checkboxes */}
-                    <div className="relative mb-2">
-                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30"><Search size={13} /></span>
-                      <input
-                        type="text"
-                        placeholder="Search users to add..."
-                        value={userSearchTerm}
-                        onChange={(e) => setUserSearchTerm(e.target.value)}
-                        className="w-full bg-[#030304] border border-white/10 rounded-xl pl-9 pr-4 py-2 text-xs text-white"
-                      />
-                    </div>
-
-                    <div className="bg-[#030304] border border-white/10 rounded-2xl p-4 max-h-[160px] overflow-y-auto space-y-2 scrollbar-thin">
-                      {/* Loop combine list */}
-                      {[...users, ...students]
-                        .filter(u => !userSearchTerm || u.name.toLowerCase().includes(userSearchTerm.toLowerCase()))
-                        .map(user => {
-                          const isChecked = selectedMultiple.includes(user.id);
-                          return (
-                            <div
-                              key={user.id}
-                              onClick={() => {
-                                if (isChecked) {
-                                  setSelectedMultiple(prev => prev.filter(id => id !== user.id));
-                                } else {
-                                  setSelectedMultiple(prev => [...prev, user.id]);
-                                }
-                              }}
-                              className="flex items-center gap-3 p-2 rounded-xl hover:bg-white/[0.02] cursor-pointer transition-colors"
-                            >
-                              <button type="button" className="text-indigo-400 shrink-0">
-                                {isChecked ? <CheckSquare size={14} /> : <Square size={14} />}
-                              </button>
-                              <span className="text-xs text-white/80 font-bold">{user.name}</span>
-                              <span className={`text-[9px] font-mono uppercase px-1.5 rounded border ${getRoleColor(user.role || "student")}`}>
-                                {user.role || "student"}
-                              </span>
-                            </div>
-                          );
-                        })}
-                    </div>
-                    <span className="text-[10px] text-white/30 font-sans block pt-1">
-                      Selected: <strong>{selectedMultiple.length}</strong> recipients.
-                    </span>
-                  </motion.div>
-                )}
-
-                {/* 3. Course-based selector */}
-                {recipientType === "Course" && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 5 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -5 }}
-                    className="space-y-1.5"
-                  >
-                    <label className="text-[10px] text-white/50 font-bold uppercase tracking-wider block font-mono">Select Target Course</label>
-                    <select
-                      value={selectedCourseId}
-                      onChange={(e) => setSelectedCourseId(e.target.value)}
-                      className="w-full bg-[#030304] border border-white/10 rounded-2xl px-4 py-3.5 text-xs text-white focus:outline-none focus:border-indigo-500/50 cursor-pointer"
-                    >
-                      <option value="">-- Choose Course --</option>
-                      {courses.map(c => (
-                        <option key={c.id} value={c.id}>{c.title} ({c.code}) - {students.filter(s => s.courseId === c.id).length} students</option>
-                      ))}
-                    </select>
-                  </motion.div>
-                )}
-
-                {/* 4. Season-based selector */}
-                {recipientType === "Season" && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 5 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -5 }}
-                    className="space-y-1.5"
-                  >
-                    <label className="text-[10px] text-white/50 font-bold uppercase tracking-wider block font-mono">Select Course Season Intake</label>
-                    <select
-                      value={selectedSeasonId}
-                      onChange={(e) => setSelectedSeasonId(e.target.value)}
-                      className="w-full bg-[#030304] border border-white/10 rounded-2xl px-4 py-3.5 text-xs text-white focus:outline-none focus:border-indigo-500/50 cursor-pointer"
-                    >
-                      <option value="">-- Choose Season Cohort --</option>
-                      {courseSeasons.map(s => (
-                        <option key={s.id} value={s.id}>{s.name} - {s.status}</option>
-                      ))}
-                    </select>
-                  </motion.div>
-                )}
-
-              </AnimatePresence>
-
-              {/* Subject */}
-              <div className="space-y-1.5">
-                <label className="text-[10px] text-white/50 font-bold uppercase tracking-wider block font-mono">Message Subject</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Enter dynamic subject line..."
-                  value={composeSubject}
-                  onChange={(e) => setComposeSubject(e.target.value)}
-                  className="w-full bg-white/[0.01] hover:bg-white/[0.02] border border-white/10 rounded-2xl px-4 py-3.5 text-xs text-white placeholder-white/20 focus:outline-none focus:border-indigo-500/50 transition-all"
-                />
-              </div>
-
-              {/* Content Body */}
-              <div className="space-y-1.5">
-                <label className="text-[10px] text-white/50 font-bold uppercase tracking-wider block font-mono">Message Content</label>
-                <textarea
-                  rows={6}
-                  required
-                  placeholder="Draft your detailed administrator notification or instructions..."
-                  value={composeContent}
-                  onChange={(e) => setComposeContent(e.target.value)}
-                  className="w-full bg-white/[0.01] hover:bg-white/[0.02] border border-white/10 rounded-2xl p-4 text-xs text-white placeholder-white/20 focus:outline-none focus:border-indigo-500/50 transition-all"
-                />
-              </div>
-
-              {/* Files attachment and Progress bar simulation */}
-              <div className="space-y-3 bg-[#0c0c14]/50 border border-white/[0.03] p-4 rounded-2xl">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] text-white/50 font-bold uppercase tracking-wider block font-mono">Media Attachments</span>
-                  <span className="text-[9px] text-white/30">PDF, IMAGES, ZIP, DOC</span>
-                </div>
-
-                <div className="flex flex-col sm:flex-row gap-3 items-center">
-                  <label className="px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-bold text-white transition-all cursor-pointer flex items-center gap-2 select-none">
-                    <Paperclip size={13} />
-                    <span>Upload Documents</span>
-                    <input
-                      type="file"
-                      className="hidden"
-                      onChange={handleComposeAttachmentUpload}
-                    />
-                  </label>
-
-                  {/* Progress bar simulation */}
-                  {isUploading && (
-                    <div className="flex-1 w-full space-y-1.5">
-                      <div className="h-1 w-full bg-white/10 rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-indigo-500 transition-all duration-150"
-                          style={{ width: `${uploadProgress}%` }}
-                        />
-                      </div>
-                      <span className="text-[9px] text-indigo-400 font-mono block text-right">Uploading... {uploadProgress}%</span>
-                    </div>
-                  )}
-
-                  {/* Attachment list */}
-                  <div className="flex-1 flex flex-wrap gap-1.5">
-                    {composeAttachments.map((att, i) => (
-                      <div
-                        key={i}
-                        className="p-2 rounded-xl bg-indigo-500/10 border border-indigo-500/15 text-indigo-400 text-[10px] flex items-center gap-2"
-                      >
-                        <span className="font-bold truncate max-w-[120px]">{att.name}</span>
-                        <span className="text-white/30 font-mono">({att.size})</span>
-                        <button
-                          type="button"
-                          onClick={() => setComposeAttachments(prev => prev.filter((_, idx) => idx !== i))}
-                          className="text-rose-400 font-extrabold hover:text-rose-300"
-                        >
-                          ×
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {/* Submit Row */}
-              <div className="flex items-center justify-end gap-3.5 pt-4 border-t border-white/[0.04]">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setComposeSubject("");
-                    setComposeContent("");
-                    setComposeAttachments([]);
-                    showCustomToast("Draft cleared successfully.", "info");
-                  }}
-                  className="px-5 py-2.5 rounded-xl border border-white/10 bg-white/[0.01] hover:bg-white/[0.04] text-xs font-bold text-white/70 hover:text-white transition-all cursor-pointer"
-                >
-                  Clear Draft
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSending || isUploading}
-                  className="flex items-center gap-1.5 px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-sans font-extrabold text-[11px] tracking-widest uppercase transition-all shadow-[0_4px_15px_rgba(79,70,229,0.25)] cursor-pointer disabled:opacity-40 disabled:hover:scale-100 disabled:cursor-not-allowed hover:scale-[1.02] active:scale-[0.98]"
-                >
-                  <Send size={13} className={isSending ? "animate-spin" : ""} />
-                  <span>{isSending ? "Dispatched..." : "Send Message"}</span>
-                </button>
-              </div>
-
-            </form>
-          </div>
-        )}
-
-        {/* ==================== 3. ANNOUNCEMENTS TAB ==================== */}
+        {/* ==================== 2. ANNOUNCEMENTS TAB ==================== */}
         {activeTab === "announcements" && (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
             
             {/* Create / Edit Announcement panel */}
-            <div className="lg:col-span-5 bg-[#08080c] border border-white/[0.05] rounded-3xl p-5 md:p-6 space-y-5 text-left">
+            <div className="lg:col-span-5 bg-[#090a10] border border-white/[0.07] rounded-3xl p-5 md:p-6 space-y-5 text-left">
               <div className="border-b border-white/[0.05] pb-3">
                 <h3 className="font-sans text-sm font-black text-white">
                   {isEditingAnnId ? "Modify Announcement" : "Publish Global Alert"}
                 </h3>
-                <p className="text-xs text-white/40">Broadcasting notification updates automatically synchronized on student screens</p>
+                <p className="text-xs text-white/40">Broadcast notification updates synchronized to student and instructor portals</p>
               </div>
 
               <form onSubmit={handleAddOrEditAnnouncement} className="space-y-4 text-xs text-white">
-                
-                {/* Audience Selection */}
                 <div className="space-y-1.5">
                   <label className="text-[10px] text-white/50 font-bold uppercase tracking-wider block font-mono">Target Audience Cohort</label>
                   <select
@@ -1430,14 +1072,12 @@ export default function InboxTab({
                     <option value="All Students">All Students</option>
                     <option value="All Teachers">All Teachers</option>
                     <option value="Specific Course">Specific Course Roster</option>
-                    <option value="Specific Season">Specific Season Intake</option>
                     <option value="Individual User">Individual Academic User</option>
                   </select>
                 </div>
 
-                {/* Sub target input fields */}
                 {annAudience === "Specific Course" && (
-                  <div className="space-y-1.5 animate-fade-in">
+                  <div className="space-y-1.5">
                     <label className="text-[10px] text-white/40 block">Course Selection</label>
                     <select
                       value={annTargetId}
@@ -1452,24 +1092,8 @@ export default function InboxTab({
                   </div>
                 )}
 
-                {annAudience === "Specific Season" && (
-                  <div className="space-y-1.5 animate-fade-in">
-                    <label className="text-[10px] text-white/40 block">Season Selection</label>
-                    <select
-                      value={annTargetId}
-                      onChange={(e) => setAnnTargetId(e.target.value)}
-                      className="w-full bg-[#030304] border border-white/10 rounded-xl px-3 py-2 text-white/80"
-                    >
-                      <option value="">-- Choose Season Cohort --</option>
-                      {courseSeasons.map(s => (
-                        <option key={s.id} value={s.id}>{s.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-
                 {annAudience === "Individual User" && (
-                  <div className="space-y-1.5 animate-fade-in">
+                  <div className="space-y-1.5">
                     <label className="text-[10px] text-white/40 block">User Selection</label>
                     <select
                       value={annTargetId}
@@ -1484,20 +1108,18 @@ export default function InboxTab({
                   </div>
                 )}
 
-                {/* Title */}
                 <div className="space-y-1.5">
                   <label className="text-[10px] text-white/50 font-bold uppercase tracking-wider block font-mono">Title Heading</label>
                   <input
                     type="text"
                     required
-                    placeholder="Enter urgent title statement..."
+                    placeholder="Enter announcement headline..."
                     value={annTitle}
                     onChange={(e) => setAnnTitle(e.target.value)}
                     className="w-full bg-[#030304] border border-white/10 rounded-xl px-3 py-2.5 text-white"
                   />
                 </div>
 
-                {/* Description Textarea */}
                 <div className="space-y-1.5">
                   <label className="text-[10px] text-white/50 font-bold uppercase tracking-wider block font-mono">Detailed Alert Body</label>
                   <textarea
@@ -1510,7 +1132,6 @@ export default function InboxTab({
                   />
                 </div>
 
-                {/* Priority Levels */}
                 <div className="space-y-1.5">
                   <label className="text-[10px] text-white/50 font-bold uppercase tracking-wider block font-mono">Alert Priority Level</label>
                   <div className="grid grid-cols-3 gap-2">
@@ -1542,47 +1163,6 @@ export default function InboxTab({
                   </div>
                 </div>
 
-                {/* Expiration date */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                  <div className="space-y-1">
-                    <label className="text-[9px] text-white/40 uppercase block">Expiration Date (Optional)</label>
-                    <input
-                      type="date"
-                      value={annExpirationDate}
-                      onChange={(e) => setAnnExpirationDate(e.target.value)}
-                      className="w-full bg-[#030304] border border-white/10 rounded-xl px-3 py-2 text-white/80"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[9px] text-white/40 uppercase block">Publishing schedule</label>
-                    <div className="flex items-center gap-2 mt-1 select-none">
-                      <button
-                        type="button"
-                        onClick={() => setAnnPublishImmediately(!annPublishImmediately)}
-                        className="text-indigo-400"
-                      >
-                        {annPublishImmediately ? <CheckSquare size={16} /> : <Square size={16} />}
-                      </button>
-                      <span className="text-[10px] text-white/60">Publish Instantly</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Scheduling timestamp if not immediately */}
-                {!annPublishImmediately && (
-                  <div className="space-y-1.5 animate-fade-in bg-[#030304] border border-white/5 p-3 rounded-xl">
-                    <label className="text-[9px] text-white/40 uppercase block">Schedule Date & Time</label>
-                    <input
-                      type="datetime-local"
-                      required
-                      value={annScheduleDate}
-                      onChange={(e) => setAnnScheduleDate(e.target.value)}
-                      className="w-full bg-zinc-950 border border-white/15 rounded-lg px-3 py-2 text-xs text-white"
-                    />
-                  </div>
-                )}
-
-                {/* Creation buttons */}
                 <div className="flex items-center gap-2 pt-2">
                   {isEditingAnnId && (
                     <button
@@ -1606,14 +1186,12 @@ export default function InboxTab({
                     <span>{isCreatingAnn ? "Publishing..." : isEditingAnnId ? "Update Alert" : "Publish Broadcast"}</span>
                   </button>
                 </div>
-
               </form>
             </div>
 
             {/* Existing Announcements board */}
             <div className="lg:col-span-7 space-y-4">
-              
-              <div className="bg-[#08080c] border border-white/[0.05] rounded-3xl p-4 md:p-5 flex items-center justify-between gap-4">
+              <div className="bg-[#090a10] border border-white/[0.07] rounded-3xl p-4 md:p-5 flex items-center justify-between gap-4">
                 <span className="text-xs font-bold text-white">Live Academy Broadcast Board ({announcements.length})</span>
                 <select
                   value={annFilterAudience}
@@ -1628,7 +1206,6 @@ export default function InboxTab({
                 </select>
               </div>
 
-              {/* Announcements list */}
               <div className="space-y-3">
                 {announcements
                   .filter(a => annFilterAudience === "All" || a.audience === annFilterAudience)
@@ -1640,23 +1217,14 @@ export default function InboxTab({
                     return (
                       <div
                         key={ann.id}
-                        className={`p-4 rounded-3xl border text-left bg-[#08080c] transition-all relative overflow-hidden group ${
+                        className={`p-4 rounded-3xl border text-left bg-[#090a10] transition-all relative overflow-hidden group ${
                           isUrgent 
                             ? "border-rose-500/20 bg-rose-500/[0.01]" 
                             : ann.priority === "Important"
                               ? "border-amber-500/20 bg-amber-500/[0.01]"
-                              : "border-white/[0.04]"
+                              : "border-white/[0.06]"
                         }`}
                       >
-                        {/* Priority Badge Indicator */}
-                        {ann.priority && ann.priority !== "Normal" && (
-                          <div className={`absolute top-0 right-0 px-2.5 py-0.5 text-[8px] font-mono font-bold rounded-bl-xl ${
-                            ann.priority === "Urgent" ? "bg-rose-500 text-white" : "bg-amber-500 text-black"
-                          }`}>
-                            {ann.priority}
-                          </div>
-                        )}
-
                         <div className="space-y-2">
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className="text-[9px] font-mono text-white/40 block">
@@ -1679,14 +1247,12 @@ export default function InboxTab({
                           </div>
 
                           <h4 className="text-xs font-black text-white">{ann.title}</h4>
-                          <p className="text-[11px] text-white/40 leading-relaxed whitespace-pre-wrap">{ann.description}</p>
+                          <p className="text-[11px] text-white/45 leading-relaxed whitespace-pre-wrap">{ann.description}</p>
 
-                          {/* Action overlay strip */}
-                          <div className="flex items-center justify-end gap-2 pt-2 border-t border-white/[0.03] select-none">
+                          <div className="flex items-center justify-end gap-2 pt-2 border-t border-white/[0.04] select-none">
                             <button
                               onClick={() => handleTogglePublishAnn(ann)}
                               className="text-[10px] text-white/40 hover:text-white flex items-center gap-1 cursor-pointer transition-colors"
-                              title="Toggle Publish state"
                             >
                               <CheckCircle size={11} className={ann.status === "Published" ? "text-emerald-400" : ""} />
                               <span>{ann.status === "Published" ? "Unpublish" : "Publish"}</span>
@@ -1737,254 +1303,248 @@ export default function InboxTab({
                   })}
 
                 {announcements.length === 0 && (
-                  <div className="p-12 text-center bg-[#08080c] border border-dashed border-white/10 rounded-3xl space-y-3">
+                  <div className="p-12 text-center bg-[#090a10] border border-dashed border-white/10 rounded-3xl space-y-3">
                     <Megaphone className="mx-auto text-white/25" size={28} />
                     <p className="text-xs text-white/40">No academy-wide announcements live yet.</p>
                   </div>
                 )}
               </div>
-
             </div>
-
           </div>
         )}
+      </div>
 
-        {/* ==================== 4. SENT MESSAGES TAB ==================== */}
-        {activeTab === "sent" && (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-            
-            {/* Sent Mail list */}
-            <div className={`space-y-4 ${selectedSent ? "lg:col-span-5 hidden lg:block" : "lg:col-span-12"}`}>
-              
-              {/* Sent Mail Search bar */}
-              <div className="bg-[#08080c] border border-white/[0.05] rounded-3xl p-4">
-                <div className="relative">
-                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30"><Search size={14} /></span>
+      {/* ==================== COMPOSE MESSAGE MODAL ==================== */}
+      <AnimatePresence>
+        {isComposeModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 12 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 12 }}
+              className="w-full max-w-2xl max-h-[90vh] bg-[#0b0c14] border border-white/15 rounded-3xl shadow-2xl flex flex-col overflow-hidden text-left"
+            >
+              {/* Modal Header */}
+              <div className="p-5 border-b border-white/10 flex items-center justify-between bg-white/[0.02]">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400">
+                    <Send size={18} />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-black text-white">Compose New Message</h3>
+                    <p className="text-xs text-white/45">Send direct or group messages to students, teachers, or course cohorts</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsComposeModalOpen(false)}
+                  className="p-2 rounded-xl text-white/40 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Modal Body */}
+              <form onSubmit={handleSendCompose} className="p-6 overflow-y-auto space-y-5 flex-1">
+                {composeAlert && (
+                  <div className={`p-3.5 rounded-2xl border text-xs flex items-center justify-between gap-3 ${
+                    composeAlert.type === "error"
+                      ? "bg-rose-500/10 border-rose-500/30 text-rose-300"
+                      : "bg-emerald-500/10 border-emerald-500/30 text-emerald-300"
+                  }`}>
+                    <div className="flex items-center gap-2">
+                      <AlertCircle size={15} className="shrink-0" />
+                      <span>{composeAlert.text}</span>
+                    </div>
+                    <button type="button" onClick={() => setComposeAlert(null)} className="text-white/40 hover:text-white">
+                      <X size={14} />
+                    </button>
+                  </div>
+                )}
+
+                {/* Recipient Type Row */}
+                <div className="space-y-1.5">
+                  <label className="text-[10px] text-white/50 font-bold uppercase tracking-wider block font-mono">Select Recipient Group</label>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    {[
+                      { id: "Individual" as const, label: "Individual User" },
+                      { id: "Multiple" as const, label: "Multiple Users" },
+                      { id: "AllStudents" as const, label: "All Students" },
+                      { id: "AllTeachers" as const, label: "All Teachers" },
+                      { id: "AllAdmins" as const, label: "All Admins" },
+                      { id: "Course" as const, label: "Course Roster" }
+                    ].map((opt) => {
+                      const isSelected = recipientType === opt.id;
+                      return (
+                        <button
+                          key={opt.id}
+                          type="button"
+                          onClick={() => {
+                            setRecipientType(opt.id);
+                            setSelectedIndividual("");
+                            setSelectedMultiple([]);
+                            setSelectedCourseId("");
+                          }}
+                          className={`px-3 py-2.5 rounded-xl border text-xs font-bold text-center transition-all cursor-pointer ${
+                            isSelected
+                              ? "bg-indigo-600 border-indigo-500 text-white shadow-lg shadow-indigo-600/20"
+                              : "bg-white/[0.02] hover:bg-white/[0.05] border-white/10 text-white/60 hover:text-white"
+                          }`}
+                        >
+                          {opt.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Conditional Recipient Selectors */}
+                {recipientType === "Individual" && (
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] text-white/50 font-bold uppercase tracking-wider block font-mono">Recipient User *</label>
+                    <select
+                      value={selectedIndividual}
+                      onChange={(e) => setSelectedIndividual(e.target.value)}
+                      className="w-full bg-[#040407] border border-white/15 rounded-2xl px-4 py-3 text-xs text-white focus:outline-none focus:border-indigo-500 cursor-pointer"
+                    >
+                      <option value="">-- Choose User --</option>
+                      <optgroup label="Instructors & Staff">
+                        {users.map(u => (
+                          <option key={u.id} value={u.id}>{u.name} ({u.role}) - {u.email}</option>
+                        ))}
+                      </optgroup>
+                      <optgroup label="Students">
+                        {students.map(s => (
+                          <option key={s.id} value={s.id}>{s.name} (Student) - {s.email}</option>
+                        ))}
+                      </optgroup>
+                    </select>
+                  </div>
+                )}
+
+                {recipientType === "Multiple" && (
+                  <div className="space-y-2">
+                    <label className="text-[10px] text-white/50 font-bold uppercase tracking-wider block font-mono">Select Multiple Users *</label>
+                    <div className="relative">
+                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30"><Search size={13} /></span>
+                      <input
+                        type="text"
+                        placeholder="Filter users by name..."
+                        value={userSearchTerm}
+                        onChange={(e) => setUserSearchTerm(e.target.value)}
+                        className="w-full bg-[#040407] border border-white/10 rounded-xl pl-9 pr-4 py-2 text-xs text-white"
+                      />
+                    </div>
+                    <div className="bg-[#040407] border border-white/10 rounded-2xl p-3 max-h-[150px] overflow-y-auto space-y-1.5">
+                      {[...users, ...students]
+                        .filter(u => !userSearchTerm || u.name?.toLowerCase().includes(userSearchTerm.toLowerCase()))
+                        .map(user => {
+                          const isChecked = selectedMultiple.includes(user.id);
+                          return (
+                            <div
+                              key={user.id}
+                              onClick={() => {
+                                if (isChecked) {
+                                  setSelectedMultiple(prev => prev.filter(id => id !== user.id));
+                                } else {
+                                  setSelectedMultiple(prev => [...prev, user.id]);
+                                }
+                              }}
+                              className="flex items-center gap-3 p-2 rounded-xl hover:bg-white/[0.04] cursor-pointer transition-colors"
+                            >
+                              <span className="text-indigo-400 shrink-0">
+                                {isChecked ? <CheckSquare size={14} /> : <Square size={14} />}
+                              </span>
+                              <span className="text-xs text-white/85 font-bold">{user.name}</span>
+                              <span className={`text-[9px] font-mono uppercase px-1.5 rounded border ${getRoleColor(user.role || "student")}`}>
+                                {user.role || "student"}
+                              </span>
+                            </div>
+                          );
+                        })}
+                    </div>
+                  </div>
+                )}
+
+                {recipientType === "Course" && (
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] text-white/50 font-bold uppercase tracking-wider block font-mono">Target Course *</label>
+                    <select
+                      value={selectedCourseId}
+                      onChange={(e) => setSelectedCourseId(e.target.value)}
+                      className="w-full bg-[#040407] border border-white/15 rounded-2xl px-4 py-3 text-xs text-white focus:outline-none focus:border-indigo-500 cursor-pointer"
+                    >
+                      <option value="">-- Choose Course --</option>
+                      {courses.map(c => (
+                        <option key={c.id} value={c.id}>{c.title} ({c.code})</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {/* Subject */}
+                <div className="space-y-1.5">
+                  <label className="text-[10px] text-white/50 font-bold uppercase tracking-wider block font-mono">Subject Line *</label>
                   <input
                     type="text"
-                    placeholder="Search sent message subjects or recipients..."
-                    value={sentSearch}
-                    onChange={(e) => setSentSearch(e.target.value)}
-                    className="w-full bg-[#030304] border border-white/15 rounded-2xl pl-10 pr-4 py-3 text-xs text-white placeholder-white/30 focus:outline-none focus:border-indigo-500/50 transition-all"
+                    placeholder="Enter message subject..."
+                    value={composeSubject}
+                    onChange={(e) => setComposeSubject(e.target.value)}
+                    className="w-full bg-[#040407] border border-white/15 rounded-2xl px-4 py-3 text-xs text-white placeholder-white/25 focus:outline-none focus:border-indigo-500"
                   />
                 </div>
-              </div>
 
-              {/* List */}
-              <div className="space-y-3">
-                {filteredSentMessages.length === 0 ? (
-                  <div className="p-12 text-center bg-[#08080c] border border-dashed border-white/10 rounded-3xl space-y-3">
-                    <Send className="mx-auto text-white/20" size={32} />
-                    <p className="text-xs text-white/40">No sent messages match criteria.</p>
-                  </div>
-                ) : (
-                  filteredSentMessages.map((sent) => {
-                    const isSel = selectedSent?.id === sent.id;
-                    return (
-                      <div
-                        key={sent.id}
-                        onClick={() => setSelectedSent(sent)}
-                        className={`p-4 rounded-3xl border text-left transition-all cursor-pointer relative group ${
-                          isSel
-                            ? "bg-indigo-500/[0.04] border-indigo-500/40 shadow-xl"
-                            : "bg-[#08080c] border-white/[0.05] hover:border-white/15"
-                        }`}
-                      >
-                        <div className="space-y-1.5">
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="text-[10px] font-extrabold text-indigo-400 truncate max-w-[200px]">
-                              To: {sent.recipients.join(", ")}
-                            </span>
-                            <span className="text-[9px] font-mono text-white/30 shrink-0">
-                              {new Date(sent.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                            </span>
-                          </div>
-
-                          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[9px] font-bold bg-white/5 border border-white/5 text-white/50">
-                            {sent.recipientRole}
-                          </span>
-
-                          <h4 className="text-xs font-bold text-white truncate">{sent.subject}</h4>
-                          <p className="text-[11px] text-white/40 line-clamp-1">{sent.content}</p>
-
-                          {/* Mini metrics bar if sent to multiple recipients */}
-                          {sent.recipients.length > 1 && (
-                            <div className="pt-2 border-t border-white/[0.03] flex items-center gap-3.5 text-[10px] font-semibold text-white/30 select-none">
-                              <span className="text-emerald-400">Delivered: {sent.deliveryStats.delivered}</span>
-                              <span className="text-indigo-400">Read: {sent.deliveryStats.read}</span>
-                              <span>Unread: {sent.deliveryStats.unread}</span>
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Hover Quick delete */}
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setDeleteModalState({
-                              isOpen: true,
-                              type: "sent",
-                              id: sent.id,
-                              name: sent.subject || "Sent Message"
-                            });
-                          }}
-                          className="absolute right-3.5 bottom-3.5 p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 opacity-0 group-hover:opacity-100 transition-opacity"
-                        >
-                          <Trash2 size={11} />
-                        </button>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-
-            </div>
-
-            {/* Sent Mail Detail View */}
-            <div className={`space-y-4 lg:col-span-7 ${!selectedSent ? "hidden lg:block lg:col-span-7" : "col-span-12"}`}>
-              {selectedSent ? (
-                <div className="bg-[#08080c] border border-white/[0.06] rounded-3xl overflow-hidden shadow-2xl flex flex-col min-h-[480px] p-5 text-left space-y-5">
-                  
-                  {/* Header Row */}
-                  <div className="border-b border-white/[0.05] pb-4 flex items-start justify-between gap-4">
-                    <div className="space-y-1.5 flex-1">
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => setSelectedSent(null)}
-                          className="p-2 rounded-xl bg-white/5 text-white/60 hover:text-white hover:bg-white/10 transition-all cursor-pointer lg:hidden"
-                        >
-                          <ArrowLeft size={14} />
-                        </button>
-                        <h3 className="font-sans text-sm font-black text-white truncate max-w-[280px]">
-                          To: {selectedSent.recipients.join(", ")}
-                        </h3>
-                      </div>
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="text-[10px] text-white/40 block">
-                          Dispatched: <strong>{new Date(selectedSent.timestamp).toLocaleString()}</strong>
-                        </span>
-                        <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-sans">
-                          {selectedSent.recipientRole}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="flex gap-1 shrink-0">
-                      <button
-                        onClick={() => {
-                          setComposeSubject(`Fwd: ${selectedSent.subject}`);
-                          setComposeContent(`---------- Forwarded sent message ---------\nDate: ${new Date(selectedSent.timestamp).toLocaleString()}\nSubject: ${selectedSent.subject}\n\n${selectedSent.content}`);
-                          setActiveTab("compose");
-                          showCustomToast("Sent message populated in Composer.", "info");
-                        }}
-                        className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-white/60 hover:text-white"
-                        title="Forward"
-                      >
-                        <Forward size={14} />
-                      </button>
-                      <button
-                        onClick={() => {
-                          setDeleteModalState({
-                            isOpen: true,
-                            type: "sent",
-                            id: selectedSent.id,
-                            name: selectedSent.subject || "Sent Message"
-                          });
-                        }}
-                        className="p-2 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400"
-                        title="Delete"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Subject and Content */}
-                  <div className="space-y-4 flex-1">
-                    <div className="space-y-1">
-                      <span className="text-[9px] text-white/40 font-mono block uppercase">Subject heading</span>
-                      <h4 className="text-xs font-black text-white">{selectedSent.subject}</h4>
-                    </div>
-
-                    <div className="space-y-1 bg-white/[0.01] border border-white/5 rounded-2xl p-4">
-                      <span className="text-[9px] text-white/40 font-mono block uppercase mb-2">Message body</span>
-                      <p className="text-xs text-white/80 leading-relaxed whitespace-pre-wrap">{selectedSent.content}</p>
-                    </div>
-
-                    {/* Delivery metrics visualization */}
-                    {selectedSent.recipients.length > 1 && (
-                      <div className="bg-[#030304] border border-white/10 p-4 rounded-2xl space-y-3">
-                        <span className="text-[10px] text-white/50 font-bold uppercase tracking-wider block font-mono">Recipient Engagement Delivery Statistics</span>
-                        <div className="grid grid-cols-3 gap-3">
-                          <div className="p-3 bg-emerald-500/5 border border-emerald-500/10 rounded-xl text-center space-y-1">
-                            <span className="text-[9px] text-white/30 font-bold block uppercase">Delivered</span>
-                            <span className="text-sm font-black text-emerald-400">{selectedSent.deliveryStats.delivered}</span>
-                          </div>
-                          <div className="p-3 bg-indigo-500/5 border border-indigo-500/10 rounded-xl text-center space-y-1">
-                            <span className="text-[9px] text-white/30 font-bold block uppercase">Read</span>
-                            <span className="text-sm font-black text-indigo-400">{selectedSent.deliveryStats.read}</span>
-                          </div>
-                          <div className="p-3 bg-white/[0.02] border border-white/5 rounded-xl text-center space-y-1">
-                            <span className="text-[9px] text-white/30 font-bold block uppercase">Unread</span>
-                            <span className="text-sm font-black text-white/40">{selectedSent.deliveryStats.unread}</span>
-                          </div>
-                        </div>
-
-                        {/* Interactive visualization progress bar */}
-                        <div className="h-2 w-full bg-white/10 rounded-full overflow-hidden flex">
-                          <div
-                            className="bg-emerald-500 h-full"
-                            style={{ width: `${(selectedSent.deliveryStats.read / selectedSent.deliveryStats.delivered) * 100}%` }}
-                          />
-                          <div
-                            className="bg-indigo-500 h-full animate-pulse"
-                            style={{ width: `${((selectedSent.deliveryStats.delivered - selectedSent.deliveryStats.read) / selectedSent.deliveryStats.delivered) * 100}%` }}
-                          />
-                        </div>
-                        <span className="text-[9px] text-white/40 font-mono block text-right">
-                          Estimated recipient read accuracy rate: {Math.round((selectedSent.deliveryStats.read / selectedSent.deliveryStats.delivered) * 100)}%
-                        </span>
-                      </div>
-                    )}
-
-                    {/* Render attachments info */}
-                    {selectedSent.attachments && selectedSent.attachments.length > 0 && (
-                      <div className="space-y-1.5">
-                        <span className="text-[9px] text-white/40 font-mono block uppercase">Dispatched attachments</span>
-                        <div className="flex flex-wrap gap-2">
-                          {selectedSent.attachments.map((att, i) => (
-                            <div key={i} className="px-3 py-1.5 rounded-xl bg-white/5 border border-white/5 text-[10px] text-white/80 flex items-center gap-1.5">
-                              <Paperclip size={11} className="text-indigo-400" />
-                              <span>{att.name}</span>
-                              <span className="text-white/30 font-mono">({att.size})</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                  </div>
-
+                {/* Content */}
+                <div className="space-y-1.5">
+                  <label className="text-[10px] text-white/50 font-bold uppercase tracking-wider block font-mono">Message Body *</label>
+                  <textarea
+                    rows={5}
+                    placeholder="Write your message here..."
+                    value={composeContent}
+                    onChange={(e) => setComposeContent(e.target.value)}
+                    className="w-full bg-[#040407] border border-white/15 rounded-2xl p-4 text-xs text-white placeholder-white/25 focus:outline-none focus:border-indigo-500"
+                  />
                 </div>
-              ) : (
-                <div className="h-full bg-[#08080c] border border-white/[0.05] border-dashed rounded-3xl p-12 flex flex-col items-center justify-center text-center space-y-4">
-                  <div className="h-14 w-14 rounded-full bg-white/[0.01] border border-white/5 flex items-center justify-center text-white/25">
-                    <Send size={24} />
+
+                {/* Attachments */}
+                <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-white/10">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <label className="px-3.5 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-bold text-white/80 hover:text-white cursor-pointer flex items-center gap-2">
+                      <Paperclip size={13} />
+                      <span>Attach File</span>
+                      <input type="file" className="hidden" onChange={handleComposeAttachmentUpload} />
+                    </label>
+                    {composeAttachments.map((att, i) => (
+                      <span key={i} className="px-2.5 py-1 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-[10px] flex items-center gap-1.5">
+                        <span className="truncate max-w-[120px]">{att.name}</span>
+                        <button type="button" onClick={() => setComposeAttachments(prev => prev.filter((_, idx) => idx !== i))} className="text-rose-400">×</button>
+                      </span>
+                    ))}
                   </div>
-                  <div className="space-y-1">
-                    <h3 className="font-sans text-sm font-bold text-white">No Message Selected</h3>
-                    <p className="text-xs text-white/40 max-w-xs leading-relaxed">
-                      Select any outgoing dispatched message from the left list block to inspect recipient delivery quotas.
-                    </p>
+
+                  <div className="flex items-center gap-2.5">
+                    <button
+                      type="button"
+                      onClick={() => setIsComposeModalOpen(false)}
+                      className="px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-bold text-white/70 hover:text-white cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isSending || isUploading}
+                      className="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold flex items-center gap-2 shadow-lg shadow-indigo-600/25 cursor-pointer disabled:opacity-40"
+                    >
+                      <Send size={13} className={isSending ? "animate-spin" : ""} />
+                      <span>{isSending ? "Sending..." : "Send Message"}</span>
+                    </button>
                   </div>
                 </div>
-              )}
-            </div>
-
+              </form>
+            </motion.div>
           </div>
         )}
-
-      </div>
+      </AnimatePresence>
 
       {/* 2ND CONFIRMATION DELETE MODAL */}
       <DeleteConfirmModal
@@ -1992,11 +1552,9 @@ export default function InboxTab({
         title={
           deleteModalState.type === "conv"
             ? "Permanently Delete Conversation"
-            : deleteModalState.type === "announcement"
-            ? "Permanently Delete Announcement"
-            : "Permanently Delete Sent Message"
+            : "Permanently Delete Announcement"
         }
-        message="This action will permanently delete this record from the MySQL database. Are you sure you want to proceed?"
+        message="This action will permanently delete this record from the database. Are you sure you want to proceed?"
         itemName={deleteModalState.name}
         isDeleting={isDeletingItem}
         onConfirm={handleConfirmDelete}

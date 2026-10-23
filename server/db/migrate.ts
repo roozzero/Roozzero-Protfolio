@@ -184,8 +184,14 @@ export async function runMigrationsAndSeeds() {
         INSERT INTO course_categories (id, name, slug, description) VALUES
         (1, 'Web Development', 'web-development', 'Modern web engineering and frameworks'),
         (2, 'Cybersecurity', 'cybersecurity', 'Web security, ethical hacking and defense'),
-        (3, 'CMS & WordPress', 'cms-wordpress', 'Website building, eCommerce and CMS tools')
+        (3, 'CMS & WordPress', 'cms-wordpress', 'Website building, eCommerce and CMS tools'),
+        (4, 'UI/UX & Design Systems', 'ui-ux-design', 'Interface design, design systems, and user experience')
       `);
+    } else {
+      await pool.query(`
+        INSERT IGNORE INTO course_categories (id, name, slug, description) VALUES
+        (4, 'UI/UX & Design Systems', 'ui-ux-design', 'Interface design, design systems, and user experience')
+      `).catch(() => {});
     }
 
     // Seed Courses from DEFAULT_HOMEPAGE_CLASSES

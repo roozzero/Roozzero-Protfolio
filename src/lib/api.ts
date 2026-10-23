@@ -433,6 +433,13 @@ export const teacherApi = {
     });
   },
 
+  async updateCourseSyllabus(id: string, syllabus: any[]) {
+    return request<{ success: boolean; data: any[]; message: string }>(`/teacher/courses/${id}/syllabus`, {
+      method: "PUT",
+      body: JSON.stringify({ syllabus })
+    });
+  },
+
   async uploadCourseImage(formData: FormData) {
     return request<{ success: boolean; url: string; filename: string }>("/teacher/courses/upload-image", {
       method: "POST",

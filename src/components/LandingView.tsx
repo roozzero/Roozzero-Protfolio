@@ -103,16 +103,11 @@ const FALLBACK_COURSE_SYLLABUS: Record<string, Array<{ id: string; title: string
 };
 
 function getCourseSyllabus(cls: any): Array<{ id: string; title: string; description: string; duration?: string }> {
-  if (cls?.id === "wordpress") {
-    return FALLBACK_COURSE_SYLLABUS.wordpress;
-  }
-  if (cls?.id && FALLBACK_COURSE_SYLLABUS[cls.id]) {
-    if (!Array.isArray(cls?.syllabus) || cls.syllabus.length < 10) {
-      return FALLBACK_COURSE_SYLLABUS[cls.id];
-    }
-  }
   if (Array.isArray(cls?.syllabus) && cls.syllabus.length > 0) {
     return cls.syllabus;
+  }
+  if (Array.isArray(cls?.syllabusJson) && cls.syllabusJson.length > 0) {
+    return cls.syllabusJson;
   }
   if (cls?.id && FALLBACK_COURSE_SYLLABUS[cls.id]) {
     return FALLBACK_COURSE_SYLLABUS[cls.id];
@@ -885,23 +880,16 @@ export default function LandingView({
               .map((cls, idx) => {
                 const isOpen = openSyllabus[cls.id] || false;
                 const isEnrolled = registeredCourseIds.includes(cls.id);
-                const isWp = cls.id === "wordpress" || cls.courseName?.toLowerCase().includes("wordpress");
-                const syllabusItems = isWp ? FALLBACK_COURSE_SYLLABUS.wordpress : getCourseSyllabus(cls);
-                const tagsList = isWp
-                  ? ["WordPress", "Elementor", "WooCommerce", "Web Design"]
-                  : (Array.isArray(cls.tags) ? cls.tags : ["Engineering", "Frontend", "TypeScript"]);
+                const syllabusItems = getCourseSyllabus(cls);
+                const tagsList = Array.isArray(cls.tags) && cls.tags.length > 0
+                  ? cls.tags
+                  : ["Engineering", "Frontend", "TypeScript"];
 
-                const courseTitle = isWp
-                  ? "WordPress Development & Design"
-                  : cls.courseName;
-
-                const courseDescription = isWp
-                  ? "Master modern WordPress website development, Elementor page building, WooCommerce online stores, SEO, and performance optimization."
-                  : (cls.shortDescription || cls.description);
-
-                const coursePrice = isWp ? "$169" : (cls.price || "Free");
-                const courseInstructor = isWp ? "Roozbeh" : (cls.instructor || "Roozbeh");
-                const courseSessions = isWp ? 16 : (cls.sessions || 12);
+                const courseTitle = cls.courseName || cls.title || "Academy Course";
+                const courseDescription = cls.shortDescription || cls.description || "";
+                const coursePrice = cls.price || "Free";
+                const courseInstructor = cls.instructor || "Roozbeh";
+                const courseSessions = cls.sessions || cls.sessionsCount || syllabusItems.length || 12;
 
                 return (
                   <div
@@ -944,19 +932,14 @@ export default function LandingView({
                             <button
                               type="button"
                               onClick={() => {
-                                if (isWp) {
-                                  setSelectedCourseForRegistration({
-                                    ...cls,
-                                    courseName: "WordPress Development & Design",
-                                    instructor: "Roozbeh",
-                                    price: "$169",
-                                    sessions: 16,
-                                    shortDescription: "Master modern WordPress website development, Elementor page building, WooCommerce online stores, SEO, and performance optimization.",
-                                    description: "Comprehensive, hands-on WordPress course covering site setup, responsive design with Elementor, e-commerce with WooCommerce, custom themes, plugin architecture, security hardening, and production deployment."
-                                  });
-                                } else {
-                                  setSelectedCourseForRegistration(cls);
-                                }
+                                setSelectedCourseForRegistration({
+                                  ...cls,
+                                  courseName: courseTitle,
+                                  price: coursePrice,
+                                  sessions: courseSessions,
+                                  shortDescription: courseDescription,
+                                  description: cls.description || courseDescription
+                                });
                                 setIsCourseRegModalOpen(true);
                               }}
                               className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-white text-black hover:bg-emerald-400 transition-colors text-xs font-sans font-semibold shadow-xl active:scale-95 cursor-pointer"

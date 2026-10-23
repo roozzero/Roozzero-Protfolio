@@ -411,25 +411,30 @@ export default function AdminDashboard({ onLogout, onGoHome }: AdminDashboardPro
       if (res.success && res.data) {
         setCourses(prev => [res.data, ...prev]);
         dispatchAlert(`Created Course: ${course.title}`);
+        window.dispatchEvent(new CustomEvent("courses_updated"));
         await loadAdminData();
+        return res.data;
       } else {
-        setCourses(prev => [course as Course, ...prev]);
-        dispatchAlert(`Deployed Course to Catalog: ${course.title}`);
+        throw new Error((res as any)?.error?.message || "Failed to create course.");
       }
     } catch (err: any) {
       console.error("Failed to create course via API", err);
       dispatchAlert(err.message || `Failed to create course: ${course.title}`);
+      throw err;
     }
   };
 
   const handleUpdateCourse = async (id: string, updated: Partial<Course>) => {
-    setCourses(prev => prev.map(c => c.id === id ? { ...c, ...updated } : c));
-    dispatchAlert(`Updated course configurations for: ${updated.title || id}`);
     try {
       await adminApi.updateCourse(id, updated);
-      loadAdminData();
-    } catch (err) {
+      setCourses(prev => prev.map(c => c.id === id ? { ...c, ...updated } : c));
+      dispatchAlert(`Updated course configurations for: ${updated.title || id}`);
+      window.dispatchEvent(new CustomEvent("courses_updated"));
+      await loadAdminData();
+    } catch (err: any) {
       console.error("Failed to update course via API", err);
+      dispatchAlert(err.message || "Failed to update course.");
+      throw err;
     }
   };
 
@@ -438,7 +443,8 @@ export default function AdminDashboard({ onLogout, onGoHome }: AdminDashboardPro
     dispatchAlert(`Deleted Course: ${id}`);
     try {
       await adminApi.deleteCourse(id);
-      loadAdminData();
+      window.dispatchEvent(new CustomEvent("courses_updated"));
+      await loadAdminData();
     } catch (err) {
       console.error("Failed to delete course via API", err);
     }
@@ -498,6 +504,7 @@ export default function AdminDashboard({ onLogout, onGoHome }: AdminDashboardPro
               { id: "inbox", label: "Inbox", icon: Mail, tab: "inbox", sub: "all" },
               { id: "users", label: "Users", icon: Users, tab: "users", sub: "all" },
               { id: "courses", label: "Courses", icon: BookOpen, tab: "academic", sub: "catalog" },
+              { id: "sessions", label: "Class Sessions", icon: Calendar, tab: "academic", sub: "sessions" },
               { id: "notifications", label: "Notifications", icon: Bell, tab: "notifications", sub: "all" },
               { id: "certificates", label: "Certificates", icon: Award, tab: "certificates", sub: "all" },
               { id: "exams", label: "Exams", icon: Sliders, tab: "exams", sub: "all" },
@@ -507,7 +514,13 @@ export default function AdminDashboard({ onLogout, onGoHome }: AdminDashboardPro
               { id: "security", label: "Security", icon: Shield, tab: "security", sub: "directory", isSecurity: true }
             ].map((menu) => {
               const isSec = menu.isSecurity;
-              const active = isSec ? activeTab === "security" : activeTab === menu.tab;
+              const active = isSec
+                ? activeTab === "security"
+                : menu.id === "courses"
+                  ? activeTab === "academic" && activeSubTab !== "sessions"
+                  : menu.id === "sessions"
+                    ? activeTab === "academic" && activeSubTab === "sessions"
+                    : activeTab === menu.tab;
               const isInboxWithUnread = menu.id === "inbox" && unreadMessagesCount > 0;
               return (
                 <button
@@ -538,6 +551,11 @@ export default function AdminDashboard({ onLogout, onGoHome }: AdminDashboardPro
                       <span className="px-1.5 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-500 text-white shadow-sm shadow-rose-500/50">
                         {unreadMessagesCount}
                       </span>
+                    </span>
+                  )}
+                  {menu.id === "sessions" && sessions.length > 0 && (
+                    <span className="px-1.5 py-0.5 rounded-full text-[10px] font-mono bg-indigo-500/20 text-indigo-300">
+                      {sessions.length}
                     </span>
                   )}
                 </button>
@@ -756,6 +774,7 @@ export default function AdminDashboard({ onLogout, onGoHome }: AdminDashboardPro
                   enrollments={enrollments}
                   students={students}
                   users={users}
+                  sessions={sessions}
                   activeSubTab={activeSubTab}
                   onAddCourse={handleAddCourse}
                   onUpdateCourse={handleUpdateCourse}
@@ -769,6 +788,7 @@ export default function AdminDashboard({ onLogout, onGoHome }: AdminDashboardPro
                   onRejectRequest={handleRejectRequest}
                   onAddSeason={(ns) => setCourseSeasons(prev => [ns, ...prev])}
                   onReloadData={loadAdminData}
+                  showCustomToast={(msg) => dispatchAlert(msg)}
                 />
               )}
 

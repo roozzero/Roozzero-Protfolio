@@ -1034,7 +1034,7 @@ export function loadCmsConfig(): CMSFullConfig {
   return currentCmsConfig;
 }
 
-export function saveCmsConfig(config: CMSFullConfig) {
+export function saveCmsConfig(config: CMSFullConfig, silent = false) {
   currentCmsConfig = {
     ...DEFAULT_CMS_CONFIG,
     ...config,
@@ -1057,7 +1057,7 @@ export function saveCmsConfig(config: CMSFullConfig) {
     contact: { ...DEFAULT_CMS_CONFIG.contact, ...(config.contact || {}) },
     footer: { ...DEFAULT_CMS_CONFIG.footer, ...(config.footer || {}) },
   };
-  if (typeof window !== "undefined") {
+  if (!silent && typeof window !== "undefined") {
     window.dispatchEvent(
       new CustomEvent("cms_config_updated", { detail: currentCmsConfig }),
     );

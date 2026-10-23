@@ -399,7 +399,7 @@ router.get("/messages", async (req: Request, res: Response) => {
       LEFT JOIN users u ON m.sender_id = u.id
       WHERE (
         (m.recipient_type = 'AllAdmins' OR m.recipient_id = ? OR m.recipient_id = 'admin-1' OR r.recipient_id IS NOT NULL)
-        OR (m.sender_id = ? AND EXISTS (SELECT 1 FROM internal_messages rep WHERE rep.reply_to_id = m.id))
+        OR (m.sender_id = ? OR m.sender_id = 'admin-1')
       )
         AND m.reply_to_id IS NULL
       ORDER BY m.created_at DESC
@@ -441,10 +441,17 @@ router.get("/messages", async (req: Request, res: Response) => {
       `, [msg.id]);
 
       const lastReply = replies.length > 0 ? replies[replies.length - 1] : null;
+      const isAdminRoot = msg.sender_id === adminId || msg.sender_id === "admin-1";
 
-      const effectiveSenderName = (msg.sender_id === adminId && lastReply) ? lastReply.sender_name : msg.sender_name;
-      const effectiveSenderRole = (msg.sender_id === adminId && lastReply) ? lastReply.sender_role : msg.sender_role;
-      const effectiveSenderAvatar = (msg.sender_id === adminId && lastReply) ? (lastReply.sender_avatar || null) : msg.sender_avatar;
+      const effectiveSenderName = isAdminRoot
+        ? (lastReply ? lastReply.sender_name : `To: ${msg.recipient_name || msg.recipient_type || "Recipients"}`)
+        : msg.sender_name;
+      const effectiveSenderRole = isAdminRoot
+        ? (lastReply ? lastReply.sender_role : "admin")
+        : msg.sender_role;
+      const effectiveSenderAvatar = isAdminRoot
+        ? (lastReply ? (lastReply.sender_avatar || null) : msg.sender_avatar)
+        : msg.sender_avatar;
 
       formattedInternals.push({
         id: msg.id,
@@ -1257,13 +1264,36 @@ router.post("/courses", async (req: Request, res: Response) => {
       return res.status(400).json({ success: false, error: { code: "MISSING_TITLE", message: "Course title is required." } });
     }
 
+    const rawSyllabus = syllabusJson ?? req.body.syllabus ?? [];
+    let parsedIncomingSyllabus: any[] = [];
+    if (Array.isArray(rawSyllabus)) {
+      parsedIncomingSyllabus = rawSyllabus;
+    } else if (typeof rawSyllabus === "string") {
+      try {
+        parsedIncomingSyllabus = JSON.parse(rawSyllabus);
+      } catch {
+        parsedIncomingSyllabus = [];
+      }
+    }
+
+    if (!Array.isArray(parsedIncomingSyllabus) || parsedIncomingSyllabus.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: { code: "MISSING_SYLLABUS", message: "Please add at least one syllabus module before creating the course." }
+      });
+    }
+
     const courseId = `crs-${Date.now()}-${crypto.randomBytes(3).toString("hex")}`;
-    const courseCode = (code && code.trim()) || `CRS-${Math.floor(100 + Math.random() * 900)}`;
+    let courseCode = (code && code.trim()) || `CRS-${Math.floor(100 + Math.random() * 900)}`;
+    const [existingCodeRows]: [any[], any] = await query("SELECT id FROM courses WHERE code = ? LIMIT 1", [courseCode]);
+    if (existingCodeRows && existingCodeRows.length > 0) {
+      courseCode = `${courseCode}-${Math.floor(10 + Math.random() * 90)}`;
+    }
     const courseSlug = (slug && slug.trim()) || title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
 
     const isPub = Boolean(isPublished || status === "Published");
     const courseStatus = isPub ? "Published" : (status || "Active");
-    const syllabusStr = syllabusJson ? (typeof syllabusJson === "string" ? syllabusJson : JSON.stringify(syllabusJson)) : JSON.stringify([]);
+    const syllabusStr = JSON.stringify(parsedIncomingSyllabus);
 
     await query(`
       INSERT INTO courses (
@@ -1384,6 +1414,17 @@ router.get("/courses/:id", async (req: Request, res: Response) => {
       ORDER BY e.joined_date DESC
     `, [id]);
 
+    // Course Sessions
+    const [courseSessions]: [any[], any] = await query(`
+      SELECT s.id, s.course_id as courseId, c.title as courseTitle, s.title, s.date, s.time, s.duration, s.link, s.status,
+             u.name as teacherName
+      FROM sessions s
+      LEFT JOIN courses c ON s.course_id = c.id
+      LEFT JOIN users u ON c.teacher_id = u.id
+      WHERE s.course_id = ? AND s.deleted_at IS NULL
+      ORDER BY s.date ASC
+    `, [id]);
+
     let parsedSyllabus = [];
     if (course.syllabus_json) {
       try {
@@ -1398,6 +1439,10 @@ router.get("/courses/:id", async (req: Request, res: Response) => {
       data: {
         ...course,
         students,
+        sessions: (courseSessions || []).map((s: any) => ({
+          ...s,
+          date: s.date ? (s.date instanceof Date ? s.date.toISOString().split("T")[0] : String(s.date).split("T")[0]) : ""
+        })),
         syllabus: parsedSyllabus,
         syllabusJson: parsedSyllabus,
         isPublished: Boolean(course.is_published || course.status === "Published")
@@ -1521,6 +1566,7 @@ router.post("/courses/:id/syllabus", async (req: Request, res: Response) => {
     const syllabusStr = JSON.stringify(syllabusList);
 
     await query("UPDATE courses SET syllabus_json = ? WHERE id = ?", [syllabusStr, id]);
+    await query("UPDATE cms_classes SET syllabus_json = ? WHERE id = ?", [syllabusStr, id]).catch(() => {});
     await query("INSERT INTO activity_logs (user_id, action, details) VALUES (?, 'UpdateSyllabus', ?)", [
       req.user!.id,
       `Updated syllabus (${syllabusList.length} items) for course ${id}`

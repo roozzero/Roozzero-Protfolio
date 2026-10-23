@@ -7,12 +7,13 @@ import {
   Sparkles, Send, Trash2, Edit3, Save, ExternalLink, HelpCircle,
   Menu, User, Upload, ArrowRight, Eye, EyeOff, AlertCircle, Mail,
   ArrowLeft, Camera, Lock, Palette, Moon, Sun, Monitor, RefreshCw,
-  ClipboardList, Key, Folder
+  ClipboardList, Key, Folder, Video
 } from "lucide-react";
 import { Course, Student, Session, Assignment, DiscussionThread, Resource } from "../types/teacher";
 import { teacherApi, authApi } from "../lib/api";
 import ImageCropperModal from "./common/ImageCropperModal";
 import CourseSyllabusModal, { SyllabusItem } from "./common/CourseSyllabusModal";
+import DeleteConfirmModal from "./common/DeleteConfirmModal";
 
 interface TeacherDashboardProps {
   currentUser?: any;
@@ -26,6 +27,27 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
     "overview" | "courses" | "students" | "sessions" | "assignments" | "discussions" | "messages" | "resources" | "settings"
   >("overview");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  // Selected Course Workspace state (when teacher clicks on a course)
+  const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
+  const [selectedCourseSubTab, setSelectedCourseSubTab] = useState<"info" | "students" | "sessions">("info");
+  const [editingCourseSyllabusTarget, setEditingCourseSyllabusTarget] = useState<{
+    id: string;
+    title: string;
+    syllabus: SyllabusItem[];
+  } | null>(null);
+
+  // Inline modal status/error banner (shown inside modals)
+  const [modalAlert, setModalAlert] = useState<{ text: string; type: "error" | "success" } | null>(null);
+
+  // Inline syllabus module builder inside Propose New Course Modal
+  const [inlineModTitle, setInlineModTitle] = useState("");
+  const [inlineModDuration, setInlineModDuration] = useState("2 Weeks");
+  const [inlineModDesc, setInlineModDesc] = useState("");
+
+  // Session delete confirmation state
+  const [sessionToDelete, setSessionToDelete] = useState<Session | null>(null);
+  const [isDeletingSession, setIsDeletingSession] = useState(false);
 
   // Authenticated Teacher Profile State
   const [profile, setProfile] = useState<any>(currentUser || null);
@@ -328,6 +350,10 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
     const futureDate = new Date();
     futureDate.setDate(today.getDate() + 90);
 
+    setModalAlert(null);
+    setInlineModTitle("");
+    setInlineModDuration("2 Weeks");
+    setInlineModDesc("");
     setCourseRequestForm({
       title: "",
       code: `CRS-${Math.floor(100 + Math.random() * 900)}`,
@@ -344,13 +370,60 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
     setShowCourseRequestModal(true);
   };
 
+  const handleAddInlineSyllabusModule = () => {
+    if (!inlineModTitle.trim()) {
+      setModalAlert({ text: "Please enter a module title before adding to the syllabus.", type: "error" });
+      return;
+    }
+    const newItem: SyllabusItem = {
+      id: `mod-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      moduleNumber: courseRequestForm.syllabus.length + 1,
+      title: inlineModTitle.trim(),
+      duration: inlineModDuration.trim() || "2 Weeks",
+      description: inlineModDesc.trim() || "Core instructional module and practical exercises."
+    };
+    setCourseRequestForm((prev) => ({
+      ...prev,
+      syllabus: [...prev.syllabus, newItem]
+    }));
+    setInlineModTitle("");
+    setInlineModDuration("2 Weeks");
+    setInlineModDesc("");
+    setModalAlert({ text: `Added module "${newItem.title}" to course syllabus.`, type: "success" });
+  };
+
   // Submit Course Proposal to Admin
   const handleCourseRequestSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setModalAlert(null);
     if (!courseRequestForm.title.trim()) {
-      showToast("Course title is required.", "error");
+      const msg = "Course title is required.";
+      setModalAlert({ text: msg, type: "error" });
+      showToast(msg, "error");
       return;
     }
+
+    // Auto-include any pending typed inline syllabus module
+    let finalSyllabus = [...courseRequestForm.syllabus];
+    if (inlineModTitle.trim()) {
+      finalSyllabus.push({
+        id: `mod-${Date.now()}`,
+        moduleNumber: finalSyllabus.length + 1,
+        title: inlineModTitle.trim(),
+        duration: inlineModDuration.trim() || "2 Weeks",
+        description: inlineModDesc.trim() || "Core instructional module and practical exercises."
+      });
+      setInlineModTitle("");
+      setInlineModDesc("");
+    }
+
+    if (finalSyllabus.length === 0) {
+      const msg = "Please add at least 1 syllabus module before submitting your course proposal.";
+      setModalAlert({ text: msg, type: "error" });
+      showToast(msg, "error");
+      return;
+    }
+
     setIsSubmittingCourseRequest(true);
     try {
       const payload = {
@@ -364,33 +437,36 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
         image: courseRequestForm.image,
         startDate: courseRequestForm.startDate || null,
         endDate: courseRequestForm.endDate || null,
-        syllabusJson: courseRequestForm.syllabus
+        syllabusJson: finalSyllabus
       };
 
       const res = await teacherApi.requestNewCourse(payload);
       if (res.success) {
+        const createdProposal = res.data || {
+          id: `req-${Date.now()}`,
+          title: payload.title,
+          code: payload.code,
+          price: payload.price,
+          sessionsCount: payload.sessionsCount,
+          status: "PendingApproval",
+          approvalStatus: "Pending",
+          image: payload.image,
+          startDate: payload.startDate,
+          endDate: payload.endDate,
+          description: payload.description,
+          syllabus: finalSyllabus
+        };
+        setModalAlert({ text: "Course proposal submitted to Administrator for review and publication!", type: "success" });
         showToast("Course proposal submitted to Administrator for review and publication.", "success");
+        setProposedCourses(prev => [createdProposal, ...prev.filter(p => p.id !== createdProposal.id)]);
         setShowCourseRequestModal(false);
-        setProposedCourses(prev => [
-          {
-            id: res.data?.id || `req-${Date.now()}`,
-            title: payload.title,
-            code: payload.code,
-            price: payload.price,
-            sessionsCount: payload.sessionsCount,
-            status: "Pending Approval",
-            approvalStatus: "Pending",
-            image: payload.image,
-            startDate: payload.startDate,
-            endDate: payload.endDate,
-            syllabus: payload.syllabusJson
-          },
-          ...prev
-        ]);
+        setModalAlert(null);
         loadTeacherData();
       }
     } catch (err: any) {
-      showToast(err.message || "Failed to submit course proposal.", "error");
+      const errMsg = err.message || "Failed to submit course proposal.";
+      setModalAlert({ text: errMsg, type: "error" });
+      showToast(errMsg, "error");
     } finally {
       setIsSubmittingCourseRequest(false);
     }
@@ -437,57 +513,80 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
   // Create session handler
   const handleCreateSession = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newSessionData.courseId || !newSessionData.title || !newSessionData.date) {
-      showToast("Please fill in all required session fields.", "error");
+    setModalAlert(null);
+    const targetCourseId = newSessionData.courseId || selectedCourseId || courses[0]?.id || "";
+    if (!targetCourseId || !newSessionData.title.trim() || !newSessionData.date) {
+      const msg = "Please fill in all required session fields (Course, Title, and Date).";
+      setModalAlert({ text: msg, type: "error" });
+      showToast(msg, "error");
       return;
     }
 
     try {
-      const res = await teacherApi.createSession(newSessionData.courseId, newSessionData);
+      const res = await teacherApi.createSession(targetCourseId, {
+        ...newSessionData,
+        courseId: targetCourseId
+      });
       if (res.success && res.data) {
         setSessions((prev) => [res.data, ...prev]);
         setShowCreateSessionModal(false);
+        setModalAlert(null);
         setNewSessionData({
-          courseId: courses[0]?.id || "",
+          courseId: selectedCourseId || courses[0]?.id || "",
           title: "",
           date: "",
           time: "",
           duration: "1.5 hours",
           link: ""
         });
-        showToast("Live session scheduled successfully.", "success");
+        showToast("Live session scheduled successfully and synced with Administrator.", "success");
       }
     } catch (err: any) {
-      showToast(err.message || "Failed to schedule session.", "error");
+      const errMsg = err.message || "Failed to schedule session.";
+      setModalAlert({ text: errMsg, type: "error" });
+      showToast(errMsg, "error");
     }
   };
 
-  // Delete session handler
-  const handleDeleteSession = async (sessionId: string) => {
+  // Confirm delete session handler
+  const handleConfirmDeleteSession = async () => {
+    if (!sessionToDelete) return;
+    setIsDeletingSession(true);
     try {
-      await teacherApi.deleteSession(sessionId);
-      setSessions((prev) => prev.filter((s) => s.id !== sessionId));
-      showToast("Session cancelled and removed.", "info");
+      await teacherApi.deleteSession(sessionToDelete.id);
+      setSessions((prev) => prev.filter((s) => s.id !== sessionToDelete.id));
+      setSessionToDelete(null);
+      showToast("Session cancelled and removed from database.", "info");
     } catch (err: any) {
       showToast(err.message || "Failed to cancel session.", "error");
+    } finally {
+      setIsDeletingSession(false);
     }
   };
 
   // Create assignment handler
   const handleCreateAssignment = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newAssignmentData.courseId || !newAssignmentData.title || !newAssignmentData.dueDate) {
-      showToast("Please fill in all required assignment fields.", "error");
+    setModalAlert(null);
+    const targetCourseId = newAssignmentData.courseId || selectedCourseId || courses[0]?.id || "";
+    if (!targetCourseId || !newAssignmentData.title.trim() || !newAssignmentData.dueDate) {
+      const msg = "Please fill in all required assignment fields (Course, Title, and Due Date).";
+      setModalAlert({ text: msg, type: "error" });
+      showToast(msg, "error");
       return;
     }
 
     try {
-      const res = await teacherApi.createAssignment(newAssignmentData.courseId, newAssignmentData);
+      const res = await teacherApi.createAssignment(targetCourseId, {
+        ...newAssignmentData,
+        courseId: targetCourseId
+      });
       if (res.success && res.data) {
         setAssignments((prev) => [res.data, ...prev]);
         setShowCreateAssignmentModal(false);
+        setModalAlert(null);
         setNewAssignmentData({
-          courseId: courses[0]?.id || "",
+          courseId: selectedCourseId || courses[0]?.id || "",
           title: "",
           description: "",
           dueDate: "",
@@ -496,7 +595,9 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
         showToast("Assignment published successfully.", "success");
       }
     } catch (err: any) {
-      showToast(err.message || "Failed to create assignment.", "error");
+      const errMsg = err.message || "Failed to create assignment.";
+      setModalAlert({ text: errMsg, type: "error" });
+      showToast(errMsg, "error");
     }
   };
 
@@ -504,6 +605,7 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
   const handleSaveGrade = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!gradingSubmission) return;
+    setModalAlert(null);
 
     try {
       await teacherApi.gradeSubmission(
@@ -530,9 +632,12 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
       );
 
       setGradingSubmission(null);
+      setModalAlert(null);
       showToast("Grade and feedback recorded.", "success");
     } catch (err: any) {
-      showToast(err.message || "Failed to save grade.", "error");
+      const errMsg = err.message || "Failed to save grade.";
+      setModalAlert({ text: errMsg, type: "error" });
+      showToast(errMsg, "error");
     }
   };
 
@@ -1145,13 +1250,22 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
                   ) : (
                     <div className="space-y-3">
                       {courses.slice(0, 3).map((c) => (
-                        <div key={c.id} className="p-3.5 rounded-xl bg-white/[0.015] border border-white/[0.04] flex items-center justify-between">
+                        <div
+                          key={c.id}
+                          onClick={() => {
+                            setSelectedCourseId(c.id);
+                            setSelectedCourseSubTab("info");
+                            setActiveTab("courses");
+                          }}
+                          className="p-3.5 rounded-xl bg-white/[0.015] border border-white/[0.04] hover:border-indigo-500/40 hover:bg-white/[0.03] transition-all flex items-center justify-between cursor-pointer group"
+                        >
                           <div>
                             <span className="text-[10px] font-mono text-indigo-400 px-2 py-0.5 rounded bg-indigo-500/10 font-bold">{c.code}</span>
-                            <h4 className="text-xs font-bold text-white mt-1">{c.title}</h4>
+                            <h4 className="text-xs font-bold text-white group-hover:text-indigo-300 transition-colors mt-1">{c.title}</h4>
                           </div>
-                          <div className="text-left font-mono text-xs text-white/60">
+                          <div className="text-right font-mono text-xs text-white/60 flex items-center gap-2">
                             <span>{c.studentsCount} Students</span>
+                            <ChevronRight size={14} className="text-white/30 group-hover:text-indigo-400 transition-colors" />
                           </div>
                         </div>
                       ))}
@@ -1197,101 +1311,579 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
             </div>
           )}
 
-          {/* TAB 2: MY COURSES */}
+          {/* TAB 2: MY COURSES & DEDICATED COURSE WORKSPACE */}
           {activeTab === "courses" && (
             <div className="space-y-6">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div>
-                  <h3 className="text-base font-bold text-white">My Teaching Courses</h3>
-                  <p className="text-xs text-white/40 mt-0.5">Comprehensive roster of courses assigned to your instruction</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={handleOpenRequestCourse}
-                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-indigo-600/20 flex items-center gap-1.5 cursor-pointer self-start sm:self-center"
-                >
-                  <Plus size={14} />
-                  <span>Propose New Course</span>
-                </button>
-              </div>
+              {(() => {
+                const activeCourse: any =
+                  courses.find((c) => c.id === selectedCourseId) ||
+                  proposedCourses.find((c) => c.id === selectedCourseId);
 
-              {/* Proposed Courses Section (Awaiting Admin Review & Publishing) */}
-              {proposedCourses.length > 0 && (
-                <div className="space-y-3 p-5 rounded-2xl bg-amber-500/[0.03] border border-amber-500/20 text-left">
-                  <div className="flex items-center gap-2">
-                    <Clock size={15} className="text-amber-400" />
-                    <h4 className="text-xs font-bold text-amber-300 uppercase tracking-wider">
-                      My Submitted Course Proposals ({proposedCourses.length})
-                    </h4>
-                  </div>
-                  <p className="text-[11px] text-white/50">
-                    These proposals have been sent to the administrator. Once approved, the admin can publish them to make them live on the public landing page.
-                  </p>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
-                    {proposedCourses.map((req) => (
-                      <div key={req.id} className="p-4 rounded-xl bg-white/[0.02] border border-amber-500/25 space-y-2">
-                        <div className="flex justify-between items-start gap-2">
+                if (activeCourse) {
+                  const courseStudents = students.filter(
+                    (s: any) =>
+                      String(s.courseId) === String(activeCourse.id) ||
+                      s.courseTitle === activeCourse.title
+                  );
+                  const courseSessions = sessions.filter(
+                    (sess: any) =>
+                      String(sess.courseId) === String(activeCourse.id) ||
+                      sess.courseTitle === activeCourse.title
+                  );
+                  const courseSyllabus: SyllabusItem[] = Array.isArray(activeCourse.syllabus)
+                    ? activeCourse.syllabus
+                    : [];
+
+                  return (
+                    <div className="space-y-6 animate-fade-in">
+                      {/* Back Navigation & Course Header */}
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-white/[0.06]">
+                        <div className="flex items-center gap-3">
+                          <button
+                            type="button"
+                            onClick={() => setSelectedCourseId(null)}
+                            className="p-2.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 text-white/80 hover:text-white transition-all cursor-pointer flex items-center gap-1.5 text-xs font-bold"
+                          >
+                            <ArrowLeft size={14} />
+                            <span>All Courses</span>
+                          </button>
                           <div>
-                            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/30 font-bold uppercase">{req.code || "PROPOSAL"}</span>
-                            <h5 className="text-sm font-bold text-white mt-1.5">{req.title}</h5>
+                            <div className="flex items-center gap-2">
+                              <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded-full bg-indigo-500/15 text-indigo-300 border border-indigo-500/30 font-bold">
+                                {activeCourse.code || "CRS"}
+                              </span>
+                              <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 font-bold">
+                                {activeCourse.status || "Active"}
+                              </span>
+                            </div>
+                            <h3 className="text-lg font-extrabold text-white mt-1">{activeCourse.title}</h3>
                           </div>
-                          <span className="text-[9px] font-mono px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-bold shrink-0">
-                            Pending Admin Review
-                          </span>
                         </div>
-                        <div className="flex flex-wrap items-center gap-3 text-[11px] font-mono text-white/50 pt-2 border-t border-white/[0.04]">
-                          <span>Price: <strong className="text-white">{req.price || "$199"}</strong></span>
-                          <span>Sessions: <strong className="text-white">{req.sessionsCount || 16}</strong></span>
-                          <span>Syllabus: <strong className="text-indigo-400">{Array.isArray(req.syllabus) ? req.syllabus.length : 0} Topics</strong></span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
 
-              {courses.length === 0 ? (
-                <div className="p-12 text-center rounded-2xl bg-white/[0.02] border border-white/[0.06] text-white/40 text-xs font-mono">
-                  No published courses have been assigned to your account yet. You can propose a new course above.
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {courses.map((course) => (
-                    <div
-                      key={course.id}
-                      className="p-6 rounded-2xl bg-white/[0.02] border border-white/[0.06] backdrop-blur-md space-y-4 hover:border-indigo-500/30 transition-all text-left"
-                    >
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 font-bold">
-                            {course.code}
-                          </span>
-                          <h4 className="text-base font-bold text-white mt-2">{course.title}</h4>
-                        </div>
-                        <span className="text-xs font-mono text-emerald-400">{course.status}</span>
-                      </div>
-
-                      <div className="space-y-1.5 pt-2">
-                        <div className="flex justify-between text-xs font-mono text-white/50">
-                          <span>Curriculum Progress</span>
-                          <span className="text-white">{course.progress}%</span>
-                        </div>
-                        <div className="w-full h-1.5 rounded-full bg-white/5 overflow-hidden">
-                          <div
-                            className="h-full bg-gradient-to-r from-indigo-500 to-emerald-400 rounded-full transition-all"
-                            style={{ width: `${course.progress}%` }}
-                          />
+                        <div className="flex flex-wrap items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setEditingCourseSyllabusTarget({
+                                id: activeCourse.id,
+                                title: activeCourse.title,
+                                syllabus: courseSyllabus
+                              })
+                            }
+                            className="px-3.5 py-2 rounded-xl bg-indigo-500/15 hover:bg-indigo-500/25 border border-indigo-500/30 text-indigo-300 hover:text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+                          >
+                            <BookOpen size={14} />
+                            <span>Edit Syllabus ({courseSyllabus.length})</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setModalAlert(null);
+                              setNewSessionData({
+                                courseId: activeCourse.id,
+                                title: `${activeCourse.title} - Live Lecture`,
+                                date: new Date().toISOString().split("T")[0],
+                                time: "18:00",
+                                duration: "1.5 hours",
+                                link: "https://meet.google.com/new"
+                              });
+                              setShowCreateSessionModal(true);
+                            }}
+                            className="px-3.5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-md shadow-emerald-500/20"
+                          >
+                            <Video size={14} />
+                            <span>Hold / Schedule Class</span>
+                          </button>
                         </div>
                       </div>
 
-                      <div className="flex items-center justify-between text-xs font-mono text-white/40 pt-4 border-t border-white/[0.04]">
-                        <span>{course.studentsCount} Students</span>
-                        <span>{course.sessionsCount} Total Sessions</span>
+                      {/* Course Workspace Sub-Tabs */}
+                      <div className="flex flex-wrap items-center gap-2 border-b border-white/[0.06] pb-3">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedCourseSubTab("info")}
+                          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+                            selectedCourseSubTab === "info"
+                              ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/25"
+                              : "bg-white/[0.03] text-white/60 hover:text-white hover:bg-white/[0.06]"
+                          }`}
+                        >
+                          <BookOpen size={14} />
+                          <span>Course Info & Syllabus ({courseSyllabus.length})</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedCourseSubTab("students")}
+                          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+                            selectedCourseSubTab === "students"
+                              ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/25"
+                              : "bg-white/[0.03] text-white/60 hover:text-white hover:bg-white/[0.06]"
+                          }`}
+                        >
+                          <Users size={14} />
+                          <span>Enrolled Students ({courseStudents.length})</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedCourseSubTab("sessions")}
+                          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+                            selectedCourseSubTab === "sessions"
+                              ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/25"
+                              : "bg-white/[0.03] text-white/60 hover:text-white hover:bg-white/[0.06]"
+                          }`}
+                        >
+                          <Video size={14} />
+                          <span>Class Sessions & Live Classes ({courseSessions.length})</span>
+                        </button>
                       </div>
+
+                      {/* SUB-TAB 1: COURSE INFO & SYLLABUS */}
+                      {selectedCourseSubTab === "info" && (
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                          {/* Course Overview Metadata */}
+                          <div className="lg:col-span-1 p-5 rounded-2xl bg-white/[0.02] border border-white/[0.06] space-y-4">
+                            {activeCourse.image && (
+                              <div className="aspect-[16/10] w-full rounded-xl overflow-hidden border border-white/10 bg-zinc-900">
+                                <img
+                                  src={activeCourse.image}
+                                  alt={activeCourse.title}
+                                  className="w-full h-full object-cover"
+                                />
+                              </div>
+                            )}
+                            <div>
+                              <h4 className="text-sm font-bold text-white">Course Details</h4>
+                              <p className="text-xs text-white/60 mt-1 leading-relaxed">
+                                {activeCourse.description ||
+                                  activeCourse.shortDescription ||
+                                  "Comprehensive academic course curriculum and hands-on lab sessions."}
+                              </p>
+                            </div>
+                            <div className="space-y-2.5 pt-3 border-t border-white/[0.06] text-xs font-mono">
+                              <div className="flex justify-between">
+                                <span className="text-white/40">Course Code:</span>
+                                <span className="text-white font-bold">{activeCourse.code || "CRS"}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-white/40">Tuition Fee:</span>
+                                <span className="text-emerald-400 font-bold">{activeCourse.price || "$199"}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-white/40">Start Date:</span>
+                                <span className="text-white">{activeCourse.startDate || "Flexible"}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-white/40">End Date:</span>
+                                <span className="text-white">{activeCourse.endDate || "Flexible"}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-white/40">Total Sessions:</span>
+                                <span className="text-white">{activeCourse.sessionsCount || 16} Sessions</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-white/40">Enrolled Students:</span>
+                                <span className="text-indigo-400 font-bold">{courseStudents.length} Students</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Course Syllabus Modules */}
+                          <div className="lg:col-span-2 p-6 rounded-2xl bg-white/[0.02] border border-white/[0.06] space-y-4">
+                            <div className="flex items-center justify-between border-b border-white/[0.06] pb-3">
+                              <div>
+                                <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                                  <BookOpen size={16} className="text-indigo-400" />
+                                  <span>Course Curriculum & Syllabus ({courseSyllabus.length} Modules)</span>
+                                </h4>
+                                <p className="text-[11px] text-white/40 mt-0.5">
+                                  Structured topics and learning modules synchronized with the landing page and student portal
+                                </p>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setEditingCourseSyllabusTarget({
+                                    id: activeCourse.id,
+                                    title: activeCourse.title,
+                                    syllabus: courseSyllabus
+                                  })
+                                }
+                                className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
+                              >
+                                <Plus size={13} />
+                                <span>Manage Syllabus</span>
+                              </button>
+                            </div>
+
+                            {courseSyllabus.length === 0 ? (
+                              <div className="p-8 text-center rounded-xl bg-white/[0.01] border border-dashed border-white/10 space-y-2">
+                                <p className="text-xs text-white/40 font-mono">
+                                  No syllabus modules have been added to this course yet.
+                                </p>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setEditingCourseSyllabusTarget({
+                                      id: activeCourse.id,
+                                      title: activeCourse.title,
+                                      syllabus: []
+                                    })
+                                  }
+                                  className="px-4 py-2 rounded-xl bg-indigo-500/20 hover:bg-indigo-500/30 border border-indigo-500/30 text-indigo-300 text-xs font-bold cursor-pointer"
+                                >
+                                  + Add Syllabus Modules
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="space-y-3">
+                                {courseSyllabus.map((mod, idx) => (
+                                  <div
+                                    key={mod.id || idx}
+                                    className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.06] flex items-start justify-between gap-4"
+                                  >
+                                    <div className="space-y-1">
+                                      <div className="flex items-center gap-2">
+                                        <span className="px-2 py-0.5 rounded bg-indigo-500/15 text-indigo-400 font-mono text-[10px] font-bold">
+                                          Module {mod.moduleNumber || idx + 1}
+                                        </span>
+                                        <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded">
+                                          {mod.duration || "2 Weeks"}
+                                        </span>
+                                      </div>
+                                      <h5 className="text-xs font-bold text-white pt-0.5">{mod.title}</h5>
+                                      {mod.description && (
+                                        <p className="text-xs text-white/60 leading-relaxed">{mod.description}</p>
+                                      )}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* SUB-TAB 2: ENROLLED STUDENTS */}
+                      {selectedCourseSubTab === "students" && (
+                        <div className="space-y-4">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <h4 className="text-sm font-bold text-white">
+                                Enrolled Students in {activeCourse.title} ({courseStudents.length})
+                              </h4>
+                              <p className="text-xs text-white/40">
+                                Track student attendance, average grades, and individual course completion
+                              </p>
+                            </div>
+                          </div>
+
+                          {courseStudents.length === 0 ? (
+                            <div className="p-10 text-center rounded-2xl bg-white/[0.02] border border-white/[0.06] text-white/40 text-xs font-mono">
+                              No students are currently enrolled in this course.
+                            </div>
+                          ) : (
+                            <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] overflow-hidden">
+                              <div className="overflow-x-auto">
+                                <table className="w-full text-left text-xs text-white/80">
+                                  <thead className="bg-white/[0.03] border-b border-white/[0.06] text-white/40 uppercase font-mono text-[10px]">
+                                    <tr>
+                                      <th className="py-3 px-4">Student Name</th>
+                                      <th className="py-3 px-4">Email</th>
+                                      <th className="py-3 px-4">Attendance</th>
+                                      <th className="py-3 px-4">Avg Score</th>
+                                      <th className="py-3 px-4">Course Progress</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody className="divide-y divide-white/[0.04]">
+                                    {courseStudents.map((stu) => (
+                                      <tr key={stu.id} className="hover:bg-white/[0.02] transition-colors">
+                                        <td className="py-3.5 px-4 font-bold text-white">{stu.name}</td>
+                                        <td className="py-3.5 px-4 font-mono text-white/60">{stu.email}</td>
+                                        <td className="py-3.5 px-4 font-mono text-emerald-400 font-bold">{stu.attendance}%</td>
+                                        <td className="py-3.5 px-4 font-mono text-white font-bold">{stu.avgGrade} / 100</td>
+                                        <td className="py-3.5 px-4">
+                                          <div className="flex items-center gap-2">
+                                            <div className="w-24 h-1.5 rounded-full bg-white/10 overflow-hidden">
+                                              <div
+                                                className="h-full bg-indigo-500 rounded-full"
+                                                style={{ width: `${stu.progress || 0}%` }}
+                                              />
+                                            </div>
+                                            <span className="font-mono text-[11px] text-white/70">{stu.progress || 0}%</span>
+                                          </div>
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* SUB-TAB 3: CLASS SESSIONS & HOLDING LIVE CLASSES */}
+                      {selectedCourseSubTab === "sessions" && (
+                        <div className="space-y-4">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                            <div>
+                              <h4 className="text-sm font-bold text-white">
+                                Class Sessions & Live Classroom ({courseSessions.length})
+                              </h4>
+                              <p className="text-xs text-white/40">
+                                Schedule new class sessions, launch live online lectures, or manage existing sessions. All sessions are automatically visible to the Administrator.
+                              </p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setModalAlert(null);
+                                setNewSessionData({
+                                  courseId: activeCourse.id,
+                                  title: `${activeCourse.title} - Session #${courseSessions.length + 1}`,
+                                  date: new Date().toISOString().split("T")[0],
+                                  time: "18:00",
+                                  duration: "1.5 hours",
+                                  link: "https://meet.google.com/new"
+                                });
+                                setShowCreateSessionModal(true);
+                              }}
+                              className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer self-start sm:self-center shadow-md shadow-emerald-500/20"
+                            >
+                              <Plus size={14} />
+                              <span>Schedule New Session</span>
+                            </button>
+                          </div>
+
+                          {courseSessions.length === 0 ? (
+                            <div className="p-10 text-center rounded-2xl bg-white/[0.02] border border-white/[0.06] space-y-3">
+                              <p className="text-xs text-white/40 font-mono">
+                                No class sessions have been scheduled for {activeCourse.title} yet.
+                              </p>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setModalAlert(null);
+                                  setNewSessionData({
+                                    courseId: activeCourse.id,
+                                    title: `${activeCourse.title} - Session #1`,
+                                    date: new Date().toISOString().split("T")[0],
+                                    time: "18:00",
+                                    duration: "1.5 hours",
+                                    link: "https://meet.google.com/new"
+                                  });
+                                  setShowCreateSessionModal(true);
+                                }}
+                                className="px-4 py-2 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/30 text-emerald-300 text-xs font-bold cursor-pointer"
+                              >
+                                + Schedule First Class Session
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              {courseSessions.map((sess) => (
+                                <div
+                                  key={sess.id}
+                                  className="p-5 rounded-2xl bg-white/[0.02] border border-white/[0.06] space-y-3 flex flex-col justify-between"
+                                >
+                                  <div className="space-y-2">
+                                    <div className="flex items-center justify-between">
+                                      <span className="text-[10px] font-mono uppercase px-2.5 py-0.5 rounded-full bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 font-bold">
+                                        {sess.status || "Scheduled"}
+                                      </span>
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-xs font-mono text-white/50">{sess.date}</span>
+                                        <button
+                                          type="button"
+                                          onClick={() => setSessionToDelete(sess)}
+                                          className="p-1.5 rounded-lg text-white/30 hover:text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer"
+                                          title="Cancel & Delete Session"
+                                        >
+                                          <Trash2 size={13} />
+                                        </button>
+                                      </div>
+                                    </div>
+                                    <h5 className="text-sm font-bold text-white">{sess.title}</h5>
+                                    <p className="text-xs font-mono text-white/50">
+                                      Time: <strong className="text-white/80">{sess.time}</strong> · Duration: {sess.duration || "1.5 hours"}
+                                    </p>
+                                  </div>
+
+                                  <div className="pt-3 border-t border-white/[0.05] flex items-center justify-between gap-2">
+                                    {sess.link ? (
+                                      <a
+                                        href={sess.link}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="px-3.5 py-1.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/30 text-cyan-300 text-xs font-bold flex items-center gap-1.5 transition-all"
+                                      >
+                                        <Video size={13} />
+                                        <span>Launch / Join Live Class</span>
+                                        <ExternalLink size={11} />
+                                      </a>
+                                    ) : (
+                                      <span className="text-[11px] font-mono text-white/40">No classroom URL provided</span>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
-                  ))}
-                </div>
-              )}
+                  );
+                }
+
+                // Default Courses List View
+                return (
+                  <>
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div>
+                        <h3 className="text-base font-bold text-white">My Teaching Courses</h3>
+                        <p className="text-xs text-white/40 mt-0.5">
+                          Click on any course below to access its full details, syllabus, enrolled students, and live class sessions
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleOpenRequestCourse}
+                        className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-indigo-600/20 flex items-center gap-1.5 cursor-pointer self-start sm:self-center"
+                      >
+                        <Plus size={14} />
+                        <span>Propose New Course</span>
+                      </button>
+                    </div>
+
+                    {/* Proposed Courses Section (Awaiting Admin Review & Publishing) */}
+                    {proposedCourses.length > 0 && (
+                      <div className="space-y-3 p-5 rounded-2xl bg-amber-500/[0.03] border border-amber-500/20 text-left">
+                        <div className="flex items-center gap-2">
+                          <Clock size={15} className="text-amber-400" />
+                          <h4 className="text-xs font-bold text-amber-300 uppercase tracking-wider">
+                            My Submitted Course Proposals ({proposedCourses.length})
+                          </h4>
+                        </div>
+                        <p className="text-[11px] text-white/50">
+                          These proposals have been sent to the administrator. Once approved, the admin can publish them to make them live on the public landing page. Click a proposal to view or update its syllabus.
+                        </p>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+                          {proposedCourses.map((req) => (
+                            <div
+                              key={req.id}
+                              onClick={() => {
+                                setSelectedCourseId(req.id);
+                                setSelectedCourseSubTab("info");
+                              }}
+                              className="p-4 rounded-xl bg-white/[0.02] border border-amber-500/25 hover:border-amber-400/50 transition-all space-y-2 cursor-pointer group"
+                            >
+                              <div className="flex justify-between items-start gap-2">
+                                <div>
+                                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/30 font-bold uppercase">
+                                    {req.code || "PROPOSAL"}
+                                  </span>
+                                  <h5 className="text-sm font-bold text-white group-hover:text-amber-200 mt-1.5">
+                                    {req.title}
+                                  </h5>
+                                </div>
+                                <span className="text-[9px] font-mono px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-bold shrink-0">
+                                  Pending Admin Review
+                                </span>
+                              </div>
+                              <div className="flex flex-wrap items-center justify-between gap-3 text-[11px] font-mono text-white/50 pt-2 border-t border-white/[0.04]">
+                                <div className="flex items-center gap-3">
+                                  <span>
+                                    Price: <strong className="text-white">{req.price || "$199"}</strong>
+                                  </span>
+                                  <span>
+                                    Sessions: <strong className="text-white">{req.sessionsCount || 16}</strong>
+                                  </span>
+                                  <span>
+                                    Syllabus:{" "}
+                                    <strong className="text-indigo-400">
+                                      {Array.isArray(req.syllabus) ? req.syllabus.length : 0} Modules
+                                    </strong>
+                                  </span>
+                                </div>
+                                <span className="text-amber-300 text-[10px] font-bold flex items-center gap-1">
+                                  Open <ChevronRight size={12} />
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {courses.length === 0 ? (
+                      <div className="p-12 text-center rounded-2xl bg-white/[0.02] border border-white/[0.06] text-white/40 text-xs font-mono">
+                        No published courses have been assigned to your account yet. You can propose a new course above.
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {courses.map((course: any) => {
+                          const courseStuCount = students.filter(
+                            (s: any) => String(s.courseId) === String(course.id) || s.courseTitle === course.title
+                          ).length || course.studentsCount || 0;
+                          const courseSessCount = sessions.filter(
+                            (sess: any) => String(sess.courseId) === String(course.id) || sess.courseTitle === course.title
+                          ).length;
+                          const syllabusCount = Array.isArray(course.syllabus) ? course.syllabus.length : 0;
+
+                          return (
+                            <div
+                              key={course.id}
+                              onClick={() => {
+                                setSelectedCourseId(course.id);
+                                setSelectedCourseSubTab("info");
+                              }}
+                              className="p-6 rounded-2xl bg-white/[0.02] border border-white/[0.06] backdrop-blur-md space-y-4 hover:border-indigo-500/40 hover:bg-white/[0.03] transition-all text-left cursor-pointer group"
+                            >
+                              <div className="flex items-start justify-between">
+                                <div>
+                                  <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 font-bold">
+                                    {course.code}
+                                  </span>
+                                  <h4 className="text-base font-bold text-white group-hover:text-indigo-300 transition-colors mt-2">
+                                    {course.title}
+                                  </h4>
+                                </div>
+                                <span className="text-xs font-mono text-emerald-400">{course.status}</span>
+                              </div>
+
+                              <div className="space-y-1.5 pt-2">
+                                <div className="flex justify-between text-xs font-mono text-white/50">
+                                  <span>Curriculum Progress</span>
+                                  <span className="text-white">{course.progress}%</span>
+                                </div>
+                                <div className="w-full h-1.5 rounded-full bg-white/5 overflow-hidden">
+                                  <div
+                                    className="h-full bg-gradient-to-r from-indigo-500 to-emerald-400 rounded-full transition-all"
+                                    style={{ width: `${course.progress}%` }}
+                                  />
+                                </div>
+                              </div>
+
+                              <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-mono text-white/50 pt-4 border-t border-white/[0.04]">
+                                <div className="flex items-center gap-3">
+                                  <span>{courseStuCount} Students</span>
+                                  <span>·</span>
+                                  <span>{courseSessCount} Live Sessions</span>
+                                  <span>·</span>
+                                  <span className="text-indigo-400">{syllabusCount} Modules</span>
+                                </div>
+                                <span className="text-indigo-400 font-sans font-bold text-xs flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
+                                  Manage Course <ChevronRight size={14} />
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
             </div>
           )}
 
@@ -1360,10 +1952,13 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="text-base font-bold text-white">Live Classroom Sessions</h3>
-                  <p className="text-xs text-white/40 mt-0.5">Schedule and manage online webinars and interactive lectures</p>
+                  <p className="text-xs text-white/40 mt-0.5">Schedule and manage online webinars and interactive lectures (automatically synced with Administrator)</p>
                 </div>
                 <button
-                  onClick={() => setShowCreateSessionModal(true)}
+                  onClick={() => {
+                    setModalAlert(null);
+                    setShowCreateSessionModal(true);
+                  }}
                   className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-bold transition-all shadow-md shadow-emerald-500/20 cursor-pointer"
                 >
                   <Plus size={14} />
@@ -1389,7 +1984,7 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
                         <div className="flex items-center gap-2">
                           <span className="text-xs font-mono text-white/40">{sess.date}</span>
                           <button
-                            onClick={() => handleDeleteSession(sess.id)}
+                            onClick={() => setSessionToDelete(sess)}
                             className="text-white/30 hover:text-red-400 transition-colors p-1 cursor-pointer"
                             title="Delete Session"
                           >
@@ -2444,20 +3039,39 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
                   <Calendar size={16} className="text-cyan-400" />
                   <span>Schedule New Live Session</span>
                 </h3>
-                <button onClick={() => setShowCreateSessionModal(false)} className="text-white/40 hover:text-white cursor-pointer">
+                <button
+                  onClick={() => {
+                    setShowCreateSessionModal(false);
+                    setModalAlert(null);
+                  }}
+                  className="text-white/40 hover:text-white cursor-pointer"
+                >
                   <X size={16} />
                 </button>
               </div>
+
+              {modalAlert && (
+                <div
+                  className={`p-3 rounded-xl border text-xs font-bold flex items-center gap-2 ${
+                    modalAlert.type === "error"
+                      ? "bg-red-500/15 border-red-500/30 text-red-400"
+                      : "bg-emerald-500/15 border-emerald-500/30 text-emerald-400"
+                  }`}
+                >
+                  {modalAlert.type === "error" ? <AlertCircle size={15} /> : <CheckCircle2 size={15} />}
+                  <span>{modalAlert.text}</span>
+                </div>
+              )}
 
               <form onSubmit={handleCreateSession} className="space-y-3 text-xs">
                 <div>
                   <label className="text-white/70 block mb-1">Associated Course</label>
                   <select
-                    value={newSessionData.courseId}
+                    value={newSessionData.courseId || selectedCourseId || courses[0]?.id || ""}
                     onChange={(e) => setNewSessionData({ ...newSessionData, courseId: e.target.value })}
                     className="w-full bg-white/[0.03] border border-white/10 rounded-xl px-3 py-2 text-white"
                   >
-                    {courses.map((c) => (
+                    {[...courses, ...proposedCourses].map((c) => (
                       <option key={c.id} value={c.id} className="bg-[#121318]">
                         {c.title}
                       </option>
@@ -2466,7 +3080,7 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
                 </div>
 
                 <div>
-                  <label className="text-white/70 block mb-1">Session Title</label>
+                  <label className="text-white/70 block mb-1">Session Title *</label>
                   <input
                     type="text"
                     value={newSessionData.title}
@@ -2479,7 +3093,7 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
 
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="text-white/70 block mb-1">Date</label>
+                    <label className="text-white/70 block mb-1">Date *</label>
                     <input
                       type="date"
                       value={newSessionData.date}
@@ -2489,7 +3103,7 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
                     />
                   </div>
                   <div>
-                    <label className="text-white/70 block mb-1">Scheduled Time</label>
+                    <label className="text-white/70 block mb-1">Scheduled Time *</label>
                     <input
                       type="time"
                       value={newSessionData.time}
@@ -2514,7 +3128,10 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
                 <div className="flex justify-end gap-2 pt-3 border-t border-white/[0.05]">
                   <button
                     type="button"
-                    onClick={() => setShowCreateSessionModal(false)}
+                    onClick={() => {
+                      setShowCreateSessionModal(false);
+                      setModalAlert(null);
+                    }}
                     className="px-4 py-2 rounded-xl text-xs text-white/60 hover:text-white cursor-pointer"
                   >
                     Cancel
@@ -2547,16 +3164,35 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
                   <FileText size={16} className="text-indigo-400" />
                   <span>Create Assignment</span>
                 </h3>
-                <button onClick={() => setShowCreateAssignmentModal(false)} className="text-white/40 hover:text-white cursor-pointer">
+                <button
+                  onClick={() => {
+                    setShowCreateAssignmentModal(false);
+                    setModalAlert(null);
+                  }}
+                  className="text-white/40 hover:text-white cursor-pointer"
+                >
                   <X size={16} />
                 </button>
               </div>
+
+              {modalAlert && (
+                <div
+                  className={`p-3 rounded-xl border text-xs font-bold flex items-center gap-2 ${
+                    modalAlert.type === "error"
+                      ? "bg-red-500/15 border-red-500/30 text-red-400"
+                      : "bg-emerald-500/15 border-emerald-500/30 text-emerald-400"
+                  }`}
+                >
+                  {modalAlert.type === "error" ? <AlertCircle size={15} /> : <CheckCircle2 size={15} />}
+                  <span>{modalAlert.text}</span>
+                </div>
+              )}
 
               <form onSubmit={handleCreateAssignment} className="space-y-3 text-xs">
                 <div>
                   <label className="text-white/70 block mb-1">Associated Course</label>
                   <select
-                    value={newAssignmentData.courseId}
+                    value={newAssignmentData.courseId || selectedCourseId || courses[0]?.id || ""}
                     onChange={(e) => setNewAssignmentData({ ...newAssignmentData, courseId: e.target.value })}
                     className="w-full bg-white/[0.03] border border-white/10 rounded-xl px-3 py-2 text-white"
                   >
@@ -2569,7 +3205,7 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
                 </div>
 
                 <div>
-                  <label className="text-white/70 block mb-1">Assignment Title</label>
+                  <label className="text-white/70 block mb-1">Assignment Title *</label>
                   <input
                     type="text"
                     value={newAssignmentData.title}
@@ -2593,7 +3229,7 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
 
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="text-white/70 block mb-1">Due Date</label>
+                    <label className="text-white/70 block mb-1">Due Date *</label>
                     <input
                       type="date"
                       value={newAssignmentData.dueDate}
@@ -2619,7 +3255,10 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
                 <div className="flex justify-end gap-2 pt-3 border-t border-white/[0.05]">
                   <button
                     type="button"
-                    onClick={() => setShowCreateAssignmentModal(false)}
+                    onClick={() => {
+                      setShowCreateAssignmentModal(false);
+                      setModalAlert(null);
+                    }}
                     className="px-4 py-2 rounded-xl text-xs text-white/60 hover:text-white cursor-pointer"
                   >
                     Cancel
@@ -2652,10 +3291,29 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
                   <Award size={16} className="text-emerald-400" />
                   <span>Grade & Feedback</span>
                 </h3>
-                <button onClick={() => setGradingSubmission(null)} className="text-white/40 hover:text-white cursor-pointer">
+                <button
+                  onClick={() => {
+                    setGradingSubmission(null);
+                    setModalAlert(null);
+                  }}
+                  className="text-white/40 hover:text-white cursor-pointer"
+                >
                   <X size={16} />
                 </button>
               </div>
+
+              {modalAlert && (
+                <div
+                  className={`p-3 rounded-xl border text-xs font-bold flex items-center gap-2 ${
+                    modalAlert.type === "error"
+                      ? "bg-red-500/15 border-red-500/30 text-red-400"
+                      : "bg-emerald-500/15 border-emerald-500/30 text-emerald-400"
+                  }`}
+                >
+                  {modalAlert.type === "error" ? <AlertCircle size={15} /> : <CheckCircle2 size={15} />}
+                  <span>{modalAlert.text}</span>
+                </div>
+              )}
 
               <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.05] text-xs space-y-1">
                 <p className="text-white/60">
@@ -2704,7 +3362,10 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
                 <div className="flex justify-end gap-2 pt-3 border-t border-white/[0.05]">
                   <button
                     type="button"
-                    onClick={() => setGradingSubmission(null)}
+                    onClick={() => {
+                      setGradingSubmission(null);
+                      setModalAlert(null);
+                    }}
                     className="px-4 py-2 rounded-xl text-xs text-white/60 hover:text-white cursor-pointer"
                   >
                     Cancel
@@ -2722,7 +3383,7 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
         )}
       </AnimatePresence>
 
-      {/* TEACHER PROPOSE NEW COURSE MODAL (Matches Admin Modal) */}
+      {/* TEACHER PROPOSE NEW COURSE MODAL (Matches Admin Modal with Inline Syllabus Builder) */}
       <AnimatePresence>
         {showCourseRequestModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
@@ -2744,12 +3405,29 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
                 </div>
                 <button
                   type="button"
-                  onClick={() => setShowCourseRequestModal(false)}
+                  onClick={() => {
+                    setShowCourseRequestModal(false);
+                    setModalAlert(null);
+                  }}
                   className="p-1 rounded-lg text-white/40 hover:text-white cursor-pointer"
                 >
                   <X size={16} />
                 </button>
               </div>
+
+              {/* Inline Error / Status Banner inside Modal */}
+              {modalAlert && (
+                <div
+                  className={`p-3.5 rounded-2xl border text-xs font-bold flex items-center gap-2.5 ${
+                    modalAlert.type === "error"
+                      ? "bg-red-500/15 border-red-500/30 text-red-400"
+                      : "bg-emerald-500/15 border-emerald-500/30 text-emerald-400"
+                  }`}
+                >
+                  {modalAlert.type === "error" ? <AlertCircle size={16} className="shrink-0" /> : <CheckCircle2 size={16} className="shrink-0" />}
+                  <span>{modalAlert.text}</span>
+                </div>
+              )}
 
               <form onSubmit={handleCourseRequestSubmit} className="space-y-4 text-xs">
                 {/* Title & Code */}
@@ -2841,26 +3519,99 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
                   </div>
                 </div>
 
-                {/* Syllabus Configuration Builder Button */}
-                <div className="p-3.5 rounded-2xl bg-white/[0.02] border border-white/[0.05] flex items-center justify-between">
-                  <div>
-                    <h4 className="text-xs font-bold text-white flex items-center gap-1.5">
-                      <BookOpen size={14} className="text-indigo-400" />
-                      <span>Course Syllabus & Modules</span>
-                    </h4>
-                    <p className="text-[10px] text-zinc-400 mt-0.5">
-                      {courseRequestForm.syllabus.length > 0 
-                        ? `${courseRequestForm.syllabus.length} curriculum module(s) defined.`
-                        : "No modules specified yet. Click button to configure curriculum topics."}
-                    </p>
+                {/* INLINE COURSE SYLLABUS BUILDER (REQUIRED *) */}
+                <div className="p-4 rounded-2xl bg-indigo-500/[0.03] border border-indigo-500/20 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="text-xs font-bold text-white flex items-center gap-1.5">
+                        <BookOpen size={14} className="text-indigo-400" />
+                        <span>Course Syllabus Modules (Required *)</span>
+                      </h4>
+                      <p className="text-[10px] text-zinc-400 mt-0.5">
+                        Add at least 1 syllabus module below. Added modules ({courseRequestForm.syllabus.length}) will be saved with your proposal.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowCourseSyllabusModal(true)}
+                      className="px-3 py-1.5 rounded-xl bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/40 text-indigo-300 hover:text-white text-[11px] font-bold transition-all cursor-pointer"
+                    >
+                      Advanced Editor ({courseRequestForm.syllabus.length})
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => setShowCourseSyllabusModal(true)}
-                    className="px-3 py-1.5 rounded-xl bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/40 text-indigo-300 hover:text-white text-xs font-bold transition-all cursor-pointer"
-                  >
-                    Manage Syllabus
-                  </button>
+
+                  {/* Quick Add Module Inputs */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    <div className="sm:col-span-2">
+                      <input
+                        type="text"
+                        placeholder="Module Title (e.g. Week 1: Architecture & Core Concepts)"
+                        value={inlineModTitle}
+                        onChange={(e) => setInlineModTitle(e.target.value)}
+                        className="w-full bg-white/[0.03] border border-white/10 rounded-xl py-2 px-3 text-white text-xs focus:outline-none focus:border-indigo-500"
+                      />
+                    </div>
+                    <div>
+                      <input
+                        type="text"
+                        placeholder="Duration (e.g. 2 Weeks)"
+                        value={inlineModDuration}
+                        onChange={(e) => setInlineModDuration(e.target.value)}
+                        className="w-full bg-white/[0.03] border border-white/10 rounded-xl py-2 px-3 text-white text-xs font-mono focus:outline-none focus:border-indigo-500"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <input
+                      type="text"
+                      placeholder="Module learning objectives & topics..."
+                      value={inlineModDesc}
+                      onChange={(e) => setInlineModDesc(e.target.value)}
+                      className="flex-1 bg-white/[0.03] border border-white/10 rounded-xl py-2 px-3 text-white text-xs focus:outline-none focus:border-indigo-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleAddInlineSyllabusModule}
+                      className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
+                    >
+                      <Plus size={14} />
+                      <span>Add Module</span>
+                    </button>
+                  </div>
+
+                  {/* List of Added Syllabus Modules */}
+                  {courseRequestForm.syllabus.length > 0 && (
+                    <div className="space-y-1.5 pt-2 max-h-36 overflow-y-auto pr-1">
+                      {courseRequestForm.syllabus.map((mod, idx) => (
+                        <div
+                          key={mod.id || idx}
+                          className="px-3 py-2 rounded-xl bg-white/[0.03] border border-white/10 flex items-center justify-between gap-2 text-xs"
+                        >
+                          <div className="truncate">
+                            <span className="font-mono text-[10px] text-indigo-400 font-bold mr-2">
+                              #{idx + 1} ({mod.duration || "2 Weeks"})
+                            </span>
+                            <span className="font-bold text-white">{mod.title}</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setCourseRequestForm((prev) => ({
+                                ...prev,
+                                syllabus: prev.syllabus
+                                  .filter((_, i) => i !== idx)
+                                  .map((item, i) => ({ ...item, moduleNumber: i + 1 }))
+                              }))
+                            }
+                            className="text-white/40 hover:text-red-400 p-1 cursor-pointer shrink-0"
+                            title="Remove Module"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 {/* Description */}
@@ -2922,7 +3673,10 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
                 <div className="pt-3 flex gap-2 border-t border-white/10">
                   <button
                     type="button"
-                    onClick={() => setShowCourseRequestModal(false)}
+                    onClick={() => {
+                      setShowCourseRequestModal(false);
+                      setModalAlert(null);
+                    }}
                     className="px-4 py-2.5 rounded-xl bg-white/[0.04] hover:bg-white/10 text-white/60 hover:text-white font-bold text-xs cursor-pointer"
                   >
                     Cancel
@@ -2955,19 +3709,59 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
         onClose={() => setShowCourseCropperModal(false)}
       />
 
-      {/* COURSE SYLLABUS MODAL FOR TEACHER */}
+      {/* COURSE SYLLABUS MODAL FOR NEW PROPOSAL DRAFT */}
       <CourseSyllabusModal
         isOpen={showCourseSyllabusModal}
         courseId="proposal"
         courseTitle={courseRequestForm.title || "Proposed Course"}
         initialSyllabus={courseRequestForm.syllabus}
+        isTeacherMode={true}
         onSaveSyllabus={(newSyllabus) => {
           setCourseRequestForm((prev) => ({ ...prev, syllabus: newSyllabus }));
           setShowCourseSyllabusModal(false);
+          setModalAlert({ text: `Syllabus configured with ${newSyllabus.length} module(s).`, type: "success" });
           showToast(`Syllabus configured with ${newSyllabus.length} topic(s).`, "success");
         }}
         onClose={() => setShowCourseSyllabusModal(false)}
         showCustomToast={(msg, type) => showToast(msg, type === "warning" ? "error" : "success")}
+      />
+
+      {/* COURSE SYLLABUS MODAL FOR EXISTING ASSIGNED/PROPOSED TEACHER COURSE */}
+      {editingCourseSyllabusTarget && (
+        <CourseSyllabusModal
+          isOpen={!!editingCourseSyllabusTarget}
+          courseId={editingCourseSyllabusTarget.id}
+          courseTitle={editingCourseSyllabusTarget.title}
+          initialSyllabus={editingCourseSyllabusTarget.syllabus}
+          isTeacherMode={true}
+          onSaveSyllabus={(newSyllabus) => {
+            setCourses((prev) =>
+              prev.map((c) =>
+                c.id === editingCourseSyllabusTarget.id ? ({ ...c, syllabus: newSyllabus } as any) : c
+              )
+            );
+            setProposedCourses((prev) =>
+              prev.map((c) =>
+                c.id === editingCourseSyllabusTarget.id ? { ...c, syllabus: newSyllabus } : c
+              )
+            );
+            setEditingCourseSyllabusTarget(null);
+            showToast(`Updated syllabus (${newSyllabus.length} modules) in database.`, "success");
+          }}
+          onClose={() => setEditingCourseSyllabusTarget(null)}
+          showCustomToast={(msg, type) => showToast(msg, type === "warning" ? "error" : "success")}
+        />
+      )}
+
+      {/* SECOND CONFIRMATION MODAL FOR DELETING CLASS SESSION */}
+      <DeleteConfirmModal
+        isOpen={!!sessionToDelete}
+        title="Cancel & Delete Class Session?"
+        message="Are you sure you want to permanently cancel and delete this live classroom session from the database? This action cannot be undone."
+        itemName={sessionToDelete ? `${sessionToDelete.title} (${sessionToDelete.date})` : undefined}
+        isDeleting={isDeletingSession}
+        onConfirm={handleConfirmDeleteSession}
+        onClose={() => setSessionToDelete(null)}
       />
     </div>
   );

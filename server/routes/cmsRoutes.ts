@@ -345,8 +345,22 @@ router.put("/:section", requireAuth, requireRole("Administrator"), async (req: R
         await query("DELETE FROM cms_classes");
         for (let i = 0; i < data.classes.length; i++) {
           const c = data.classes[i];
+          const cid = c.id || `cls-${i}`;
+          const syllabusStr = JSON.stringify(c.syllabus || []);
           await query("INSERT INTO cms_classes (id, course_image, course_name, instructor, price, description, sessions, status, display_order, tags_json, syllabus_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            [c.id || `cls-${i}`, c.courseImage || "", c.courseName || "", c.instructor || "", String(c.price || "Free"), c.description || "", c.sessions || 12, c.status || "Published", i, JSON.stringify(c.tags || []), JSON.stringify(c.syllabus || [])]);
+            [cid, c.courseImage || "", c.courseName || "", c.instructor || "", String(c.price || "Free"), c.description || "", c.sessions || 12, c.status || "Published", i, JSON.stringify(c.tags || []), syllabusStr]);
+
+          // Also sync syllabus/fields into courses table if course exists
+          await query(`
+            UPDATE courses
+            SET title = COALESCE(?, title),
+                price = COALESCE(?, price),
+                description = COALESCE(?, description),
+                image = COALESCE(?, image),
+                sessions_count = COALESCE(?, sessions_count),
+                syllabus_json = CASE WHEN ? != '[]' THEN ? ELSE syllabus_json END
+            WHERE id = ?
+          `, [c.courseName || null, c.price ? String(c.price) : null, c.description || null, c.courseImage || null, c.sessions || null, syllabusStr, syllabusStr, cid]).catch(() => {});
         }
       }
 
@@ -475,8 +489,21 @@ router.put("/:section", requireAuth, requireRole("Administrator"), async (req: R
         await query("DELETE FROM cms_classes");
         for (let i = 0; i < classList.length; i++) {
           const c = classList[i];
+          const cid = c.id || `cls-${i}`;
+          const syllabusStr = JSON.stringify(c.syllabus || []);
           await query("INSERT INTO cms_classes (id, course_image, course_name, instructor, price, description, sessions, status, display_order, tags_json, syllabus_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            [c.id || `cls-${i}`, c.courseImage, c.courseName, c.instructor, String(c.price || "Free"), c.description, c.sessions || 12, c.status || "Published", i, JSON.stringify(c.tags || []), JSON.stringify(c.syllabus || [])]);
+            [cid, c.courseImage, c.courseName, c.instructor, String(c.price || "Free"), c.description, c.sessions || 12, c.status || "Published", i, JSON.stringify(c.tags || []), syllabusStr]);
+
+          await query(`
+            UPDATE courses
+            SET title = COALESCE(?, title),
+                price = COALESCE(?, price),
+                description = COALESCE(?, description),
+                image = COALESCE(?, image),
+                sessions_count = COALESCE(?, sessions_count),
+                syllabus_json = CASE WHEN ? != '[]' THEN ? ELSE syllabus_json END
+            WHERE id = ?
+          `, [c.courseName || null, c.price ? String(c.price) : null, c.description || null, c.courseImage || null, c.sessions || null, syllabusStr, syllabusStr, cid]).catch(() => {});
         }
       }
     } else if (section === "students" || section === "testimonials") {

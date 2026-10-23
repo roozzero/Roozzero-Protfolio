@@ -75,7 +75,7 @@ export default function App() {
     cmsApi.getCms()
       .then((res) => {
         if (res.success && res.data) {
-          saveCmsConfig(res.data);
+          saveCmsConfig(res.data, true);
           setCmsConfig(res.data);
         }
       })
@@ -168,18 +168,6 @@ export default function App() {
       } else {
         setIsDashboardPage(hash === "#dashboard");
         setIsAdminPage(hash === "#admin");
-      }
-    };
-    window.addEventListener("hashchange", handleHashChange);
-    return () => window.removeEventListener("hashchange", handleHashChange);
-  }, []);
-
-  // Synchronize homepage classes from authoritative in-memory CMS state on hash change
-  useEffect(() => {
-    const handleHashChange = () => {
-      const current = loadCmsConfig();
-      if (Array.isArray(current.classes) && current.classes.length > 0) {
-        setHomepageClasses(current.classes);
       }
     };
     window.addEventListener("hashchange", handleHashChange);
