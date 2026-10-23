@@ -1172,7 +1172,7 @@ export default function UserDashboard({ onLogout, onGoHome }: UserDashboardProps
         }
       })
       .catch((err) => {
-        console.error("Failed to load student profile:", err);
+        console.warn("Student profile sync warning:", err);
       });
 
     // 2. Courses
@@ -1205,7 +1205,7 @@ export default function UserDashboard({ onLogout, onGoHome }: UserDashboardProps
         }
       })
       .catch((err) => {
-        console.error("Failed to load courses:", err);
+        console.warn("Courses sync warning:", err);
         setCourses([]);
       });
 
@@ -1238,7 +1238,7 @@ export default function UserDashboard({ onLogout, onGoHome }: UserDashboardProps
         }
       })
       .catch((err) => {
-        console.error("Failed to load sessions:", err);
+        console.warn("Sessions sync warning:", err);
         setCourseSessions({});
       });
 
@@ -1269,7 +1269,7 @@ export default function UserDashboard({ onLogout, onGoHome }: UserDashboardProps
         }
       })
       .catch((err) => {
-        console.error("Failed to load assignments:", err);
+        console.warn("Assignments sync warning:", err);
         setAssignments([]);
       });
 
@@ -1294,7 +1294,7 @@ export default function UserDashboard({ onLogout, onGoHome }: UserDashboardProps
         }
       })
       .catch((err) => {
-        console.error("Failed to load resources:", err);
+        console.warn("Resources sync warning:", err);
         setResources([]);
       });
 
@@ -1335,7 +1335,7 @@ export default function UserDashboard({ onLogout, onGoHome }: UserDashboardProps
         }
       })
       .catch((err) => {
-        console.error("Failed to load discussions:", err);
+        console.warn("Discussions sync warning:", err);
         setConversations([]);
       });
 
@@ -1359,7 +1359,7 @@ export default function UserDashboard({ onLogout, onGoHome }: UserDashboardProps
         }
       })
       .catch((err) => {
-        console.error("Failed to load notifications:", err);
+        console.warn("Notifications sync warning:", err);
         setNotifications([]);
       });
 
@@ -1381,7 +1381,7 @@ export default function UserDashboard({ onLogout, onGoHome }: UserDashboardProps
         }
       })
       .catch((err) => {
-        console.error("Failed to load calendar events:", err);
+        console.warn("Calendar sync warning:", err);
         setCalendarEvents([]);
       });
 
@@ -1399,7 +1399,7 @@ export default function UserDashboard({ onLogout, onGoHome }: UserDashboardProps
         }
       })
       .catch((err) => {
-        console.error("Failed to load student messages:", err);
+        console.warn("Messages sync warning:", err);
         setEmailList([]);
       });
 
@@ -1415,7 +1415,7 @@ export default function UserDashboard({ onLogout, onGoHome }: UserDashboardProps
         }
       })
       .catch((err) => {
-        console.error("Failed to load exams:", err);
+        console.warn("Exams sync warning:", err);
         setExams([]);
       })
       .finally(() => {

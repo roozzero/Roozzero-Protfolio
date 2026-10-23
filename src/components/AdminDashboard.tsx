@@ -220,7 +220,7 @@ export default function AdminDashboard({ onLogout, onGoHome }: AdminDashboardPro
 
       await refreshUnreadMessages();
     } catch (err) {
-      console.error("Failed to load admin backend data", err);
+      console.warn("Admin backend data sync warning:", err);
     } finally {
       setIsUsersLoading(false);
     }

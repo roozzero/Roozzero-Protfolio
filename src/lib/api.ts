@@ -44,11 +44,37 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
     headers.set("Authorization", `Bearer ${token}`);
   }
 
-  const response = await fetch(url, {
-    ...options,
-    headers,
-    credentials: "include" // sends & receives HttpOnly session cookies
-  });
+  const retryDelays = [400, 800, 1500, 2500];
+  let response: Response | undefined;
+  let lastNetworkError: any;
+
+  for (let attempt = 0; attempt <= retryDelays.length; attempt++) {
+    try {
+      response = await fetch(url, {
+        ...options,
+        headers,
+        credentials: "include" // sends & receives HttpOnly session cookies
+      });
+
+      // Retry on transient gateway/server boot statuses (502, 503, 504)
+      if ((response.status === 502 || response.status === 503 || response.status === 504) && attempt < retryDelays.length) {
+        await new Promise((r) => setTimeout(r, retryDelays[attempt]));
+        continue;
+      }
+      break;
+    } catch (err: any) {
+      lastNetworkError = err;
+      if (attempt < retryDelays.length) {
+        await new Promise((r) => setTimeout(r, retryDelays[attempt]));
+        continue;
+      }
+      throw err;
+    }
+  }
+
+  if (!response) {
+    throw lastNetworkError || new Error("Network request failed");
+  }
 
   const data = await response.json().catch(() => ({}));
 

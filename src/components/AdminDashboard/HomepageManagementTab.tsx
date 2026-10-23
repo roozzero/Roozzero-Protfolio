@@ -71,7 +71,7 @@ export default function HomepageManagementTab({ showCustomToast }: HomepageManag
         }
       })
       .catch((err) => {
-        console.error("Failed to load CMS from server:", err);
+        console.warn("CMS server sync deferred:", err?.message || err);
       });
     return () => {
       isMounted = false;

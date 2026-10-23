@@ -190,7 +190,7 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
         }
       })
       .catch((err) => {
-        console.error("Failed to load teacher profile:", err);
+        console.warn("Teacher profile sync warning:", err);
       })
       .finally(() => {
         if (isMounted) setIsLoadingProfile(false);
@@ -239,7 +239,7 @@ export default function TeacherDashboard({ currentUser, onLogout, onGoHome }: Te
         }
       }
     } catch (err) {
-      console.error("Failed to load teacher data from backend API", err);
+      console.warn("Teacher backend data sync warning:", err);
     } finally {
       setIsLoadingData(false);
     }

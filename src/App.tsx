@@ -80,7 +80,7 @@ export default function App() {
         }
       })
       .catch((err) => {
-        console.error("Failed to load CMS from server:", err);
+        console.warn("CMS server sync deferred, using cached configuration:", err?.message || err);
       });
 
     coursesApi.getAll()
@@ -90,7 +90,7 @@ export default function App() {
         }
       })
       .catch((err) => {
-        console.error("Failed to load published courses from server:", err);
+        console.warn("Courses server sync deferred, using default catalog:", err?.message || err);
       });
   };
 
