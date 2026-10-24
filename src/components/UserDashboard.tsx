@@ -942,6 +942,9 @@ export default function UserDashboard({ onLogout, onGoHome }: UserDashboardProps
 
   // My Courses interactive state
   const [courses, setCourses] = useState<any[]>([]);
+  const [isLoadingCourses, setIsLoadingCourses] = useState<boolean>(true);
+  const [coursesError, setCoursesError] = useState<string | null>(null);
+  const [courseDetailError, setCourseDetailError] = useState<string | null>(null);
 
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
   const [courseFilter, setCourseFilter] = useState<"All" | "Active" | "Completed" | "Waiting to Start">("All");
@@ -1175,72 +1178,8 @@ export default function UserDashboard({ onLogout, onGoHome }: UserDashboardProps
         console.warn("Student profile sync warning:", err);
       });
 
-    // 2. Courses
-    studentApi.getCourses()
-      .then((res) => {
-        if (!isMounted) return;
-        if (res.success && Array.isArray(res.data)) {
-          const mappedCourses = res.data.map((c: any) => ({
-            id: String(c.id),
-            title: c.title,
-            instructor: c.teacher_name || "Instructor",
-            startDate: c.joined_date ? new Date(c.joined_date).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }) : "",
-            endDate: "",
-            totalSessions: c.sessions_count || 12,
-            completedSessions: Math.round(((c.progress || 0) / 100) * (c.sessions_count || 12)),
-            nextSession: "Upcoming Session",
-            status: c.enrollment_status || "Active",
-            thumbnail: c.image || "/src/assets/images/react_thumbnail_1782829644127.jpg",
-            progress: c.progress || 0,
-            lessons: [
-              "Course Introduction",
-              "Core Concepts & Architecture",
-              "Practical Workshops & Projects",
-              "Production Deployment"
-            ]
-          }));
-          setCourses(mappedCourses);
-        } else {
-          setCourses([]);
-        }
-      })
-      .catch((err) => {
-        console.warn("Courses sync warning:", err);
-        setCourses([]);
-      });
-
-    // 3. Sessions
-    studentApi.getSessions()
-      .then((res) => {
-        if (!isMounted) return;
-        if (res.success && Array.isArray(res.data)) {
-          const grouped: { [courseId: string]: SessionDetail[] } = {};
-          res.data.forEach((s: any, idx: number) => {
-            const cId = String(s.courseId);
-            if (!grouped[cId]) grouped[cId] = [];
-            grouped[cId].push({
-              id: s.id,
-              sessionNum: idx + 1,
-              topic: s.title,
-              date: s.date,
-              time: s.time,
-              duration: `${s.duration || 90} Mins`,
-              status: s.status === "Held" ? "Completed" : (s.status === "Cancelled" ? "Cancelled" : (s.status === "Not Held" ? "Not Held" : "Scheduled")),
-              attendance: s.attendanceStatus || "Pending",
-              meetingLink: s.link || "https://meet.google.com/roz-acad-demo",
-              meetingPlatform: "Google Meet",
-              recordingAvailable: s.status === "Held" || s.status === "Completed"
-            });
-          });
-          setCourseSessions(grouped);
-        } else {
-          setCourseSessions({});
-        }
-      })
-      .catch((err) => {
-        console.warn("Sessions sync warning:", err);
-        setCourseSessions({});
-      });
+    // 2. Courses & 3. Sessions
+    fetchStudentCoursesAndSessions(() => isMounted);
 
     // 4. Assignments
     studentApi.getAssignments()
@@ -1507,8 +1446,150 @@ export default function UserDashboard({ onLogout, onGoHome }: UserDashboardProps
     }
   }, [selectedAssignmentId, assignments]);
 
-  // Reset selected assignment when active course changes to a different course
+  const mapStudentCourseRecord = (c: any) => {
+    const rawSyllabus = Array.isArray(c.syllabus) ? c.syllabus : [];
+    const normalizedSyllabus = rawSyllabus
+      .filter((item: any) => item && (item.title || typeof item === "string"))
+      .map((item: any, idx: number) => {
+        if (typeof item === "string") {
+          return {
+            id: `mod-${idx + 1}`,
+            moduleNumber: idx + 1,
+            title: item,
+            duration: "",
+            description: "",
+            lessonsCount: 1,
+            topics: []
+          };
+        }
+        return {
+          id: String(item.id || `mod-${idx + 1}`),
+          moduleNumber: item.moduleNumber || idx + 1,
+          title: String(item.title || `Module ${idx + 1}`),
+          duration: item.duration ? String(item.duration) : "",
+          description: item.description ? String(item.description) : "",
+          lessonsCount: Number(item.lessonsCount) || (Array.isArray(item.topics) ? item.topics.length : 0),
+          topics: Array.isArray(item.topics) ? item.topics.map(String) : []
+        };
+      });
+
+    const formatCourseDate = (val: any, fallback: string) => {
+      if (!val) return fallback;
+      const parsed = new Date(val);
+      if (isNaN(parsed.getTime())) return String(val);
+      return parsed.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+    };
+
+    const totalSessions = Number(c.sessions_count) || 0;
+    const completedSessions =
+      c.completed_sessions_count !== undefined
+        ? Number(c.completed_sessions_count)
+        : Math.round(((Number(c.progress) || 0) / 100) * totalSessions);
+
+    return {
+      id: String(c.id),
+      code: c.code || "",
+      title: c.title || "Untitled Course",
+      description: c.description || "",
+      shortDescription: c.shortDescription || c.short_description || "",
+      categoryName: c.categoryName || c.category_name || "Computer Science",
+      instructor: c.teacher_name || "Unassigned Instructor",
+      instructorEmail: c.teacher_email || "",
+      startDate: formatCourseDate(c.startDate || c.start_date || c.joined_date, "Not set"),
+      endDate: formatCourseDate(c.endDate || c.end_date, "Ongoing"),
+      totalSessions,
+      completedSessions,
+      nextSession: c.next_session || "No upcoming sessions scheduled",
+      status: c.enrollment_status || "Active",
+      thumbnail: c.image || "/src/assets/images/react_thumbnail_1782829644127.jpg",
+      progress: Number(c.progress) || 0,
+      attendancePercentage:
+        c.attendance_percentage !== null && c.attendance_percentage !== undefined
+          ? Number(c.attendance_percentage)
+          : 100,
+      syllabus: normalizedSyllabus,
+      lessons: normalizedSyllabus.map((m: any) => m.title)
+    };
+  };
+
+  const fetchStudentCoursesAndSessions = (checkMounted: () => boolean = () => true) => {
+    setIsLoadingCourses(true);
+    setCoursesError(null);
+
+    studentApi.getCourses()
+      .then((res) => {
+        if (!checkMounted()) return;
+        if (res.success && Array.isArray(res.data)) {
+          const mappedCourses = res.data.map(mapStudentCourseRecord);
+          setCourses(mappedCourses);
+          setCoursesError(null);
+        } else {
+          setCoursesError("Unable to load enrolled courses.");
+        }
+      })
+      .catch((err: any) => {
+        if (!checkMounted()) return;
+        console.warn("Courses sync warning:", err);
+        setCoursesError(err?.message || "Failed to load enrolled courses from the server.");
+      })
+      .finally(() => {
+        if (checkMounted()) setIsLoadingCourses(false);
+      });
+
+    studentApi.getSessions()
+      .then((res) => {
+        if (!checkMounted()) return;
+        if (res.success && Array.isArray(res.data)) {
+          const grouped: { [courseId: string]: SessionDetail[] } = {};
+          res.data.forEach((s: any) => {
+            const cId = String(s.courseId);
+            if (!grouped[cId]) grouped[cId] = [];
+            const sessionIndex = grouped[cId].length + 1;
+            grouped[cId].push({
+              id: s.id,
+              sessionNum: sessionIndex,
+              topic: s.title,
+              date: s.date,
+              time: s.time,
+              duration: String(s.duration || "90 Mins").includes("Min") || String(s.duration || "").includes("hour")
+                ? String(s.duration)
+                : `${s.duration || 90} Mins`,
+              status: s.status === "Held" || s.status === "Completed"
+                ? "Completed"
+                : (s.status === "Cancelled" ? "Cancelled" : (s.status === "Not Held" ? "Not Held" : "Scheduled")),
+              attendance: s.attendanceStatus || "Pending",
+              meetingLink: s.link || "",
+              meetingPlatform: "Live Classroom",
+              recordingAvailable: s.status === "Held" || s.status === "Completed"
+            });
+          });
+          setCourseSessions(grouped);
+        } else {
+          setCourseSessions({});
+        }
+      })
+      .catch((err) => {
+        console.warn("Sessions sync warning:", err);
+      });
+  };
+
+  // Listen for course/enrollment updates so student dashboard refreshes automatically
   useEffect(() => {
+    const handleRefreshCourses = () => {
+      fetchStudentCoursesAndSessions();
+    };
+    window.addEventListener("courses_updated", handleRefreshCourses);
+    window.addEventListener("focus", handleRefreshCourses);
+    return () => {
+      window.removeEventListener("courses_updated", handleRefreshCourses);
+      window.removeEventListener("focus", handleRefreshCourses);
+    };
+  }, []);
+
+  // Reset selected assignment & expanded syllabus modules when active course changes, and refresh course detail
+  useEffect(() => {
+    setExpandedSessions([]);
+    setCourseDetailError(null);
     if (selectedCourseId && selectedAssignmentId) {
       const assignment = assignments.find(a => a.id === selectedAssignmentId);
       const course = courses.find(c => c.id === selectedCourseId);
@@ -1517,6 +1598,36 @@ export default function UserDashboard({ onLogout, onGoHome }: UserDashboardProps
       }
     } else if (!selectedCourseId) {
       setSelectedAssignmentId(null);
+    }
+
+    if (selectedCourseId) {
+      let active = true;
+      studentApi.getCourseById(selectedCourseId)
+        .then((res) => {
+          if (!active) return;
+          if (res.success && res.data) {
+            const refreshed = mapStudentCourseRecord(res.data);
+            setCourses((prev) =>
+              prev.map((c) =>
+                c.id === String(selectedCourseId)
+                  ? {
+                      ...c,
+                      ...refreshed,
+                      completedSessions: c.completedSessions ?? refreshed.completedSessions,
+                      nextSession: c.nextSession && c.nextSession !== "No upcoming sessions scheduled" ? c.nextSession : refreshed.nextSession
+                    }
+                  : c
+              )
+            );
+          }
+        })
+        .catch((err: any) => {
+          if (!active) return;
+          setCourseDetailError(err?.message || "Failed to refresh course details.");
+        });
+      return () => {
+        active = false;
+      };
     }
   }, [selectedCourseId]);
   
@@ -3726,24 +3837,66 @@ export default function UserDashboard({ onLogout, onGoHome }: UserDashboardProps
                           
                           {/* Left Column (Main details & syllabus) */}
                           <div className="lg:col-span-7 space-y-6">
-                            
+                            {courseDetailError && (
+                              <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-between gap-3 text-left">
+                                <div className="flex items-center gap-2.5 text-rose-300 text-xs">
+                                  <AlertCircle size={16} className="shrink-0 text-rose-400" />
+                                  <span>{courseDetailError}</span>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setCourseDetailError(null);
+                                    if (selectedCourseId) {
+                                      studentApi.getCourseById(selectedCourseId)
+                                        .then((res) => {
+                                          if (res.success && res.data) {
+                                            const refreshed = mapStudentCourseRecord(res.data);
+                                            setCourses((prev) => prev.map((c) => (c.id === String(selectedCourseId) ? { ...c, ...refreshed } : c)));
+                                          }
+                                        })
+                                        .catch((err: any) => setCourseDetailError(err?.message || "Failed to refresh course details."));
+                                    }
+                                  }}
+                                  className="px-3 py-1.5 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-200 text-[11px] font-bold transition-colors shrink-0 cursor-pointer"
+                                >
+                                  Retry
+                                </button>
+                              </div>
+                            )}
+
                             {/* Course Information Card */}
                             <div className="bg-[#08080c] border border-white/[0.06] rounded-3xl p-6 sm:p-8 space-y-4 relative overflow-hidden shadow-[0_15px_30px_rgba(0,0,0,0.5)]">
                               <div className="absolute top-0 right-0 h-32 w-32 pointer-events-none blur-3xl bg-indigo-500/[0.02] rounded-full" />
-                              <h3 className="text-xs font-bold text-white/40 uppercase tracking-widest text-left">Course Information</h3>
+                              <div className="flex flex-wrap items-center justify-between gap-2">
+                                <h3 className="text-xs font-bold text-white/40 uppercase tracking-widest text-left">Course Information</h3>
+                                <div className="flex flex-wrap items-center gap-1.5">
+                                  {selectedCourse.code && (
+                                    <span className="px-2 py-0.5 rounded-md bg-white/[0.04] border border-white/10 text-[10px] font-mono text-white/60">
+                                      {selectedCourse.code}
+                                    </span>
+                                  )}
+                                  {selectedCourse.categoryName && (
+                                    <span className="px-2.5 py-0.5 rounded-md bg-indigo-500/10 border border-indigo-500/20 text-[10px] font-mono text-indigo-300">
+                                      {selectedCourse.categoryName}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
                               
                               <div className="space-y-2 text-left">
                                 <h2 className="font-sans text-xl font-black text-white">{selectedCourse.title}</h2>
-                                <p className="text-xs text-white/50 leading-relaxed font-medium">
-                                  {selectedCourse.title === "Advanced React & Architecture" 
-                                    ? "Master modern frontend engineering using Vite, clean react states, fiber rendering engine principles, custom lifecycle hooks, concurrent modes, performance auditing, and enterprise-grade system design."
-                                    : selectedCourse.title === "Premium Dark Design Systems"
-                                    ? "Unlock the secrets of high-fidelity user interface aesthetics. Delve into Swiss grids, golden ratios, tailwind custom variable workflows, micro-interactions, dark-mode styling principles, and modular system layouts."
-                                    : "Dive deep into the mathematical foundations of machine learning. Implement and train models from scratch covering linear regression, gradient descent algorithms, multi-layer perceptrons, neural net architectures, and modern transformers."}
+                                {selectedCourse.shortDescription && selectedCourse.description && selectedCourse.shortDescription !== selectedCourse.description && (
+                                  <p className="text-xs text-indigo-300/90 font-semibold leading-relaxed">
+                                    {selectedCourse.shortDescription}
+                                  </p>
+                                )}
+                                <p className="text-xs text-white/60 leading-relaxed font-medium whitespace-pre-line">
+                                  {selectedCourse.description || selectedCourse.shortDescription || "No course description provided for this course."}
                                 </p>
                               </div>
 
-                              <div className="flex items-center gap-6 pt-4 border-t border-white/[0.04]">
+                              <div className="flex flex-wrap items-center gap-6 pt-4 border-t border-white/[0.04]">
                                 <div>
                                   <span className="block text-[10px] text-white/30 uppercase tracking-wider font-bold mb-0.5 text-left">Faculty Lead</span>
                                   <span className="text-xs font-bold text-indigo-400 block text-left">{selectedCourse.instructor}</span>
@@ -3752,6 +3905,12 @@ export default function UserDashboard({ onLogout, onGoHome }: UserDashboardProps
                                   <span className="block text-[10px] text-white/30 uppercase tracking-wider font-bold mb-0.5 text-left">Curriculum Duration</span>
                                   <span className="text-xs font-semibold text-white/80 block text-left">{selectedCourse.totalSessions} Sessions</span>
                                 </div>
+                                {selectedCourse.categoryName && (
+                                  <div>
+                                    <span className="block text-[10px] text-white/30 uppercase tracking-wider font-bold mb-0.5 text-left">Department</span>
+                                    <span className="text-xs font-semibold text-white/80 block text-left">{selectedCourse.categoryName}</span>
+                                  </div>
+                                )}
                               </div>
                             </div>
 
@@ -3784,110 +3943,130 @@ export default function UserDashboard({ onLogout, onGoHome }: UserDashboardProps
 
                             {/* Course Syllabus Accordion */}
                             <div className="space-y-3 text-left">
-                              <h3 className="text-xs font-bold text-white/40 uppercase tracking-widest mb-2">Academic Syllabus ({selectedCourse.totalSessions} Sessions)</h3>
-                              <div className="space-y-2">
-                                {selectedCourse.lessons.map((les, index) => {
-                                  const isCompleted = index < selectedCourse.completedSessions;
-                                  const isOpen = expandedSessions.includes(index);
-                                  
-                                  return (
-                                    <div 
-                                      key={index} 
-                                      className={`border rounded-2xl overflow-hidden transition-all duration-300 ${
-                                        isCompleted 
-                                          ? "bg-emerald-500/[0.01] border-emerald-500/10 hover:border-emerald-500/20" 
-                                          : isOpen
-                                          ? "bg-indigo-500/[0.01] border-indigo-500/20"
-                                          : "bg-[#08080c] border-white/[0.06] hover:border-white/10"
-                                      }`}
-                                    >
-                                      {/* Accordion Trigger Header */}
-                                      <button
-                                        onClick={() => {
-                                          setExpandedSessions(prev => 
-                                            prev.includes(index) 
-                                              ? prev.filter(i => i !== index) 
-                                              : [...prev, index]
-                                          );
-                                        }}
-                                        className="w-full p-4 flex items-center justify-between gap-4 text-left transition-colors cursor-pointer"
+                              <h3 className="text-xs font-bold text-white/40 uppercase tracking-widest mb-2">
+                                Academic Syllabus ({Array.isArray(selectedCourse.syllabus) ? selectedCourse.syllabus.length : 0} Modules)
+                              </h3>
+                              {(!Array.isArray(selectedCourse.syllabus) || selectedCourse.syllabus.length === 0) ? (
+                                <div className="p-8 rounded-2xl border border-dashed border-white/10 bg-[#08080c] text-center space-y-2">
+                                  <BookOpen size={24} className="mx-auto text-white/20" />
+                                  <p className="text-xs font-bold text-white/70">No syllabus available yet.</p>
+                                  <p className="text-[11px] text-white/40">
+                                    Syllabus modules and lesson outlines have not been added for this course yet.
+                                  </p>
+                                </div>
+                              ) : (
+                                <div className="space-y-2">
+                                  {selectedCourse.syllabus.map((mod: any, index: number) => {
+                                    const isCompleted = index < selectedCourse.completedSessions;
+                                    const isOpen = expandedSessions.includes(index);
+                                    const modTitle = typeof mod === "string" ? mod : (mod.title || `Module ${index + 1}`);
+                                    const modDuration = typeof mod === "object" && mod?.duration ? mod.duration : "";
+                                    const modDescription = typeof mod === "object" && mod?.description ? mod.description : "";
+                                    const modTopics: string[] = typeof mod === "object" && Array.isArray(mod?.topics) ? mod.topics : [];
+                                    
+                                    return (
+                                      <div 
+                                        key={mod?.id || index} 
+                                        className={`border rounded-2xl overflow-hidden transition-all duration-300 ${
+                                          isCompleted 
+                                            ? "bg-emerald-500/[0.01] border-emerald-500/10 hover:border-emerald-500/20" 
+                                            : isOpen
+                                            ? "bg-indigo-500/[0.01] border-indigo-500/20"
+                                            : "bg-[#08080c] border-white/[0.06] hover:border-white/10"
+                                        }`}
                                       >
-                                        <div className="flex items-center gap-3">
-                                          <div className={`h-6 w-6 rounded-lg flex items-center justify-center font-mono text-[10px] font-bold border transition-all ${
-                                            isCompleted 
-                                              ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400" 
-                                              : isOpen
-                                              ? "bg-indigo-500/10 border-indigo-500/20 text-indigo-400"
-                                              : "bg-white/[0.02] border-white/10 text-white/40"
-                                          }`}>
-                                            {index + 1}
-                                          </div>
-                                          <div className="flex flex-col sm:flex-row sm:items-center gap-1.5">
-                                            <span className={`font-sans text-xs sm:text-sm font-bold transition-all ${
+                                        {/* Accordion Trigger Header */}
+                                        <button
+                                          onClick={() => {
+                                            setExpandedSessions(prev => 
+                                              prev.includes(index) 
+                                                ? prev.filter(i => i !== index) 
+                                                : [...prev, index]
+                                            );
+                                          }}
+                                          className="w-full p-4 flex items-center justify-between gap-4 text-left transition-colors cursor-pointer"
+                                        >
+                                          <div className="flex items-center gap-3 min-w-0">
+                                            <div className={`h-6 w-6 rounded-lg flex items-center justify-center font-mono text-[10px] font-bold border transition-all shrink-0 ${
                                               isCompleted 
-                                                ? "text-emerald-400 line-through" 
-                                                : "text-white/90"
+                                                ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400" 
+                                                : isOpen
+                                                ? "bg-indigo-500/10 border-indigo-500/20 text-indigo-400"
+                                                : "bg-white/[0.02] border-white/10 text-white/40"
                                             }`}>
-                                              {les}
-                                            </span>
-                                            {isCompleted && (
-                                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-500/10 text-[8px] font-extrabold uppercase tracking-widest text-emerald-400 border border-emerald-500/20 shadow-[0_0_8px_rgba(16,185,129,0.1)]">
-                                                Completed
+                                              {mod?.moduleNumber || index + 1}
+                                            </div>
+                                            <div className="flex flex-wrap items-center gap-2 min-w-0">
+                                              <span className={`font-sans text-xs sm:text-sm font-bold transition-all ${
+                                                isCompleted 
+                                                  ? "text-emerald-400" 
+                                                  : "text-white/90"
+                                              }`}>
+                                                {modTitle}
                                               </span>
+                                              {modDuration && (
+                                                <span className="px-2 py-0.5 rounded bg-white/[0.04] border border-white/10 font-mono text-[10px] text-white/50">
+                                                  {modDuration}
+                                                </span>
+                                              )}
+                                              {isCompleted && (
+                                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-500/10 text-[8px] font-extrabold uppercase tracking-widest text-emerald-400 border border-emerald-500/20 shadow-[0_0_8px_rgba(16,185,129,0.1)]">
+                                                  Completed
+                                                </span>
+                                              )}
+                                            </div>
+                                          </div>
+                                          
+                                          <div className="text-white/40 hover:text-white transition-colors shrink-0">
+                                            {isOpen ? (
+                                              <ChevronDown size={16} className="text-indigo-400" />
+                                            ) : (
+                                              <ChevronRight size={16} />
                                             )}
                                           </div>
-                                        </div>
-                                        
-                                        <div className="text-white/40 hover:text-white transition-colors shrink-0">
-                                          {isOpen ? (
-                                            <ChevronDown size={16} className="text-indigo-400" />
-                                          ) : (
-                                            <ChevronRight size={16} />
-                                          )}
-                                        </div>
-                                      </button>
+                                        </button>
 
-                                      {/* Accordion Expandable Content with smooth transition */}
-                                      <AnimatePresence initial={false}>
-                                        {isOpen && (
-                                          <motion.div
-                                            initial={{ height: 0, opacity: 0 }}
-                                            animate={{ height: "auto", opacity: 1 }}
-                                            exit={{ height: 0, opacity: 0 }}
-                                            transition={{ duration: 0.25, ease: "easeInOut" }}
-                                            className="overflow-hidden border-t border-white/[0.04] bg-[#050508]/40"
-                                          >
-                                            <div className="p-4 space-y-3 text-xs leading-relaxed text-white/60">
-                                              <p className="font-medium text-white/70">
-                                                {isCompleted 
-                                                  ? `You completed this session successfully. Under the instruction of ${selectedCourse.instructor}, you mastered the fundamentals, did hands-on code labs, and finished all required exercises.`
-                                                  : `This session covers depth investigations of ${les.toLowerCase()}. Active preparation is required. Prepare any reading materials and bring your questions to class.`}
-                                              </p>
-                                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 text-[10px] border-t border-white/[0.02]">
-                                                <div className="space-y-1">
-                                                  <span className="block text-white/30 uppercase tracking-wider font-bold">Objectives</span>
-                                                  <ul className="list-disc pl-3.5 space-y-0.5 font-medium">
-                                                    <li>Conceptual understanding & architectural mapping</li>
-                                                    <li>Live-coding exercises and system modeling</li>
-                                                    <li>Interactive problem solving & peer review</li>
-                                                  </ul>
-                                                </div>
-                                                <div className="space-y-1">
-                                                  <span className="block text-white/30 uppercase tracking-wider font-bold">Assigned Materials</span>
-                                                  <div className="flex flex-wrap gap-1.5 pt-0.5">
-                                                    <span className="px-1.5 py-0.5 rounded bg-white/[0.03] border border-white/5 font-mono text-[9px] text-white/70">Slides Lecture.pdf</span>
-                                                    <span className="px-1.5 py-0.5 rounded bg-white/[0.03] border border-white/5 font-mono text-[9px] text-white/70">Github Codebase Repo</span>
+                                        {/* Accordion Expandable Content */}
+                                        <AnimatePresence initial={false}>
+                                          {isOpen && (
+                                            <motion.div
+                                              initial={{ height: 0, opacity: 0 }}
+                                              animate={{ height: "auto", opacity: 1 }}
+                                              exit={{ height: 0, opacity: 0 }}
+                                              transition={{ duration: 0.25, ease: "easeInOut" }}
+                                              className="overflow-hidden border-t border-white/[0.04] bg-[#050508]/40"
+                                            >
+                                              <div className="p-4 space-y-3 text-xs leading-relaxed text-white/60">
+                                                {modDescription ? (
+                                                  <p className="font-medium text-white/75 whitespace-pre-line">
+                                                    {modDescription}
+                                                  </p>
+                                                ) : (
+                                                  <p className="text-white/40 italic">
+                                                    No additional description provided for this module.
+                                                  </p>
+                                                )}
+                                                {modTopics.length > 0 && (
+                                                  <div className="pt-2 text-[11px] border-t border-white/[0.04] space-y-1.5">
+                                                    <span className="block text-[10px] text-white/40 uppercase tracking-wider font-bold">
+                                                      Topics Covered
+                                                    </span>
+                                                    <ul className="list-disc pl-4 space-y-1 text-white/70 font-medium">
+                                                      {modTopics.map((topic: string, tIdx: number) => (
+                                                        <li key={tIdx}>{topic}</li>
+                                                      ))}
+                                                    </ul>
                                                   </div>
-                                                </div>
+                                                )}
                                               </div>
-                                            </div>
-                                          </motion.div>
-                                        )}
-                                      </AnimatePresence>
-                                    </div>
-                                  );
-                                })}
-                              </div>
+                                            </motion.div>
+                                          )}
+                                        </AnimatePresence>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
                             </div>
                           </div>
 
@@ -3904,7 +4083,7 @@ export default function UserDashboard({ onLogout, onGoHome }: UserDashboardProps
                                   </div>
                                   <div>
                                     <span className="block text-[9px] text-white/30 uppercase tracking-wider font-bold">Term Begins</span>
-                                    <span className="text-xs font-bold text-white/90">{selectedCourse.startDate}</span>
+                                    <span className="text-xs font-bold text-white/90">{selectedCourse.startDate || "Not set"}</span>
                                   </div>
                                 </div>
                                 <div className="p-3.5 rounded-2xl bg-white/[0.02] border border-white/[0.04] flex flex-col gap-1.5 text-left">
@@ -3913,7 +4092,7 @@ export default function UserDashboard({ onLogout, onGoHome }: UserDashboardProps
                                   </div>
                                   <div>
                                     <span className="block text-[9px] text-white/30 uppercase tracking-wider font-bold">Term Concludes</span>
-                                    <span className="text-xs font-bold text-white/90">{selectedCourse.endDate}</span>
+                                    <span className="text-xs font-bold text-white/90">{selectedCourse.endDate || "Ongoing"}</span>
                                   </div>
                                 </div>
                               </div>
@@ -6111,7 +6290,28 @@ export default function UserDashboard({ onLogout, onGoHome }: UserDashboardProps
                 </div>
 
                 {/* Grid Layout of Course Cards */}
-                {filteredCourses.length > 0 ? (
+                {isLoadingCourses ? (
+                  <div className="text-center py-16 border border-white/[0.06] rounded-3xl bg-[#08080c] flex flex-col items-center justify-center space-y-3">
+                    <RefreshCw size={28} className="text-indigo-400 animate-spin" />
+                    <p className="text-xs font-semibold text-white/60">Loading your enrolled courses...</p>
+                  </div>
+                ) : coursesError ? (
+                  <div className="text-center py-16 border border-rose-500/20 rounded-3xl bg-rose-500/[0.03] flex flex-col items-center justify-center space-y-3 px-4">
+                    <AlertCircle size={32} className="text-rose-400" />
+                    <div className="space-y-1">
+                      <p className="text-sm font-bold text-white">Failed to load courses</p>
+                      <p className="text-xs text-rose-300/80 max-w-md">{coursesError}</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => fetchStudentCoursesAndSessions()}
+                      className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
+                    >
+                      <RefreshCw size={13} />
+                      <span>Retry</span>
+                    </button>
+                  </div>
+                ) : filteredCourses.length > 0 ? (
                   <div className={getGridClass(filteredCourses.length)}>
                     {filteredCourses.map((course) => (
                       <motion.div
@@ -6133,8 +6333,13 @@ export default function UserDashboard({ onLogout, onGoHome }: UserDashboardProps
                           <div className="absolute inset-0 bg-gradient-to-t from-[#08080c] via-transparent to-transparent" />
                           
                           {/* Badge overlay */}
-                          <div className="absolute top-4 left-4">
+                          <div className="absolute top-4 left-4 flex items-center gap-1.5">
                             {renderStatusBadge(course.status as any)}
+                            {course.categoryName && (
+                              <span className="px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider bg-black/70 text-indigo-300 border border-white/10 backdrop-blur-md">
+                                {course.categoryName}
+                              </span>
+                            )}
                           </div>
                         </div>
 
@@ -6147,6 +6352,11 @@ export default function UserDashboard({ onLogout, onGoHome }: UserDashboardProps
                             <h3 className="font-sans text-base font-black text-white leading-snug group-hover:text-indigo-300 transition-colors">
                               {course.title}
                             </h3>
+                            {(course.shortDescription || course.description) && (
+                              <p className="text-xs text-white/50 line-clamp-2 leading-relaxed">
+                                {course.shortDescription || course.description}
+                              </p>
+                            )}
                             
                             {/* Dates & Session info */}
                             <div className="grid grid-cols-2 gap-y-2.5 gap-x-4 pt-3 text-[11px] text-white/50 border-t border-white/[0.04]">
@@ -6214,13 +6424,17 @@ export default function UserDashboard({ onLogout, onGoHome }: UserDashboardProps
                 ) : (
                   <div className="text-center py-16 border border-dashed border-white/10 rounded-3xl bg-white/[0.01]">
                     <BookOpen size={40} className="mx-auto text-white/20 mb-3 animate-pulse" />
-                    <p className="text-sm font-semibold text-white/50">No courses found matching "{courseFilter}"</p>
-                    <button
-                      onClick={() => setCourseFilter("All")}
-                      className="mt-3 text-xs text-indigo-400 hover:text-indigo-300 font-bold"
-                    >
-                      Reset Filter
-                    </button>
+                    <p className="text-sm font-semibold text-white/50">
+                      {courses.length === 0 ? "You are not enrolled in any courses yet." : `No courses found matching "${courseFilter}"`}
+                    </p>
+                    {courseFilter !== "All" && (
+                      <button
+                        onClick={() => setCourseFilter("All")}
+                        className="mt-3 text-xs text-indigo-400 hover:text-indigo-300 font-bold"
+                      >
+                        Reset Filter
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
@@ -8844,7 +9058,7 @@ export default function UserDashboard({ onLogout, onGoHome }: UserDashboardProps
                               {courses[0].title}
                             </h4>
                             <p className="font-sans text-xs text-white/50 leading-relaxed line-clamp-2">
-                              Master course curriculum, sessions, and project hand-ins for {courses[0].title}.
+                              {courses[0].shortDescription || courses[0].description || "No course description provided."}
                             </p>
                           </div>
                         </div>

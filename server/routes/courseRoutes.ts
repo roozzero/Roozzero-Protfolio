@@ -186,6 +186,9 @@ router.post("/:id/enroll", requireAuth, async (req: Request, res: Response) => {
       [studentId, courseId, seasonId || null, status]
     );
 
+    // Ensure enrolled user has Student role if they were a basic User (role_id = 4)
+    await query("UPDATE users SET role_id = 3 WHERE id = ? AND role_id = 4", [studentId]);
+
     // Synchronize students_count in course from actual enrollments
     await query(`
       UPDATE courses
@@ -224,6 +227,7 @@ router.post("/:id/registrations", optionalAuth, async (req: Request, res: Respon
   try {
     const courseId = req.params.id;
     const { studentName, studentEmail, studentPhone, experienceLevel, notes } = req.body;
+    const normalizedPhone = studentPhone && String(studentPhone).trim() ? String(studentPhone).trim() : null;
 
     // Check course exists
     const [courses]: [any[], any] = await query("SELECT * FROM courses WHERE id = ? AND deleted_at IS NULL LIMIT 1", [courseId]);
@@ -240,6 +244,14 @@ router.post("/:id/registrations", optionalAuth, async (req: Request, res: Respon
       studentId = req.user.id;
       effectiveName = req.user.name;
       effectiveEmail = req.user.email;
+      if (normalizedPhone) {
+        await query(
+          "UPDATE users SET phone = COALESCE(NULLIF(TRIM(phone), ''), ?), role_id = CASE WHEN role_id = 4 THEN 3 ELSE role_id END WHERE id = ?",
+          [normalizedPhone, studentId]
+        );
+      } else {
+        await query("UPDATE users SET role_id = 3 WHERE id = ? AND role_id = 4", [studentId]);
+      }
     } else {
       // Unauthenticated visitor must supply valid credentials
       if (!studentName || !studentEmail) {
@@ -251,10 +263,18 @@ router.post("/:id/registrations", optionalAuth, async (req: Request, res: Respon
       effectiveName = studentName.trim();
       effectiveEmail = studentEmail.trim().toLowerCase();
 
-      // Check if user exists or create normal user record (role_id = 4)
+      // Check if user exists or create student record (role_id = 3)
       const [existingUsers]: [any[], any] = await query("SELECT id FROM users WHERE email = ? LIMIT 1", [effectiveEmail]);
       if (existingUsers.length > 0) {
         studentId = existingUsers[0].id;
+        if (normalizedPhone) {
+          await query(
+            "UPDATE users SET phone = COALESCE(NULLIF(TRIM(phone), ''), ?), role_id = CASE WHEN role_id = 4 THEN 3 ELSE role_id END WHERE id = ?",
+            [normalizedPhone, studentId]
+          );
+        } else {
+          await query("UPDATE users SET role_id = 3 WHERE id = ? AND role_id = 4", [studentId]);
+        }
       } else {
         studentId = `usr-${crypto.randomBytes(8).toString("hex")}`;
         const defaultHash = await (await import("bcryptjs")).default.hash(crypto.randomBytes(16).toString("hex"), 10);
@@ -262,8 +282,8 @@ router.post("/:id/registrations", optionalAuth, async (req: Request, res: Respon
 
         await query(
           `INSERT INTO users (id, username, email, password_hash, role_id, name, phone, status)
-           VALUES (?, ?, ?, ?, 4, ?, ?, 'Active')`,
-          [studentId, username, effectiveEmail, defaultHash, effectiveName, studentPhone || null]
+           VALUES (?, ?, ?, ?, 3, ?, ?, 'Active')`,
+          [studentId, username, effectiveEmail, defaultHash, effectiveName, normalizedPhone]
         );
       }
     }

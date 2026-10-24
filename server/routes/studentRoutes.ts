@@ -7,8 +7,8 @@ import { uploadSubmission, uploadProfile } from "../middleware/upload";
 
 const router = Router();
 
-// Require Student (or Admin) for student portal endpoints
-router.use(requireAuth, requireRole("Student", "Administrator"));
+// Require authenticated Student/User (or Admin) for student portal endpoints
+router.use(requireAuth, requireRole("Student", "Administrator", "User"));
 
 // -------------------------------------------------------------
 // GET /api/student/profile
@@ -131,6 +131,62 @@ router.delete("/profile/avatar", async (req: Request, res: Response) => {
   }
 });
 
+// Helper to normalize syllabus modules from syllabus_json and/or lessons table
+function buildCourseSyllabus(rawSyllabusJson: any, courseLessons: any[]): any[] {
+  let parsedSyllabus: any[] = [];
+  if (rawSyllabusJson) {
+    try {
+      const parsed = typeof rawSyllabusJson === "string" ? JSON.parse(rawSyllabusJson) : rawSyllabusJson;
+      if (Array.isArray(parsed)) {
+        parsedSyllabus = parsed
+          .filter((item: any) => item && (item.title || typeof item === "string"))
+          .map((item: any, idx: number) => {
+            if (typeof item === "string") {
+              return {
+                id: `mod-${idx + 1}`,
+                moduleNumber: idx + 1,
+                title: item,
+                duration: "",
+                description: "",
+                lessonsCount: 1,
+                topics: []
+              };
+            }
+            return {
+              id: String(item.id || `mod-${idx + 1}`),
+              moduleNumber: item.moduleNumber || idx + 1,
+              title: String(item.title || `Module ${idx + 1}`),
+              duration: item.duration ? String(item.duration) : "",
+              description: item.description ? String(item.description) : "",
+              lessonsCount: Number(item.lessonsCount) || (Array.isArray(item.topics) ? item.topics.length : 0),
+              topics: Array.isArray(item.topics) ? item.topics.map(String) : []
+            };
+          });
+      }
+    } catch {
+      parsedSyllabus = [];
+    }
+  }
+
+  if (parsedSyllabus.length > 0) {
+    return parsedSyllabus;
+  }
+
+  if (Array.isArray(courseLessons) && courseLessons.length > 0) {
+    return courseLessons.map((l: any, idx: number) => ({
+      id: String(l.id || `les-${idx + 1}`),
+      moduleNumber: l.order_num || idx + 1,
+      title: String(l.title || `Lesson ${idx + 1}`),
+      duration: l.duration ? String(l.duration) : "",
+      description: l.description ? String(l.description) : "",
+      lessonsCount: 1,
+      topics: []
+    }));
+  }
+
+  return [];
+}
+
 // -------------------------------------------------------------
 // GET /api/student/courses
 // -------------------------------------------------------------
@@ -138,16 +194,155 @@ router.get("/courses", async (req: Request, res: Response) => {
   try {
     const studentId = req.user!.id;
     const [rows]: [any[], any] = await query(`
-      SELECT c.id, c.title, c.code, c.image, c.price, c.sessions_count,
+      SELECT c.id, c.title, c.code, c.description, c.short_description, c.syllabus_json,
+             c.image, c.price, c.sessions_count, c.start_date, c.end_date, c.status as course_status,
+             c.category_id, COALESCE(cat.name, 'Computer Science') as category_name,
              e.status as enrollment_status, e.progress, e.attendance_percentage, e.avg_grade, e.joined_date,
-             u.name as teacher_name
+             u.name as teacher_name, u.email as teacher_email
       FROM enrollments e
       INNER JOIN courses c ON e.course_id = c.id
       LEFT JOIN users u ON c.teacher_id = u.id
+      LEFT JOIN course_categories cat ON c.category_id = cat.id
       WHERE e.student_id = ? AND c.deleted_at IS NULL
+      ORDER BY e.joined_date DESC
     `, [studentId]);
 
-    return res.json({ success: true, data: rows });
+    const courseIds = rows.map((r: any) => r.id);
+    const lessonsByCourse: Record<string, any[]> = {};
+    const sessionsByCourse: Record<string, any[]> = {};
+
+    if (courseIds.length > 0) {
+      const placeholders = courseIds.map(() => "?").join(",");
+      try {
+        const [lessonRows]: [any[], any] = await query(
+          `SELECT id, course_id, title, description, duration, order_num
+           FROM lessons
+           WHERE course_id IN (${placeholders}) AND deleted_at IS NULL
+           ORDER BY order_num ASC, created_at ASC`,
+          courseIds
+        );
+        for (const l of lessonRows) {
+          const cid = String(l.course_id);
+          if (!lessonsByCourse[cid]) lessonsByCourse[cid] = [];
+          lessonsByCourse[cid].push(l);
+        }
+      } catch {
+        // Ignore if lessons query fails
+      }
+
+      try {
+        const [sessionRows]: [any[], any] = await query(
+          `SELECT id, course_id, title, date, time, duration, status, link
+           FROM sessions
+           WHERE course_id IN (${placeholders}) AND deleted_at IS NULL
+           ORDER BY date ASC, time ASC`,
+          courseIds
+        );
+        for (const s of sessionRows) {
+          const cid = String(s.course_id);
+          if (!sessionsByCourse[cid]) sessionsByCourse[cid] = [];
+          sessionsByCourse[cid].push(s);
+        }
+      } catch {
+        // Ignore if sessions query fails
+      }
+    }
+
+    const enriched = rows.map((r: any) => {
+      const cid = String(r.id);
+      const courseLessons = lessonsByCourse[cid] || [];
+      const courseSessions = sessionsByCourse[cid] || [];
+      const syllabus = buildCourseSyllabus(r.syllabus_json, courseLessons);
+
+      const upcomingSession = courseSessions.find(
+        (s: any) => s.status !== "Held" && s.status !== "Completed" && s.status !== "Cancelled"
+      );
+      const completedSessionsCount = courseSessions.filter(
+        (s: any) => s.status === "Held" || s.status === "Completed"
+      ).length;
+
+      return {
+        ...r,
+        description: r.description || "",
+        shortDescription: r.short_description || "",
+        categoryName: r.category_name || "Computer Science",
+        startDate: r.start_date || null,
+        endDate: r.end_date || null,
+        syllabus,
+        lessons: courseLessons,
+        completed_sessions_count: completedSessionsCount,
+        next_session: upcomingSession
+          ? `${upcomingSession.date}${upcomingSession.time ? ` • ${upcomingSession.time}` : ""} — ${upcomingSession.title}`
+          : null
+      };
+    });
+
+    return res.json({ success: true, data: enriched });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: { code: "SERVER_ERROR", message: err.message } });
+  }
+});
+
+// -------------------------------------------------------------
+// GET /api/student/courses/:id (Authorized enrolled course detail)
+// -------------------------------------------------------------
+router.get("/courses/:id", async (req: Request, res: Response) => {
+  try {
+    const studentId = req.user!.id;
+    const courseId = req.params.id;
+    const isAdmin = req.user!.roleName === "Administrator";
+
+    const [rows]: [any[], any] = await query(`
+      SELECT c.id, c.title, c.code, c.description, c.short_description, c.syllabus_json,
+             c.image, c.price, c.sessions_count, c.start_date, c.end_date, c.status as course_status,
+             c.category_id, COALESCE(cat.name, 'Computer Science') as category_name,
+             e.status as enrollment_status, e.progress, e.attendance_percentage, e.avg_grade, e.joined_date,
+             u.name as teacher_name, u.email as teacher_email
+      FROM courses c
+      LEFT JOIN enrollments e ON e.course_id = c.id AND e.student_id = ?
+      LEFT JOIN users u ON c.teacher_id = u.id
+      LEFT JOIN course_categories cat ON c.category_id = cat.id
+      WHERE c.id = ? AND c.deleted_at IS NULL
+    `, [studentId, courseId]);
+
+    if (rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: { code: "NOT_FOUND", message: "Course not found." }
+      });
+    }
+
+    const courseRow = rows[0];
+    if (!isAdmin && !courseRow.enrollment_status) {
+      return res.status(403).json({
+        success: false,
+        error: { code: "FORBIDDEN", message: "You must be enrolled in this course to access its syllabus and curriculum." }
+      });
+    }
+
+    const [lessonRows]: [any[], any] = await query(
+      `SELECT id, course_id, title, description, duration, order_num
+       FROM lessons
+       WHERE course_id = ? AND deleted_at IS NULL
+       ORDER BY order_num ASC, created_at ASC`,
+      [courseId]
+    );
+
+    const syllabus = buildCourseSyllabus(courseRow.syllabus_json, lessonRows);
+
+    return res.json({
+      success: true,
+      data: {
+        ...courseRow,
+        description: courseRow.description || "",
+        shortDescription: courseRow.short_description || "",
+        categoryName: courseRow.category_name || "Computer Science",
+        startDate: courseRow.start_date || null,
+        endDate: courseRow.end_date || null,
+        syllabus,
+        lessons: lessonRows
+      }
+    });
   } catch (err: any) {
     return res.status(500).json({ success: false, error: { code: "SERVER_ERROR", message: err.message } });
   }

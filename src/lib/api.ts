@@ -223,6 +223,10 @@ export const studentApi = {
     return request<{ success: boolean; data: any[] }>("/student/courses");
   },
 
+  async getCourseById(id: string) {
+    return request<{ success: boolean; data: any }>(`/student/courses/${id}`);
+  },
+
   async getSessions() {
     return request<{ success: boolean; data: any[] }>("/student/sessions");
   },

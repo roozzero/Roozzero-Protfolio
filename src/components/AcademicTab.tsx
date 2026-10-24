@@ -358,6 +358,9 @@ export default function AcademicTab({
 
       if (editingCourseId) {
         await onUpdateCourse(editingCourseId, payload);
+        if (selectedCourseId === editingCourseId) {
+          await loadSelectedCourseDetail(editingCourseId);
+        }
         showCustomToast?.(`Course "${payload.title}" updated in database.`, "success");
       } else {
         await onAddCourse(payload);
@@ -366,7 +369,7 @@ export default function AcademicTab({
 
       setShowCourseModal(false);
       window.dispatchEvent(new Event("courses_updated"));
-      if (onReloadData) onReloadData();
+      if (onReloadData) await onReloadData();
     } catch (err: any) {
       console.error("Failed to save course:", err);
       setCourseModalAlert({
@@ -389,6 +392,10 @@ export default function AcademicTab({
     try {
       const res = await adminApi.togglePublishCourse(course.id, targetPub);
       if (res.success) {
+        if (selectedCourseId === course.id) {
+          await loadSelectedCourseDetail(course.id);
+        }
+        if (onReloadData) await onReloadData();
         window.dispatchEvent(new CustomEvent("courses_updated"));
         showCustomToast?.(
           targetPub
@@ -396,7 +403,6 @@ export default function AcademicTab({
             : `Course "${course.title}" set to Draft (hidden from Landing Page).`,
           "success"
         );
-        if (onReloadData) onReloadData();
       } else {
         showCustomToast?.((res as any)?.error?.message || "Failed to update publish state.", "warning");
       }
@@ -425,14 +431,14 @@ export default function AcademicTab({
   };
 
   // Save Syllabus result from modal
-  const handleSyllabusSaved = (newSyllabus: SyllabusItem[]) => {
-    if (!syllabusTargetCourse) return;
-    if (selectedCourseId === syllabusTargetCourse.id) {
-      loadSelectedCourseDetail(syllabusTargetCourse.id);
-    }
+  const handleSyllabusSaved = async (newSyllabus: SyllabusItem[]) => {
+    const targetId = syllabusTargetCourse?.id;
     setSyllabusTargetCourse(null);
+    if (targetId && selectedCourseId === targetId) {
+      await loadSelectedCourseDetail(targetId);
+    }
+    if (onReloadData) await onReloadData();
     window.dispatchEvent(new CustomEvent("courses_updated"));
-    if (onReloadData) onReloadData();
   };
 
   // Admin Session Handlers
@@ -503,8 +509,9 @@ export default function AcademicTab({
         showCustomToast?.(`Session "${sessionForm.title}" scheduled in database.`, "success");
       }
       setShowSessionModal(false);
-      if (selectedCourseId) loadSelectedCourseDetail(selectedCourseId);
-      if (onReloadData) onReloadData();
+      if (selectedCourseId) await loadSelectedCourseDetail(selectedCourseId);
+      if (onReloadData) await onReloadData();
+      window.dispatchEvent(new CustomEvent("courses_updated"));
     } catch (err: any) {
       setSessionModalAlert({ type: "error", text: err?.message || "Failed to save session." });
     } finally {
@@ -535,17 +542,18 @@ export default function AcademicTab({
       } else if (deleteModalState.type === "student" && deleteModalState.studentId) {
         await adminApi.removeStudentFromCourse(deleteModalState.id, deleteModalState.studentId);
         showCustomToast?.(`Student removed from course roster.`, "success");
-        if (selectedCourseId) loadSelectedCourseDetail(selectedCourseId);
+        if (selectedCourseId) await loadSelectedCourseDetail(selectedCourseId);
       } else if (deleteModalState.type === "request") {
         if (onRejectRequest) await onRejectRequest(deleteModalState.id, "Rejected by administrator");
         showCustomToast?.(`Course proposal rejected.`, "info");
       } else if (deleteModalState.type === "session") {
         await teacherApi.deleteSession(deleteModalState.id);
         showCustomToast?.(`Session "${deleteModalState.name}" deleted from database.`, "success");
-        if (selectedCourseId) loadSelectedCourseDetail(selectedCourseId);
+        if (selectedCourseId) await loadSelectedCourseDetail(selectedCourseId);
       }
       setDeleteModalState({ isOpen: false, type: "course", id: "", name: "" });
-      if (onReloadData) onReloadData();
+      if (onReloadData) await onReloadData();
+      window.dispatchEvent(new CustomEvent("courses_updated"));
     } catch (err: any) {
       console.error("Failed to delete item:", err);
       showCustomToast?.(err.message || "Failed to delete item.", "warning");
@@ -559,9 +567,12 @@ export default function AcademicTab({
     try {
       const res = await adminApi.approveCourseProposal(courseId, true);
       if (res.success) {
+        if (selectedCourseId === courseId) {
+          await loadSelectedCourseDetail(courseId);
+        }
+        if (onReloadData) await onReloadData();
         window.dispatchEvent(new CustomEvent("courses_updated"));
         showCustomToast?.(`Course proposal "${title}" approved and published to landing page!`, "success");
-        if (onReloadData) onReloadData();
       }
     } catch (err: any) {
       console.error("Failed to approve course proposal:", err);
@@ -597,9 +608,10 @@ export default function AcademicTab({
       if (res.success) {
         setAvailableStudents((prev) => prev.filter((s) => s.id !== studentId));
         await loadSelectedCourseDetail(selectedCourseId);
+        if (onReloadData) await onReloadData();
+        window.dispatchEvent(new CustomEvent("courses_updated"));
         setStudentModalAlert({ type: "success", text: "Student enrolled into course successfully!" });
         showCustomToast?.("Student enrolled into course successfully.", "success");
-        if (onReloadData) onReloadData();
       }
     } catch (err: any) {
       console.error("Failed to enroll student", err);
@@ -628,10 +640,15 @@ export default function AcademicTab({
     (c.instructor || c.teacherName || "").toLowerCase().includes(catalogSearch.toLowerCase())
   );
 
-  const currentCourse = courses.find((c) => c.id === selectedCourseId) || courseDetailData;
-  const currentCourseSessions = courseDetailData?.sessions?.length
-    ? courseDetailData.sessions
-    : sessions.filter((s: any) => s.courseId === selectedCourseId);
+  const catalogCourse = courses.find((c) => c.id === selectedCourseId);
+  const currentCourse =
+    courseDetailData && catalogCourse && String(courseDetailData.id) === String(selectedCourseId)
+      ? { ...catalogCourse, ...courseDetailData }
+      : (catalogCourse || courseDetailData);
+  const currentCourseSessions =
+    courseDetailData && String(courseDetailData.id) === String(selectedCourseId) && Array.isArray(courseDetailData.sessions)
+      ? courseDetailData.sessions
+      : sessions.filter((s: any) => s.courseId === selectedCourseId);
 
   return (
     <div className="space-y-6 text-left">
@@ -859,8 +876,10 @@ export default function AcademicTab({
                                 <span className="font-bold text-white">{st.student_name}</span>
                               </div>
                             </td>
-                            <td className="py-3 px-4 font-mono text-white/60">{st.student_email}</td>
-                            <td className="py-3 px-4 font-mono text-white/40">{st.student_phone || "—"}</td>
+                            <td className="py-3 px-4 font-mono text-white/60">{st.student_email || st.studentEmail}</td>
+                            <td className="py-3 px-4 font-mono text-white/60">
+                              {(st.studentPhone || st.student_phone || st.phone || "").trim() || "Not provided"}
+                            </td>
                             <td className="py-3 px-4 font-mono text-white/40">
                               {st.joined_date ? new Date(st.joined_date).toLocaleDateString() : "Active"}
                             </td>
@@ -1485,6 +1504,7 @@ export default function AcademicTab({
                   <thead>
                     <tr className="border-b border-white/[0.05] text-white/30 uppercase tracking-widest text-[9px] font-black">
                       <th className="pb-3">Student Name</th>
+                      <th className="pb-3">Phone Number</th>
                       <th className="pb-3">Enrolled Course</th>
                       <th className="pb-3">Tuition Payment</th>
                       <th className="pb-3 text-center">Progress</th>
@@ -1495,7 +1515,15 @@ export default function AcademicTab({
                   <tbody className="divide-y divide-white/[0.02]">
                     {enrollments.map((en: any) => (
                       <tr key={en.id} className="hover:bg-white/[0.01] transition-all">
-                        <td className="py-3.5 font-bold text-white">{en.studentName || en.student_name}</td>
+                        <td className="py-3.5 font-bold text-white">
+                          <div>{en.studentName || en.student_name}</div>
+                          {(en.studentEmail || en.student_email) && (
+                            <div className="text-[10px] font-mono text-white/40 font-normal">{en.studentEmail || en.student_email}</div>
+                          )}
+                        </td>
+                        <td className="py-3.5 font-mono text-[11px] text-white/60">
+                          {(en.studentPhone || en.student_phone || en.phone || "").trim() || "Not provided"}
+                        </td>
                         <td className="py-3.5 font-mono text-indigo-400 text-[10px]">{en.courseTitle || en.course_title}</td>
                         <td className="py-3.5">
                           <span className={`px-2 py-0.5 rounded-full text-[9px] font-mono ${
@@ -1505,13 +1533,17 @@ export default function AcademicTab({
                           </span>
                         </td>
                         <td className="py-3.5 text-center font-mono">{en.progress || 0}%</td>
-                        <td className="py-3.5 font-mono text-[10px] text-white/40">{en.joinedDate || "Recent"}</td>
-                        <td className="py-3.5 text-right font-bold text-white/70">{en.status || "Enrolled"}</td>
+                        <td className="py-3.5 font-mono text-[10px] text-white/40">
+                          {(en.joinedDate || en.enrollmentDate)
+                            ? new Date(en.joinedDate || en.enrollmentDate).toLocaleDateString()
+                            : "Recent"}
+                        </td>
+                        <td className="py-3.5 text-right font-bold text-white/70">{en.courseStatus || en.status || "Enrolled"}</td>
                       </tr>
                     ))}
                     {enrollments.length === 0 && (
                       <tr>
-                        <td colSpan={6} className="py-10 text-center text-white/35 font-mono text-xs">
+                        <td colSpan={7} className="py-10 text-center text-white/35 font-mono text-xs">
                           No student course enrollments found in the database.
                         </td>
                       </tr>
@@ -2183,7 +2215,9 @@ export default function AcademicTab({
                         </div>
                         <div className="min-w-0">
                           <h4 className="text-xs font-bold text-white truncate">{s.name}</h4>
-                          <p className="text-[10px] text-white/40 font-mono truncate">{s.email}</p>
+                          <p className="text-[10px] text-white/40 font-mono truncate">
+                            {s.email} {s.phone ? `• ${s.phone}` : "• Phone: Not provided"}
+                          </p>
                         </div>
                       </div>
 

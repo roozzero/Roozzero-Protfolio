@@ -951,9 +951,11 @@ router.get("/enrollments", async (req: Request, res: Response) => {
   try {
     const [rows]: [any[], any] = await query(`
       SELECT e.id, e.student_id as studentId, u.name as studentName,
+             u.email as studentEmail, u.phone as studentPhone, u.phone as student_phone,
              e.course_id as courseId, c.title as courseTitle,
              e.season_id as seasonId, COALESCE(cs.name, 'Core Cohort') as seasonName,
-             e.joined_date as enrollmentDate,
+             e.joined_date as enrollmentDate, e.joined_date as joinedDate,
+             COALESCE(e.progress, 0) as progress,
              'Paid' as paymentStatus,
              e.status as courseStatus
       FROM enrollments e
@@ -1658,7 +1660,10 @@ router.get("/courses/:id", async (req: Request, res: Response) => {
     // Enrolled students
     const [students]: [any[], any] = await query(`
       SELECT e.id as enrollment_id, e.student_id, e.status as enrollment_status, e.progress, e.avg_grade, e.joined_date,
-             u.name as student_name, u.email as student_email, u.avatar_url as student_avatar, u.phone as student_phone
+             u.name as student_name, u.name as studentName,
+             u.email as student_email, u.email as studentEmail,
+             u.avatar_url as student_avatar,
+             u.phone as student_phone, u.phone as studentPhone, u.phone as phone
       FROM enrollments e
       JOIN users u ON e.student_id = u.id
       WHERE e.course_id = ? AND u.deleted_at IS NULL
