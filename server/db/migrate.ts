@@ -150,7 +150,7 @@ export async function runMigrationsAndSeeds() {
       }
     }
 
-    // Remove unintended demo users (@academy.local) and recalculate real course enrollment counts
+    // Remove unintended demo users (@academy.local), demo courses, and recalculate real course enrollment counts
     try {
       await pool.query(
         "UPDATE courses SET teacher_id = NULL WHERE teacher_id IN ('teacher-1', 'stu-1', 'stu-2')"
@@ -159,7 +159,16 @@ export async function runMigrationsAndSeeds() {
         "DELETE FROM users WHERE id IN ('teacher-1', 'stu-1', 'stu-2') OR email IN ('teacher@academy.local', 'student@academy.local', 'courtney.henry@academy.local', 'cody.fisher@academy.local')"
       );
       await pool.query(
-        "UPDATE courses SET students_count = (SELECT COUNT(*) FROM enrollments e WHERE e.course_id = courses.id)"
+        "DELETE FROM course_seasons WHERE id IN ('season-lumin', 'season-apex', 'season-bgbunty', 'season-hunt', 'season-wordpress') AND NOT EXISTS (SELECT 1 FROM enrollments e WHERE e.season_id = course_seasons.id)"
+      );
+      await pool.query(
+        "DELETE FROM courses WHERE id IN ('lumin', 'apex', 'bgbunty', 'hunt', 'wordpress') AND NOT EXISTS (SELECT 1 FROM enrollments e WHERE e.course_id = courses.id)"
+      );
+      await pool.query(
+        "DELETE FROM cms_classes WHERE id IN ('lumin', 'apex', 'bgbunty', 'hunt', 'wordpress')"
+      );
+      await pool.query(
+        "UPDATE courses SET students_count = (SELECT COUNT(*) FROM enrollments e INNER JOIN users u ON e.student_id = u.id WHERE e.course_id = courses.id AND u.deleted_at IS NULL)"
       );
     } catch (cleanupErr: any) {
       console.warn("[Migration Cleanup Notice]:", cleanupErr.message);
@@ -223,12 +232,6 @@ export async function runMigrationsAndSeeds() {
       for (let p of projectsList) {
         await pool.query(`INSERT INTO cms_projects (id, title, description, cover_image, gallery_images_json, technologies_json, github_link, live_demo_link, category, display_order, featured) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [p.id, p.title, p.description, p.coverImage, JSON.stringify(p.galleryImages || []), JSON.stringify(p.technologies || []), p.githubLink, p.liveDemoLink, p.category, p.displayOrder || 0, p.featured ? 1 : 0]);
-      }
-
-      const classesList = Array.isArray(cms.classes) ? cms.classes : DEFAULT_HOMEPAGE_CLASSES;
-      for (let c of classesList) {
-        await pool.query(`INSERT INTO cms_classes (id, course_image, course_name, instructor, price, description, sessions, status, display_order, tags_json, syllabus_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          [c.id, c.courseImage, c.courseName, c.instructor, c.price, c.description, c.sessions, c.status || 'Published', c.displayOrder || 0, JSON.stringify(c.tags || []), JSON.stringify(c.syllabus || [])]);
       }
 
       const testimonialsList = Array.isArray(cms.testimonials?.testimonials) ? cms.testimonials.testimonials : (Array.isArray(cms.students) ? cms.students : []);

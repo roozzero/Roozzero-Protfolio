@@ -119,6 +119,8 @@ export default function AdminDashboard({ onLogout, onGoHome }: AdminDashboardPro
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [dashboardStats, setDashboardStats] = useState<DashboardStats | null>(null);
   const [isUsersLoading, setIsUsersLoading] = useState(false);
+  const [isCoursesLoading, setIsCoursesLoading] = useState(false);
+  const [coursesLoadError, setCoursesLoadError] = useState<string | null>(null);
   const [courseRequests, setCourseRequests] = useState<CourseRequest[]>([]);
   const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
   const [exams, setExams] = useState<Exam[]>([]);
@@ -146,6 +148,7 @@ export default function AdminDashboard({ onLogout, onGoHome }: AdminDashboardPro
   // Load authoritative data from MySQL backend APIs
   const loadAdminData = async () => {
     setIsUsersLoading(true);
+    setIsCoursesLoading(true);
     try {
       const [
         dashRes, usersRes, enrollmentsRes, certsRes, annsRes, seasonsRes, logsRes, coursesRes, studentsRes, sessionsRes, assignmentsRes, discussionsRes, resourcesRes, examsRes
@@ -157,7 +160,11 @@ export default function AdminDashboard({ onLogout, onGoHome }: AdminDashboardPro
         adminApi.getAnnouncements().catch(() => ({ success: false, data: [] })),
         adminApi.getCourseSeasons().catch(() => ({ success: false, data: [] })),
         adminApi.getActivityLogs().catch(() => ({ success: false, data: [] })),
-        adminApi.getAllCourses().catch(() => ({ success: false, data: [] })),
+        adminApi.getAllCourses().catch((err: any) => ({
+          success: false,
+          data: [],
+          errorMessage: err?.message || "Failed to load courses from database."
+        })),
         teacherApi.getStudents().catch(() => ({ success: false, data: [] })),
         teacherApi.getSessions().catch(() => ({ success: false, data: [] })),
         teacherApi.getAssignments().catch(() => ({ success: false, data: [] })),
@@ -196,12 +203,18 @@ export default function AdminDashboard({ onLogout, onGoHome }: AdminDashboardPro
         })));
       }
       if (coursesRes.success && Array.isArray(coursesRes.data)) {
+        setCoursesLoadError(null);
         setCourses(coursesRes.data);
         // Extract teacher proposals for course requests sub-tab
         const pendingProposals = coursesRes.data.filter(
           (c: any) => c.approvalStatus === "Pending" || c.approval_status === "Pending" || c.status === "PendingApproval"
         );
         setCourseRequests(pendingProposals);
+      } else {
+        const errText = (coursesRes as any)?.errorMessage || (coursesRes as any)?.error?.message || "Failed to load courses from database.";
+        setCoursesLoadError(errText);
+        setCourses([]);
+        setCourseRequests([]);
       }
       if (studentsRes.success && Array.isArray(studentsRes.data)) {
         setStudents(studentsRes.data);
@@ -223,10 +236,12 @@ export default function AdminDashboard({ onLogout, onGoHome }: AdminDashboardPro
       }
 
       await refreshUnreadMessages();
-    } catch (err) {
+    } catch (err: any) {
       console.warn("Admin backend data sync warning:", err);
+      setCoursesLoadError(err?.message || "Failed to synchronize courses with backend.");
     } finally {
       setIsUsersLoading(false);
+      setIsCoursesLoading(false);
     }
   };
 
@@ -340,9 +355,15 @@ export default function AdminDashboard({ onLogout, onGoHome }: AdminDashboardPro
     }
   };
 
-  const handleRejectRequest = (id: string, notes?: string) => {
-    setCourseRequests(prev => prev.map(r => r.id === id ? { ...r, status: notes?.startsWith("Revision") ? "Revision Needed" : "Rejected", notes } : r));
-    dispatchAlert(`Rejected or returned request ${id}.`);
+  const handleRejectRequest = async (id: string, notes?: string) => {
+    try {
+      await adminApi.rejectCourseProposal(id, notes);
+      dispatchAlert(`Rejected course proposal: ${id}`);
+      await loadAdminData();
+    } catch (err: any) {
+      dispatchAlert(err?.message || `Failed to reject proposal ${id}.`);
+      throw err;
+    }
   };
 
   const handleApproveCertificate = async (id: string) => {
@@ -439,8 +460,11 @@ export default function AdminDashboard({ onLogout, onGoHome }: AdminDashboardPro
 
   const handleUpdateCourse = async (id: string, updated: Partial<Course>) => {
     try {
-      await adminApi.updateCourse(id, updated);
-      setCourses(prev => prev.map(c => c.id === id ? { ...c, ...updated } : c));
+      const res = await adminApi.updateCourse(id, updated);
+      if (!res.success) {
+        throw new Error((res as any)?.error?.message || "Failed to update course.");
+      }
+      setCourses(prev => prev.map(c => c.id === id ? { ...c, ...(res.data || updated) } : c));
       dispatchAlert(`Updated course configurations for: ${updated.title || id}`);
       window.dispatchEvent(new CustomEvent("courses_updated"));
       await loadAdminData();
@@ -452,22 +476,50 @@ export default function AdminDashboard({ onLogout, onGoHome }: AdminDashboardPro
   };
 
   const handleDeleteCourse = async (id: string) => {
-    setCourses(prev => prev.filter(c => c.id !== id));
-    dispatchAlert(`Deleted Course: ${id}`);
     try {
-      await adminApi.deleteCourse(id);
+      const res = await adminApi.deleteCourse(id);
+      if (!res.success) {
+        throw new Error((res as any)?.error?.message || "Failed to delete course.");
+      }
+      setCourses(prev => prev.filter(c => c.id !== id));
+      dispatchAlert(res.message || `Deleted Course: ${id}`);
       window.dispatchEvent(new CustomEvent("courses_updated"));
       await loadAdminData();
-    } catch (err) {
+    } catch (err: any) {
       console.error("Failed to delete course via API", err);
+      dispatchAlert(err?.message || "Failed to delete course.");
+      throw err;
     }
   };
 
-  const handleDuplicateCourse = (id: string) => {
-    const orig = courses.find(c => c.id === id);
-    if (orig) {
-      setCourses(prev => [{ ...orig, id: "course-" + Date.now(), title: orig.title + " (Copy)", code: orig.code + "-C" }, ...prev]);
-      dispatchAlert(`Duplicated course: ${orig.title}`);
+  const handleDuplicateCourse = async (id: string) => {
+    const orig: any = courses.find(c => c.id === id);
+    if (!orig) return;
+    try {
+      const existingSyl = Array.isArray(orig.syllabusJson) && orig.syllabusJson.length > 0
+        ? orig.syllabusJson
+        : Array.isArray(orig.syllabus) && orig.syllabus.length > 0
+        ? orig.syllabus
+        : [{ id: `mod-${Date.now()}`, title: "Module 1: Overview", duration: "4 hours", description: "" }];
+
+      await handleAddCourse({
+        title: `${orig.title} (Copy)`,
+        code: `${orig.code}-${Math.floor(10 + Math.random() * 90)}`,
+        description: orig.description || "",
+        shortDescription: orig.shortDescription || orig.description || "",
+        price: orig.price || "$0",
+        sessionsCount: orig.sessionsCount || orig.sessions || 12,
+        teacherId: orig.teacherId || null,
+        categoryId: orig.categoryId || 1,
+        image: orig.image || orig.courseImage || "",
+        startDate: orig.startDate || null,
+        endDate: orig.endDate || null,
+        isPublished: false,
+        status: "Active",
+        syllabusJson: existingSyl
+      });
+    } catch (err: any) {
+      console.error("Failed to duplicate course:", err);
     }
   };
 
@@ -789,6 +841,8 @@ export default function AdminDashboard({ onLogout, onGoHome }: AdminDashboardPro
                   users={users}
                   sessions={sessions}
                   activeSubTab={activeSubTab}
+                  isLoading={isCoursesLoading}
+                  loadError={coursesLoadError}
                   onAddCourse={handleAddCourse}
                   onUpdateCourse={handleUpdateCourse}
                   onDeleteCourse={handleDeleteCourse}

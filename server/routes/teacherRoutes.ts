@@ -124,7 +124,12 @@ router.get("/courses", async (req: Request, res: Response) => {
 
     const [rows]: [any[], any] = await query(`
       SELECT c.*, cat.name as category_name,
-             (SELECT COUNT(*) FROM enrollments e WHERE e.course_id = c.id) as realStudentsCount,
+             (
+               SELECT COUNT(*)
+               FROM enrollments e
+               INNER JOIN users stu ON e.student_id = stu.id
+               WHERE e.course_id = c.id AND stu.deleted_at IS NULL
+             ) as realStudentsCount,
              (SELECT COUNT(*) FROM sessions s WHERE s.course_id = c.id AND s.deleted_at IS NULL) as realSessionsCount
       FROM courses c
       LEFT JOIN course_categories cat ON c.category_id = cat.id
@@ -142,6 +147,8 @@ router.get("/courses", async (req: Request, res: Response) => {
         }
       }
 
+      const configuredSessions = Number(r.sessions_count || 12);
+
       return {
         id: r.id,
         title: r.title,
@@ -152,9 +159,10 @@ router.get("/courses", async (req: Request, res: Response) => {
         shortDescription: r.short_description || r.description || "",
         categoryId: r.category_id,
         categoryName: r.category_name || "General",
-        studentsCount: r.realStudentsCount || r.students_count || 0,
-        sessionsCount: r.realSessionsCount || r.sessions_count || 12,
-        sessions: r.realSessionsCount || r.sessions_count || 12,
+        studentsCount: Number(r.realStudentsCount ?? 0),
+        sessionsCount: configuredSessions,
+        sessions: configuredSessions,
+        scheduledSessionsCount: Number(r.realSessionsCount ?? 0),
         progress: r.progress || 0,
         status: r.status,
         image: r.image || "",
@@ -491,28 +499,51 @@ router.post("/courses/:id/sessions", async (req: Request, res: Response) => {
   try {
     const courseId = req.params.id;
     const teacherId = req.user!.id;
+    const isSuperAdmin = req.user!.roleName === "Administrator" || req.user!.roleName === "admin";
     const { title, date, time, duration, link, status } = req.body;
 
-    if (!(await verifyCourseOwnership(teacherId, courseId, req.user!.roleName))) {
-      return res.status(403).json({ success: false, error: { code: "FORBIDDEN", message: "You do not own this course." } });
+    if (!title || !String(title).trim() || !date || !time) {
+      return res.status(400).json({
+        success: false,
+        error: { code: "MISSING_FIELDS", message: "Session title, date, and time are required." }
+      });
     }
 
+    const [courseRows]: [any[], any] = await query(
+      "SELECT id, teacher_id FROM courses WHERE id = ? AND deleted_at IS NULL",
+      [courseId]
+    );
+    if (courseRows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: { code: "COURSE_NOT_FOUND", message: "Course not found." }
+      });
+    }
+
+    if (!isSuperAdmin && courseRows[0].teacher_id !== teacherId) {
+      return res.status(403).json({
+        success: false,
+        error: { code: "FORBIDDEN", message: "You do not own this course." }
+      });
+    }
+
+    const effectiveTeacherId = courseRows[0].teacher_id || teacherId;
     const sessionId = `sess-${crypto.randomBytes(6).toString("hex")}`;
     await query(`
       INSERT INTO sessions (id, course_id, teacher_id, title, date, time, duration, link, status)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `, [sessionId, courseId, teacherId, title, date, time, duration || "2 hours", link || null, status || "Scheduled"]);
+    `, [sessionId, courseId, effectiveTeacherId, String(title).trim(), date, time, duration || "2 hours", link || null, status || "Scheduled"]);
 
     return res.status(201).json({
       success: true,
       data: {
         id: sessionId,
         courseId,
-        title,
+        title: String(title).trim(),
         date,
         time,
-        duration,
-        link,
+        duration: duration || "2 hours",
+        link: link || "",
         status: status || "Scheduled"
       }
     });

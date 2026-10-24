@@ -687,6 +687,13 @@ export const adminApi = {
     });
   },
 
+  async rejectCourseProposal(id: string, notes?: string) {
+    return request<{ success: boolean; message: string }>(`/admin/courses/${id}/reject`, {
+      method: "PATCH",
+      body: JSON.stringify({ notes })
+    });
+  },
+
   async uploadCourseImage(formData: FormData) {
     return request<{ success: boolean; url: string; filename: string }>("/admin/courses/upload-image", {
       method: "POST",
@@ -699,21 +706,21 @@ export const adminApi = {
   },
 
   async createCourse(data: any) {
-    return request<{ success: boolean; data: any }>("/admin/courses", {
+    return request<{ success: boolean; data: any; message?: string }>("/admin/courses", {
       method: "POST",
       body: JSON.stringify(data)
     });
   },
 
   async updateCourse(id: string, data: any) {
-    return request<{ success: boolean; message: string }>(`/admin/courses/${id}`, {
+    return request<{ success: boolean; data?: any; message: string }>(`/admin/courses/${id}`, {
       method: "PUT",
       body: JSON.stringify(data)
     });
   },
 
   async deleteCourse(id: string) {
-    return request<{ success: boolean; message: string }>(`/admin/courses/${id}`, {
+    return request<{ success: boolean; data?: any; message: string }>(`/admin/courses/${id}`, {
       method: "DELETE"
     });
   },

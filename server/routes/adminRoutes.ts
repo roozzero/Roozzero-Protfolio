@@ -29,7 +29,13 @@ router.get("/dashboard", async (req: Request, res: Response) => {
     `);
 
     const [courseStats]: [any[], any] = await query("SELECT COUNT(*) as totalCourses FROM courses WHERE deleted_at IS NULL");
-    const [enrollmentStats]: [any[], any] = await query("SELECT COUNT(*) as activeEnrollments FROM enrollments WHERE status = 'Active'");
+    const [enrollmentStats]: [any[], any] = await query(`
+      SELECT COUNT(*) as activeEnrollments
+      FROM enrollments e
+      INNER JOIN users u ON e.student_id = u.id
+      INNER JOIN courses c ON e.course_id = c.id
+      WHERE e.status = 'Active' AND u.deleted_at IS NULL AND c.deleted_at IS NULL
+    `);
     const [unreadMessages]: [any[], any] = await query("SELECT COUNT(*) as unreadCount FROM contact_messages WHERE is_read = 0");
     const [certificatesCount]: [any[], any] = await query("SELECT COUNT(*) as totalCertificates FROM certificates");
     const [recentActivity]: [any[], any] = await query(`
@@ -1292,7 +1298,17 @@ router.get("/courses", async (req: Request, res: Response) => {
     const [rows]: [any[], any] = await query(`
       SELECT c.*, cat.name as category_name, u.name as teacher_name, u.email as teacher_email, u.avatar_url as teacher_avatar,
              req.name as requested_by_name,
-             (SELECT COUNT(*) FROM enrollments e WHERE e.course_id = c.id) as real_students_count
+             (
+               SELECT COUNT(*)
+               FROM enrollments e
+               INNER JOIN users stu ON e.student_id = stu.id
+               WHERE e.course_id = c.id AND stu.deleted_at IS NULL
+             ) as real_students_count,
+             (
+               SELECT COUNT(*)
+               FROM sessions s
+               WHERE s.course_id = c.id AND s.deleted_at IS NULL
+             ) as real_sessions_count
       FROM courses c
       LEFT JOIN course_categories cat ON c.category_id = cat.id
       LEFT JOIN users u ON c.teacher_id = u.id
@@ -1311,6 +1327,9 @@ router.get("/courses", async (req: Request, res: Response) => {
         }
       }
 
+      const actualStudentsCount = Number(r.real_students_count ?? 0);
+      const configuredSessionsCount = Number(r.sessions_count || 12);
+
       return {
         id: r.id,
         title: r.title,
@@ -1327,9 +1346,10 @@ router.get("/courses", async (req: Request, res: Response) => {
         teacherName: r.teacher_name || "Unassigned",
         teacherAvatar: r.teacher_avatar || "",
         teacherEmail: r.teacher_email || "",
-        studentsCount: r.real_students_count || r.students_count || 0,
-        sessionsCount: r.sessions_count || 12,
-        sessions: r.sessions_count || 12,
+        studentsCount: actualStudentsCount,
+        sessionsCount: configuredSessionsCount,
+        sessions: configuredSessionsCount,
+        scheduledSessionsCount: Number(r.real_sessions_count ?? 0),
         progress: r.progress || 0,
         status: r.status || "Active",
         image: r.image || "",
@@ -1387,7 +1407,7 @@ router.post("/courses", async (req: Request, res: Response) => {
       isPublished
     } = req.body;
 
-    if (!title || !title.trim()) {
+    if (!title || typeof title !== "string" || !title.trim()) {
       return res.status(400).json({ success: false, error: { code: "MISSING_TITLE", message: "Course title is required." } });
     }
 
@@ -1403,24 +1423,99 @@ router.post("/courses", async (req: Request, res: Response) => {
       }
     }
 
-    if (!Array.isArray(parsedIncomingSyllabus) || parsedIncomingSyllabus.length === 0) {
+    const validSyllabus = Array.isArray(parsedIncomingSyllabus)
+      ? parsedIncomingSyllabus.filter((m: any) => m && typeof m.title === "string" && m.title.trim().length > 0)
+      : [];
+
+    if (validSyllabus.length === 0) {
       return res.status(400).json({
         success: false,
-        error: { code: "MISSING_SYLLABUS", message: "Please add at least one syllabus module before creating the course." }
+        error: { code: "MISSING_SYLLABUS", message: "Please add at least one syllabus module with a title before creating the course." }
+      });
+    }
+
+    const parsedSessionsCount = sessionsCount !== undefined && sessionsCount !== null && sessionsCount !== ""
+      ? Number(sessionsCount)
+      : 12;
+    if (isNaN(parsedSessionsCount) || !Number.isFinite(parsedSessionsCount) || parsedSessionsCount < 1) {
+      return res.status(400).json({
+        success: false,
+        error: { code: "INVALID_SESSIONS_COUNT", message: "Total sessions must be a positive number (at least 1)." }
+      });
+    }
+
+    const cleanStart = startDate ? String(startDate).substring(0, 10) : null;
+    const cleanEnd = endDate ? String(endDate).substring(0, 10) : null;
+    if (cleanStart && cleanEnd && cleanEnd < cleanStart) {
+      return res.status(400).json({
+        success: false,
+        error: { code: "INVALID_DATE_RANGE", message: "Course end date cannot be earlier than start date." }
+      });
+    }
+
+    let validTeacherId: string | null = null;
+    if (teacherId && String(teacherId).trim()) {
+      const [tRows]: [any[], any] = await query(
+        "SELECT id FROM users WHERE id = ? AND role_id = 2 AND deleted_at IS NULL",
+        [String(teacherId).trim()]
+      );
+      if (tRows.length === 0) {
+        return res.status(400).json({
+          success: false,
+          error: { code: "INVALID_TEACHER", message: "Selected instructor does not exist or is not an active Teacher." }
+        });
+      }
+      validTeacherId = String(teacherId).trim();
+    }
+
+    let validCatId = categoryId ? Number(categoryId) : 1;
+    if (isNaN(validCatId) || validCatId < 1) {
+      return res.status(400).json({
+        success: false,
+        error: { code: "INVALID_CATEGORY", message: "Invalid course category selected." }
+      });
+    }
+    const [catRows]: [any[], any] = await query("SELECT id FROM course_categories WHERE id = ?", [validCatId]);
+    if (catRows.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: { code: "INVALID_CATEGORY", message: "Selected course category does not exist." }
       });
     }
 
     const courseId = `crs-${Date.now()}-${crypto.randomBytes(3).toString("hex")}`;
-    let courseCode = (code && code.trim()) || `CRS-${Math.floor(100 + Math.random() * 900)}`;
-    const [existingCodeRows]: [any[], any] = await query("SELECT id FROM courses WHERE code = ? LIMIT 1", [courseCode]);
-    if (existingCodeRows && existingCodeRows.length > 0) {
-      courseCode = `${courseCode}-${Math.floor(10 + Math.random() * 90)}`;
+    let courseCode = (code && String(code).trim()) || "";
+    if (courseCode) {
+      const [existingCodeRows]: [any[], any] = await query("SELECT id, deleted_at FROM courses WHERE code = ? LIMIT 1", [courseCode]);
+      if (existingCodeRows && existingCodeRows.length > 0) {
+        if (!existingCodeRows[0].deleted_at) {
+          return res.status(409).json({
+            success: false,
+            error: { code: "DUPLICATE_CODE", message: `Course code "${courseCode}" is already in use by another active course.` }
+          });
+        }
+        // If previously soft-deleted course held that code, disambiguate
+        courseCode = `${courseCode}-${Math.floor(10 + Math.random() * 90)}`;
+      }
+    } else {
+      courseCode = `CRS-${Math.floor(100 + Math.random() * 900)}`;
+      const [existingCodeRows]: [any[], any] = await query("SELECT id FROM courses WHERE code = ? LIMIT 1", [courseCode]);
+      if (existingCodeRows && existingCodeRows.length > 0) {
+        courseCode = `${courseCode}-${Math.floor(10 + Math.random() * 90)}`;
+      }
     }
-    const courseSlug = (slug && slug.trim()) || title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
 
-    const isPub = Boolean(isPublished || status === "Published");
+    const baseSlug = (slug && String(slug).trim()) || title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || courseId;
+    let courseSlug = baseSlug;
+    const [existingSlugRows]: [any[], any] = await query("SELECT id FROM courses WHERE slug = ? LIMIT 1", [courseSlug]);
+    if (existingSlugRows && existingSlugRows.length > 0) {
+      courseSlug = `${baseSlug}-${Date.now().toString().slice(-4)}`;
+    }
+
+    const isPub = Boolean(isPublished !== undefined ? isPublished : status === "Published");
     const courseStatus = isPub ? "Published" : (status || "Active");
-    const syllabusStr = JSON.stringify(parsedIncomingSyllabus);
+    const syllabusStr = JSON.stringify(validSyllabus);
+    const formattedPrice = typeof price === "number" ? `$${price}` : (price && String(price).trim() ? String(price).trim() : "$0");
 
     await query(`
       INSERT INTO courses (
@@ -1434,16 +1529,16 @@ router.post("/courses", async (req: Request, res: Response) => {
       title.trim(),
       courseCode,
       courseSlug,
-      typeof price === "number" ? `$${price}` : (price || "$0"),
+      formattedPrice,
       description || "",
       shortDescription || description || "",
-      categoryId ? Number(categoryId) : 1,
-      teacherId || null,
-      sessionsCount ? Number(sessionsCount) : 12,
+      validCatId,
+      validTeacherId,
+      Math.round(parsedSessionsCount),
       courseStatus,
       image || null,
-      startDate ? startDate.substring(0, 10) : null,
-      endDate ? endDate.substring(0, 10) : null,
+      cleanStart,
+      cleanEnd,
       syllabusStr,
       isPub ? 1 : 0
     ]);
@@ -1456,7 +1551,7 @@ router.post("/courses", async (req: Request, res: Response) => {
 
     // Return full course object for instant AJAX update
     const [createdRows]: [any[], any] = await query(`
-      SELECT c.*, cat.name as category_name, u.name as teacher_name, u.email as teacher_email
+      SELECT c.*, cat.name as category_name, u.name as teacher_name, u.email as teacher_email, u.avatar_url as teacher_avatar
       FROM courses c
       LEFT JOIN course_categories cat ON c.category_id = cat.id
       LEFT JOIN users u ON c.teacher_id = u.id
@@ -1473,6 +1568,32 @@ router.post("/courses", async (req: Request, res: Response) => {
       }
     }
 
+    // Synchronize with cms_classes so public landing page and CMS stay consistent
+    await query(`
+      INSERT INTO cms_classes (id, course_image, course_name, instructor, price, description, sessions, status, display_order, tags_json, syllabus_json)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
+      ON DUPLICATE KEY UPDATE
+        course_image = VALUES(course_image),
+        course_name = VALUES(course_name),
+        instructor = VALUES(instructor),
+        price = VALUES(price),
+        description = VALUES(description),
+        sessions = VALUES(sessions),
+        status = VALUES(status),
+        syllabus_json = VALUES(syllabus_json)
+    `, [
+      created.id,
+      created.image || "",
+      created.title,
+      created.teacher_name || "Unassigned",
+      created.price || "$0",
+      created.description || "",
+      created.sessions_count || 12,
+      isPub ? "Published" : "Draft",
+      JSON.stringify([created.category_name || "Engineering", "Academy"]),
+      syllabusStr
+    ]).catch(() => {});
+
     const formattedCreated = {
       id: created.id,
       title: created.title,
@@ -1487,9 +1608,12 @@ router.post("/courses", async (req: Request, res: Response) => {
       teacherId: created.teacher_id,
       instructor: created.teacher_name || "Unassigned",
       teacherName: created.teacher_name || "Unassigned",
+      teacherAvatar: created.teacher_avatar || "",
+      teacherEmail: created.teacher_email || "",
       studentsCount: 0,
       sessionsCount: created.sessions_count || 12,
       sessions: created.sessions_count || 12,
+      scheduledSessionsCount: 0,
       progress: 0,
       status: created.status,
       image: created.image || "",
@@ -1544,10 +1668,10 @@ router.get("/courses/:id", async (req: Request, res: Response) => {
     // Course Sessions
     const [courseSessions]: [any[], any] = await query(`
       SELECT s.id, s.course_id as courseId, c.title as courseTitle, s.title, s.date, s.time, s.duration, s.link, s.status,
-             u.name as teacherName
+             COALESCE(u.name, 'Instructor') as teacherName
       FROM sessions s
       LEFT JOIN courses c ON s.course_id = c.id
-      LEFT JOIN users u ON c.teacher_id = u.id
+      LEFT JOIN users u ON COALESCE(s.teacher_id, c.teacher_id) = u.id
       WHERE s.course_id = ? AND s.deleted_at IS NULL
       ORDER BY s.date ASC
     `, [id]);
@@ -1565,6 +1689,23 @@ router.get("/courses/:id", async (req: Request, res: Response) => {
       success: true,
       data: {
         ...course,
+        id: course.id,
+        title: course.title,
+        courseName: course.title,
+        code: course.code,
+        slug: course.slug,
+        price: course.price || "$0",
+        description: course.description || "",
+        shortDescription: course.short_description || course.description || "",
+        categoryId: course.category_id,
+        categoryName: course.category_name || "General",
+        teacherId: course.teacher_id,
+        teacherName: course.teacher_name || "Unassigned",
+        instructor: course.teacher_name || "Unassigned",
+        studentsCount: students.length,
+        sessionsCount: Number(course.sessions_count || 12),
+        startDate: course.start_date ? (course.start_date instanceof Date ? course.start_date.toISOString().split("T")[0] : String(course.start_date).split("T")[0]) : "",
+        endDate: course.end_date ? (course.end_date instanceof Date ? course.end_date.toISOString().split("T")[0] : String(course.end_date).split("T")[0]) : "",
         students,
         sessions: (courseSessions || []).map((s: any) => ({
           ...s,
@@ -1572,7 +1713,8 @@ router.get("/courses/:id", async (req: Request, res: Response) => {
         })),
         syllabus: parsedSyllabus,
         syllabusJson: parsedSyllabus,
-        isPublished: Boolean(course.is_published || course.status === "Published")
+        isPublished: Boolean(course.is_published || course.status === "Published"),
+        approvalStatus: course.approval_status || "Approved"
       }
     });
   } catch (err: any) {
@@ -1584,6 +1726,18 @@ router.get("/courses/:id", async (req: Request, res: Response) => {
 router.put("/courses/:id", async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    const [existingRows]: [any[], any] = await query(
+      "SELECT * FROM courses WHERE id = ? AND deleted_at IS NULL",
+      [id]
+    );
+    if (existingRows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: { code: "NOT_FOUND", message: "Course not found." }
+      });
+    }
+    const existingCourse = existingRows[0];
+
     const {
       title,
       code,
@@ -1599,12 +1753,107 @@ router.put("/courses/:id", async (req: Request, res: Response) => {
       startDate,
       endDate,
       syllabusJson,
+      syllabus,
       isPublished,
       approvalStatus
     } = req.body;
 
+    if (title !== undefined && (!String(title).trim())) {
+      return res.status(400).json({
+        success: false,
+        error: { code: "MISSING_TITLE", message: "Course title cannot be empty." }
+      });
+    }
+
+    if (sessionsCount !== undefined && sessionsCount !== null) {
+      const numSessions = Number(sessionsCount);
+      if (isNaN(numSessions) || !Number.isFinite(numSessions) || numSessions < 1) {
+        return res.status(400).json({
+          success: false,
+          error: { code: "INVALID_SESSIONS_COUNT", message: "Total sessions must be a positive number (at least 1)." }
+        });
+      }
+    }
+
+    if (code !== undefined && String(code).trim()) {
+      const trimmedCode = String(code).trim();
+      const [dupCode]: [any[], any] = await query(
+        "SELECT id FROM courses WHERE code = ? AND id != ? AND deleted_at IS NULL LIMIT 1",
+        [trimmedCode, id]
+      );
+      if (dupCode.length > 0) {
+        return res.status(409).json({
+          success: false,
+          error: { code: "DUPLICATE_CODE", message: `Course code "${trimmedCode}" is already used by another course.` }
+        });
+      }
+    }
+
+    if (teacherId !== undefined && teacherId !== null && String(teacherId).trim() !== "") {
+      const [tRows]: [any[], any] = await query(
+        "SELECT id FROM users WHERE id = ? AND role_id = 2 AND deleted_at IS NULL",
+        [String(teacherId).trim()]
+      );
+      if (tRows.length === 0) {
+        return res.status(400).json({
+          success: false,
+          error: { code: "INVALID_TEACHER", message: "Selected user is not an active instructor." }
+        });
+      }
+    }
+
+    if (categoryId !== undefined && categoryId !== null) {
+      const numCat = Number(categoryId);
+      const [catRows]: [any[], any] = await query("SELECT id FROM course_categories WHERE id = ?", [numCat]);
+      if (catRows.length === 0) {
+        return res.status(400).json({
+          success: false,
+          error: { code: "INVALID_CATEGORY", message: "Selected course category does not exist." }
+        });
+      }
+    }
+
+    const effectiveStartDate = startDate !== undefined
+      ? (startDate ? String(startDate).substring(0, 10) : null)
+      : (existingCourse.start_date ? (existingCourse.start_date instanceof Date ? existingCourse.start_date.toISOString().split("T")[0] : String(existingCourse.start_date).split("T")[0]) : null);
+    const effectiveEndDate = endDate !== undefined
+      ? (endDate ? String(endDate).substring(0, 10) : null)
+      : (existingCourse.end_date ? (existingCourse.end_date instanceof Date ? existingCourse.end_date.toISOString().split("T")[0] : String(existingCourse.end_date).split("T")[0]) : null);
+
+    if (effectiveStartDate && effectiveEndDate && effectiveEndDate < effectiveStartDate) {
+      return res.status(400).json({
+        success: false,
+        error: { code: "INVALID_DATE_RANGE", message: "Course end date cannot be earlier than start date." }
+      });
+    }
+
+    const incomingSyllabusRaw = syllabusJson !== undefined ? syllabusJson : syllabus;
+    let syllabusStr: string | undefined = undefined;
+    if (incomingSyllabusRaw !== undefined) {
+      let parsedSyl: any[] = [];
+      if (Array.isArray(incomingSyllabusRaw)) {
+        parsedSyl = incomingSyllabusRaw;
+      } else if (typeof incomingSyllabusRaw === "string") {
+        try {
+          parsedSyl = JSON.parse(incomingSyllabusRaw);
+        } catch {
+          parsedSyl = [];
+        }
+      }
+      const validModules = Array.isArray(parsedSyl)
+        ? parsedSyl.filter((m: any) => m && typeof m.title === "string" && m.title.trim().length > 0)
+        : [];
+      if (validModules.length === 0) {
+        return res.status(400).json({
+          success: false,
+          error: { code: "MISSING_SYLLABUS", message: "Course must contain at least one valid syllabus module." }
+        });
+      }
+      syllabusStr = JSON.stringify(validModules);
+    }
+
     const isPub = isPublished !== undefined ? Boolean(isPublished) : (status === "Published" ? true : undefined);
-    const syllabusStr = syllabusJson !== undefined ? (typeof syllabusJson === "string" ? syllabusJson : JSON.stringify(syllabusJson)) : undefined;
+    const nextStatus = status || (isPub !== undefined ? (isPub ? "Published" : "Active") : null);
 
     await query(`
       UPDATE courses
@@ -1612,47 +1861,140 @@ router.put("/courses/:id", async (req: Request, res: Response) => {
           code = COALESCE(?, code),
           slug = COALESCE(?, slug),
           price = COALESCE(?, price),
-          description = COALESCE(?, description),
-          short_description = COALESCE(?, short_description),
+          description = CASE WHEN ? = 1 THEN ? ELSE description END,
+          short_description = CASE WHEN ? = 1 THEN ? ELSE short_description END,
           category_id = COALESCE(?, category_id),
           teacher_id = CASE WHEN ? = 1 THEN ? ELSE teacher_id END,
           sessions_count = COALESCE(?, sessions_count),
           status = COALESCE(?, status),
-          image = COALESCE(?, image),
-          start_date = COALESCE(?, start_date),
-          end_date = COALESCE(?, end_date),
+          image = CASE WHEN ? = 1 THEN ? ELSE image END,
+          start_date = CASE WHEN ? = 1 THEN ? ELSE start_date END,
+          end_date = CASE WHEN ? = 1 THEN ? ELSE end_date END,
           syllabus_json = COALESCE(?, syllabus_json),
           is_published = COALESCE(?, is_published),
           approval_status = COALESCE(?, approval_status)
       WHERE id = ?
     `, [
-      title ? title.trim() : null,
-      code ? code.trim() : null,
-      slug ? slug.trim() : null,
-      price !== undefined ? (typeof price === "number" ? `$${price}` : price) : null,
+      title !== undefined ? String(title).trim() : null,
+      code !== undefined && String(code).trim() ? String(code).trim() : null,
+      slug !== undefined && String(slug).trim() ? String(slug).trim() : null,
+      price !== undefined ? (typeof price === "number" ? `$${price}` : String(price).trim() || "$0") : null,
+      description !== undefined ? 1 : 0,
       description !== undefined ? description : null,
+      shortDescription !== undefined ? 1 : 0,
       shortDescription !== undefined ? shortDescription : null,
       categoryId ? Number(categoryId) : null,
       teacherId !== undefined ? 1 : 0,
-      teacherId || null,
-      sessionsCount ? Number(sessionsCount) : null,
-      status || (isPub !== undefined ? (isPub ? "Published" : "Active") : null),
-      image !== undefined ? image : null,
-      startDate !== undefined ? (startDate ? startDate.substring(0, 10) : null) : null,
-      endDate !== undefined ? (endDate ? endDate.substring(0, 10) : null) : null,
+      teacherId ? String(teacherId).trim() : null,
+      sessionsCount !== undefined && sessionsCount !== null ? Math.round(Number(sessionsCount)) : null,
+      nextStatus,
+      image !== undefined ? 1 : 0,
+      image || null,
+      startDate !== undefined ? 1 : 0,
+      effectiveStartDate,
+      endDate !== undefined ? 1 : 0,
+      effectiveEndDate,
       syllabusStr !== undefined ? syllabusStr : null,
       isPub !== undefined ? (isPub ? 1 : 0) : null,
       approvalStatus || null,
       id
     ]);
 
+    // Fetch updated course record to return and sync with cms_classes
+    const [updatedRows]: [any[], any] = await query(`
+      SELECT c.*, cat.name as category_name, u.name as teacher_name, u.email as teacher_email, u.avatar_url as teacher_avatar,
+             (
+               SELECT COUNT(*)
+               FROM enrollments e
+               INNER JOIN users stu ON e.student_id = stu.id
+               WHERE e.course_id = c.id AND stu.deleted_at IS NULL
+             ) as real_students_count
+      FROM courses c
+      LEFT JOIN course_categories cat ON c.category_id = cat.id
+      LEFT JOIN users u ON c.teacher_id = u.id
+      WHERE c.id = ?
+    `, [id]);
+
+    const updated = updatedRows[0];
+    let updatedSyllabus: any[] = [];
+    if (updated.syllabus_json) {
+      try {
+        updatedSyllabus = typeof updated.syllabus_json === "string" ? JSON.parse(updated.syllabus_json) : updated.syllabus_json;
+      } catch {
+        updatedSyllabus = [];
+      }
+    }
+
+    const updatedPub = Boolean(updated.is_published || updated.status === "Published");
+
+    // Synchronize cms_classes
+    await query(`
+      INSERT INTO cms_classes (id, course_image, course_name, instructor, price, description, sessions, status, display_order, tags_json, syllabus_json)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
+      ON DUPLICATE KEY UPDATE
+        course_image = VALUES(course_image),
+        course_name = VALUES(course_name),
+        instructor = VALUES(instructor),
+        price = VALUES(price),
+        description = VALUES(description),
+        sessions = VALUES(sessions),
+        status = VALUES(status),
+        syllabus_json = VALUES(syllabus_json)
+    `, [
+      updated.id,
+      updated.image || "",
+      updated.title,
+      updated.teacher_name || "Unassigned",
+      updated.price || "$0",
+      updated.description || "",
+      updated.sessions_count || 12,
+      updatedPub ? "Published" : "Draft",
+      JSON.stringify([updated.category_name || "Engineering", "Academy"]),
+      JSON.stringify(updatedSyllabus)
+    ]).catch(() => {});
+
     // Audit log
     await query("INSERT INTO activity_logs (user_id, action, details) VALUES (?, 'UpdateCourse', ?)", [
       req.user!.id,
-      `Updated course configuration for "${title || id}"`
+      `Updated course configuration for "${updated.title}"`
     ]);
 
-    return res.json({ success: true, message: "Course updated successfully in database." });
+    const formattedUpdated = {
+      id: updated.id,
+      title: updated.title,
+      courseName: updated.title,
+      code: updated.code,
+      slug: updated.slug,
+      price: updated.price || "$0",
+      description: updated.description || "",
+      shortDescription: updated.short_description || updated.description || "",
+      categoryId: updated.category_id,
+      categoryName: updated.category_name || "General",
+      teacherId: updated.teacher_id,
+      instructor: updated.teacher_name || "Unassigned",
+      teacherName: updated.teacher_name || "Unassigned",
+      teacherAvatar: updated.teacher_avatar || "",
+      teacherEmail: updated.teacher_email || "",
+      studentsCount: Number(updated.real_students_count ?? 0),
+      sessionsCount: Number(updated.sessions_count || 12),
+      sessions: Number(updated.sessions_count || 12),
+      progress: updated.progress || 0,
+      status: updated.status,
+      image: updated.image || "",
+      courseImage: updated.image || "",
+      startDate: updated.start_date ? (updated.start_date instanceof Date ? updated.start_date.toISOString().split("T")[0] : String(updated.start_date).split("T")[0]) : "",
+      endDate: updated.end_date ? (updated.end_date instanceof Date ? updated.end_date.toISOString().split("T")[0] : String(updated.end_date).split("T")[0]) : "",
+      syllabusJson: updatedSyllabus,
+      syllabus: updatedSyllabus,
+      isPublished: updatedPub,
+      approvalStatus: updated.approval_status || "Approved"
+    };
+
+    return res.json({
+      success: true,
+      data: formattedUpdated,
+      message: "Course updated successfully in database."
+    });
   } catch (err: any) {
     console.error("[Update Course Error]:", err);
     return res.status(500).json({ success: false, error: { code: "SERVER_ERROR", message: err.message } });
@@ -1663,11 +2005,17 @@ router.put("/courses/:id", async (req: Request, res: Response) => {
 router.patch("/courses/:id/publish", async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    const [existing]: [any[], any] = await query("SELECT id, title FROM courses WHERE id = ? AND deleted_at IS NULL", [id]);
+    if (existing.length === 0) {
+      return res.status(404).json({ success: false, error: { code: "NOT_FOUND", message: "Course not found." } });
+    }
+
     const { isPublished } = req.body;
     const pubVal = isPublished ? 1 : 0;
     const newStatus = isPublished ? "Published" : "Active";
 
     await query("UPDATE courses SET is_published = ?, status = ? WHERE id = ?", [pubVal, newStatus, id]);
+    await query("UPDATE cms_classes SET status = ? WHERE id = ?", [isPublished ? "Published" : "Draft", id]).catch(() => {});
     await query("INSERT INTO activity_logs (user_id, action, details) VALUES (?, 'TogglePublish', ?)", [
       req.user!.id,
       `Course ${id} publication set to: ${isPublished ? 'Published (Live on Landing)' : 'Unpublished (Draft)'}`
@@ -1688,8 +2036,23 @@ router.patch("/courses/:id/publish", async (req: Request, res: Response) => {
 router.post("/courses/:id/syllabus", async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    const [existing]: [any[], any] = await query("SELECT id, title FROM courses WHERE id = ? AND deleted_at IS NULL", [id]);
+    if (existing.length === 0) {
+      return res.status(404).json({ success: false, error: { code: "NOT_FOUND", message: "Course not found." } });
+    }
+
     const { syllabus } = req.body;
-    const syllabusList = Array.isArray(syllabus) ? syllabus : [];
+    const syllabusList = Array.isArray(syllabus)
+      ? syllabus.filter((m: any) => m && typeof m.title === "string" && m.title.trim().length > 0)
+      : [];
+
+    if (syllabusList.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: { code: "INVALID_SYLLABUS", message: "Please provide at least one syllabus module with a valid title." }
+      });
+    }
+
     const syllabusStr = JSON.stringify(syllabusList);
 
     await query("UPDATE courses SET syllabus_json = ? WHERE id = ?", [syllabusStr, id]);
@@ -1709,6 +2072,11 @@ router.post("/courses/:id/syllabus", async (req: Request, res: Response) => {
 router.patch("/courses/:id/approve", async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    const [existing]: [any[], any] = await query("SELECT id, title FROM courses WHERE id = ? AND deleted_at IS NULL", [id]);
+    if (existing.length === 0) {
+      return res.status(404).json({ success: false, error: { code: "NOT_FOUND", message: "Course proposal not found." } });
+    }
+
     const { publish } = req.body;
     const isPub = Boolean(publish);
     const newStatus = isPub ? "Published" : "Active";
@@ -1735,16 +2103,82 @@ router.patch("/courses/:id/approve", async (req: Request, res: Response) => {
   }
 });
 
-// DELETE /api/admin/courses/:id (Permanently or soft delete course from MySQL)
+// PATCH /api/admin/courses/:id/reject (Admin Rejects Teacher Course Proposal)
+router.patch("/courses/:id/reject", async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const [existing]: [any[], any] = await query("SELECT id, title FROM courses WHERE id = ? AND deleted_at IS NULL", [id]);
+    if (existing.length === 0) {
+      return res.status(404).json({ success: false, error: { code: "NOT_FOUND", message: "Course proposal not found." } });
+    }
+
+    await query(`
+      UPDATE courses
+      SET approval_status = 'Rejected',
+          status = 'Inactive',
+          is_published = 0
+      WHERE id = ?
+    `, [id]);
+
+    await query("INSERT INTO activity_logs (user_id, action, details) VALUES (?, 'RejectCourse', ?)", [
+      req.user!.id,
+      `Rejected course proposal ${id}`
+    ]);
+
+    return res.json({
+      success: true,
+      message: "Course proposal rejected."
+    });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: { code: "SERVER_ERROR", message: err.message } });
+  }
+});
+
+// DELETE /api/admin/courses/:id (Soft delete course while preserving enrollments, lessons, assignments, exams, and certificates)
 router.delete("/courses/:id", async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    const [existing]: [any[], any] = await query("SELECT id, title FROM courses WHERE id = ? AND deleted_at IS NULL", [id]);
+    if (existing.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: { code: "NOT_FOUND", message: "Course not found or already deleted." }
+      });
+    }
+
+    const courseTitle = existing[0].title;
+
+    // Inspect related academic records to preserve data integrity (no destructive cascading delete)
+    const [enrollCountRows]: [any[], any] = await query("SELECT COUNT(*) as count FROM enrollments WHERE course_id = ?", [id]);
+    const [lessonCountRows]: [any[], any] = await query("SELECT COUNT(*) as count FROM lessons WHERE course_id = ?", [id]);
+    const [assignCountRows]: [any[], any] = await query("SELECT COUNT(*) as count FROM assignments WHERE course_id = ? AND deleted_at IS NULL", [id]);
+    const [examCountRows]: [any[], any] = await query("SELECT COUNT(*) as count FROM exams WHERE course_id = ?", [id]);
+    const [sessionCountRows]: [any[], any] = await query("SELECT COUNT(*) as count FROM sessions WHERE course_id = ? AND deleted_at IS NULL", [id]);
+    const [certCountRows]: [any[], any] = await query("SELECT COUNT(*) as count FROM certificates WHERE course_id = ?", [id]);
+
+    const preservedRelations = {
+      enrollments: Number(enrollCountRows[0]?.count || 0),
+      lessons: Number(lessonCountRows[0]?.count || 0),
+      assignments: Number(assignCountRows[0]?.count || 0),
+      exams: Number(examCountRows[0]?.count || 0),
+      sessions: Number(sessionCountRows[0]?.count || 0),
+      certificates: Number(certCountRows[0]?.count || 0)
+    };
+
+    // Soft-delete course and unpublish from landing page while keeping all student academic records intact
     await query("UPDATE courses SET deleted_at = NOW(), status = 'Inactive', is_published = 0 WHERE id = ?", [id]);
+    await query("UPDATE cms_classes SET status = 'Draft' WHERE id = ?", [id]).catch(() => {});
+
     await query("INSERT INTO activity_logs (user_id, action, details) VALUES (?, 'DeleteCourse', ?)", [
       req.user!.id,
-      `Deleted course ${id} from database`
+      `Archived/deleted course "${courseTitle}" (${id}) from active catalog (preserved ${preservedRelations.enrollments} enrollments, ${preservedRelations.assignments} assignments, ${preservedRelations.exams} exams)`
     ]);
-    return res.json({ success: true, message: "Course removed from database successfully." });
+
+    return res.json({
+      success: true,
+      data: { id, preservedRelations },
+      message: `Course "${courseTitle}" removed from active catalog. Related academic records (${preservedRelations.enrollments} enrollments, ${preservedRelations.lessons} lessons, ${preservedRelations.assignments} assignments, ${preservedRelations.exams} exams) were safely preserved.`
+    });
   } catch (err: any) {
     return res.status(500).json({ success: false, error: { code: "SERVER_ERROR", message: err.message } });
   }
@@ -1754,16 +2188,24 @@ router.delete("/courses/:id", async (req: Request, res: Response) => {
 router.put("/courses/:id/teacher", async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    const [existing]: [any[], any] = await query("SELECT id FROM courses WHERE id = ? AND deleted_at IS NULL", [id]);
+    if (existing.length === 0) {
+      return res.status(404).json({ success: false, error: { code: "NOT_FOUND", message: "Course not found." } });
+    }
+
     const { teacherId } = req.body;
+    let teacherName = "Unassigned";
 
     if (teacherId) {
       const [tRows]: [any[], any] = await query("SELECT id, name FROM users WHERE id = ? AND role_id = 2 AND deleted_at IS NULL", [teacherId]);
       if (tRows.length === 0) {
         return res.status(400).json({ success: false, error: { code: "INVALID_TEACHER", message: "Selected user is not an active instructor." } });
       }
+      teacherName = tRows[0].name;
     }
 
     await query("UPDATE courses SET teacher_id = ? WHERE id = ?", [teacherId || null, id]);
+    await query("UPDATE cms_classes SET instructor = ? WHERE id = ?", [teacherName, id]).catch(() => {});
 
     return res.json({ success: true, message: "Course instructor updated successfully." });
   } catch (err: any) {
@@ -1798,6 +2240,12 @@ router.post("/courses/:id/enroll", async (req: Request, res: Response) => {
       return res.status(400).json({ success: false, error: { code: "MISSING_STUDENT", message: "Please select a student to enroll." } });
     }
 
+    const [cRows]: [any[], any] = await query("SELECT id, title FROM courses WHERE id = ? AND deleted_at IS NULL", [id]);
+    if (cRows.length === 0) {
+      return res.status(404).json({ success: false, error: { code: "COURSE_NOT_FOUND", message: "Course not found." } });
+    }
+    const courseTitle = cRows[0].title;
+
     // Verify student exists
     const [uRows]: [any[], any] = await query("SELECT id, name, email FROM users WHERE id = ? AND deleted_at IS NULL", [studentId]);
     if (uRows.length === 0) {
@@ -1815,12 +2263,16 @@ router.post("/courses/:id/enroll", async (req: Request, res: Response) => {
       VALUES (?, ?, ?, 'Active', CURDATE(), 0, 100.00, 0.00)
     `, [studentId, id, seasonId || null]);
 
-    // Increment students_count
-    await query("UPDATE courses SET students_count = students_count + 1 WHERE id = ?", [id]);
+    // Synchronize exact students_count from enrollments
+    await query(`
+      UPDATE courses
+      SET students_count = (
+        SELECT COUNT(*) FROM enrollments e INNER JOIN users u ON e.student_id = u.id WHERE e.course_id = ? AND u.deleted_at IS NULL
+      )
+      WHERE id = ?
+    `, [id, id]);
 
     // Notify student
-    const [cRows]: [any[], any] = await query("SELECT title FROM courses WHERE id = ?", [id]);
-    const courseTitle = cRows.length > 0 ? cRows[0].title : "New Course";
     await query(`
       INSERT INTO notifications (user_id, type, title, message)
       VALUES (?, 'system', ?, ?)
@@ -1840,7 +2292,13 @@ router.delete("/courses/:id/enroll/:studentId", async (req: Request, res: Respon
   try {
     const { id, studentId } = req.params;
     await query("DELETE FROM enrollments WHERE course_id = ? AND student_id = ?", [id, studentId]);
-    await query("UPDATE courses SET students_count = GREATEST(0, students_count - 1) WHERE id = ?", [id]);
+    await query(`
+      UPDATE courses
+      SET students_count = (
+        SELECT COUNT(*) FROM enrollments e INNER JOIN users u ON e.student_id = u.id WHERE e.course_id = ? AND u.deleted_at IS NULL
+      )
+      WHERE id = ?
+    `, [id, id]);
 
     return res.json({ success: true, message: "Student removed from course." });
   } catch (err: any) {

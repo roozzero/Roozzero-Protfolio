@@ -1,9 +1,8 @@
 import { Router, Request, Response } from "express";
 import crypto from "crypto";
 import { z } from "zod";
-import { query, isDbConnected } from "../db/pool";
+import { query } from "../db/pool";
 import { requireAuth, optionalAuth } from "../middleware/auth";
-import { DEFAULT_HOMEPAGE_CLASSES } from "../../src/constants/defaultCms";
 
 const router = Router();
 
@@ -13,7 +12,13 @@ const router = Router();
 router.get("/", async (req: Request, res: Response) => {
   try {
     const [rows]: [any[], any] = await query(`
-      SELECT c.*, cat.name as category_name, u.name as teacher_name
+      SELECT c.*, cat.name as category_name, u.name as teacher_name,
+             (
+               SELECT COUNT(*)
+               FROM enrollments e
+               INNER JOIN users stu ON e.student_id = stu.id
+               WHERE e.course_id = c.id AND stu.deleted_at IS NULL
+             ) as real_students_count
       FROM courses c
       LEFT JOIN course_categories cat ON c.category_id = cat.id
       LEFT JOIN users u ON c.teacher_id = u.id
@@ -52,9 +57,11 @@ router.get("/", async (req: Request, res: Response) => {
         title: r.title,
         code: r.code,
         price: r.price || "$0",
-        instructor: r.teacher_name || "Roozbeh",
-        sessions: r.sessions_count || 16,
-        sessionsCount: r.sessions_count || 16,
+        instructor: r.teacher_name || "Unassigned",
+        teacherName: r.teacher_name || "Unassigned",
+        studentsCount: Number(r.real_students_count ?? 0),
+        sessions: r.sessions_count || 12,
+        sessionsCount: r.sessions_count || 12,
         description: r.description || "",
         shortDescription: r.short_description || r.description || "",
         courseImage: imgUrl,
@@ -179,8 +186,14 @@ router.post("/:id/enroll", requireAuth, async (req: Request, res: Response) => {
       [studentId, courseId, seasonId || null, status]
     );
 
-    // Increment students_count in course
-    await query("UPDATE courses SET students_count = students_count + 1 WHERE id = ?", [courseId]);
+    // Synchronize students_count in course from actual enrollments
+    await query(`
+      UPDATE courses
+      SET students_count = (
+        SELECT COUNT(*) FROM enrollments e INNER JOIN users u ON e.student_id = u.id WHERE e.course_id = ? AND u.deleted_at IS NULL
+      )
+      WHERE id = ?
+    `, [courseId, courseId]);
 
     // Create notification for student
     await query(
@@ -238,18 +251,18 @@ router.post("/:id/registrations", optionalAuth, async (req: Request, res: Respon
       effectiveName = studentName.trim();
       effectiveEmail = studentEmail.trim().toLowerCase();
 
-      // Check if user exists or create student record
+      // Check if user exists or create normal user record (role_id = 4)
       const [existingUsers]: [any[], any] = await query("SELECT id FROM users WHERE email = ? LIMIT 1", [effectiveEmail]);
       if (existingUsers.length > 0) {
         studentId = existingUsers[0].id;
       } else {
-        studentId = `stu-${crypto.randomBytes(8).toString("hex")}`;
-        const defaultHash = await (await import("bcryptjs")).default.hash("Welcome@123", 10);
-        const username = effectiveEmail.split("@")[0].replace(/[^a-zA-Z0-9_]/g, "_");
+        studentId = `usr-${crypto.randomBytes(8).toString("hex")}`;
+        const defaultHash = await (await import("bcryptjs")).default.hash(crypto.randomBytes(16).toString("hex"), 10);
+        const username = `${effectiveEmail.split("@")[0].replace(/[^a-zA-Z0-9_]/g, "_")}_${Math.floor(100 + Math.random() * 900)}`;
 
         await query(
           `INSERT INTO users (id, username, email, password_hash, role_id, name, phone, status)
-           VALUES (?, ?, ?, ?, 3, ?, ?, 'Active')`,
+           VALUES (?, ?, ?, ?, 4, ?, ?, 'Active')`,
           [studentId, username, effectiveEmail, defaultHash, effectiveName, studentPhone || null]
         );
       }
@@ -282,8 +295,14 @@ router.post("/:id/registrations", optionalAuth, async (req: Request, res: Respon
       [studentId, courseId, regNotes]
     );
 
-    // Update course student count
-    await query("UPDATE courses SET students_count = students_count + 1 WHERE id = ?", [courseId]);
+    // Update course student count from actual enrollments
+    await query(`
+      UPDATE courses
+      SET students_count = (
+        SELECT COUNT(*) FROM enrollments e INNER JOIN users u ON e.student_id = u.id WHERE e.course_id = ? AND u.deleted_at IS NULL
+      )
+      WHERE id = ?
+    `, [courseId, courseId]);
 
     // Notify student
     await query(

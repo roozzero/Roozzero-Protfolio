@@ -110,6 +110,7 @@ interface LandingViewProps {
   onOpenLoginModal: () => void;
   cmsConfig: CMSFullConfig;
   homepageClasses: any[];
+  homepageClassesError?: string | null;
   currentText: string;
 }
 
@@ -119,6 +120,7 @@ export default function LandingView({
   onOpenLoginModal,
   cmsConfig,
   homepageClasses,
+  homepageClassesError = null,
   currentText,
 }: LandingViewProps) {
   const [presetIndex, setPresetIndex] = useState(0);
@@ -856,6 +858,20 @@ export default function LandingView({
 
         {/* Classes Content wrapped in our specified container */}
         <div className="w-full p-6 sm:p-8 md:p-10 rounded-3xl border border-white/10 bg-white/[0.02] backdrop-blur-md shadow-2xl relative z-10">
+          {homepageClassesError ? (
+            <div className="py-12 px-6 text-center rounded-2xl border border-rose-500/30 bg-rose-500/10 text-rose-200 space-y-2">
+              <p className="font-sans text-sm font-bold text-white">Unable to Load Published Courses</p>
+              <p className="font-mono text-xs text-rose-300/80">{homepageClassesError}</p>
+            </div>
+          ) : homepageClasses.filter((cls) => cls.status === "Published").length === 0 ? (
+            <div className="py-14 px-6 text-center rounded-2xl border border-dashed border-white/10 bg-white/[0.01] text-white/50 space-y-2">
+              <BookOpen size={28} className="mx-auto text-emerald-400/60" />
+              <p className="font-sans text-sm font-bold text-white">No Published Courses Available Yet</p>
+              <p className="font-sans text-xs text-white/40 max-w-md mx-auto">
+                New academy courses will appear here automatically once published by the administrator.
+              </p>
+            </div>
+          ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-10">
 
             {homepageClasses
@@ -1045,6 +1061,7 @@ export default function LandingView({
               })}
 
           </div>
+          )}
 
         </div>
       </section>

@@ -22,6 +22,8 @@ interface AcademicTabProps {
   users?: AdminUser[];
   sessions?: any[];
   activeSubTab?: string;
+  isLoading?: boolean;
+  loadError?: string | null;
   onAddCourse: (course: any) => Promise<any> | void;
   onUpdateCourse: (id: string, course: any) => Promise<any> | void;
   onDeleteCourse: (id: string) => Promise<any> | void;
@@ -30,8 +32,8 @@ interface AcademicTabProps {
   onCancelSeason?: (id: string) => void;
   onUpdateEnrollmentPayment?: (id: string, payStatus: "Paid" | "Pending" | "Unpaid") => void;
   onUpdateEnrollmentStatus?: (id: string, status: "Enrolled" | "Completed" | "Dropped") => void;
-  onApproveRequest?: (id: string) => void;
-  onRejectRequest?: (id: string, notes?: string) => void;
+  onApproveRequest?: (id: string) => Promise<any> | void;
+  onRejectRequest?: (id: string, notes?: string) => Promise<any> | void;
   onAddSeason?: (season: any) => void;
   onReloadData?: () => void;
   showCustomToast?: (msg: string, type?: "success" | "info" | "warning") => void;
@@ -46,6 +48,8 @@ export default function AcademicTab({
   users = [],
   sessions = [],
   activeSubTab,
+  isLoading = false,
+  loadError = null,
   onAddCourse,
   onUpdateCourse,
   onDeleteCourse,
@@ -385,10 +389,6 @@ export default function AcademicTab({
     try {
       const res = await adminApi.togglePublishCourse(course.id, targetPub);
       if (res.success) {
-        onUpdateCourse(course.id, {
-          isPublished: targetPub,
-          status: targetPub ? "Published" : "Active"
-        });
         window.dispatchEvent(new CustomEvent("courses_updated"));
         showCustomToast?.(
           targetPub
@@ -397,10 +397,12 @@ export default function AcademicTab({
           "success"
         );
         if (onReloadData) onReloadData();
+      } else {
+        showCustomToast?.((res as any)?.error?.message || "Failed to update publish state.", "warning");
       }
     } catch (err: any) {
       console.error("Failed to toggle publish status:", err);
-      showCustomToast?.("Failed to update publish state.", "warning");
+      showCustomToast?.(err?.message || "Failed to update publish state.", "warning");
     } finally {
       setPublishingCourseId(null);
     }
@@ -535,7 +537,7 @@ export default function AcademicTab({
         showCustomToast?.(`Student removed from course roster.`, "success");
         if (selectedCourseId) loadSelectedCourseDetail(selectedCourseId);
       } else if (deleteModalState.type === "request") {
-        if (onRejectRequest) onRejectRequest(deleteModalState.id, "Rejected by administrator");
+        if (onRejectRequest) await onRejectRequest(deleteModalState.id, "Rejected by administrator");
         showCustomToast?.(`Course proposal rejected.`, "info");
       } else if (deleteModalState.type === "session") {
         await teacherApi.deleteSession(deleteModalState.id);
@@ -559,12 +561,11 @@ export default function AcademicTab({
       if (res.success) {
         window.dispatchEvent(new CustomEvent("courses_updated"));
         showCustomToast?.(`Course proposal "${title}" approved and published to landing page!`, "success");
-        if (onApproveRequest) onApproveRequest(reqId);
         if (onReloadData) onReloadData();
       }
     } catch (err: any) {
       console.error("Failed to approve course proposal:", err);
-      showCustomToast?.("Failed to approve course proposal.", "warning");
+      showCustomToast?.(err?.message || "Failed to approve course proposal.", "warning");
     }
   };
 
@@ -1091,7 +1092,31 @@ export default function AcademicTab({
                 </div>
               </div>
 
-              {filteredCourses.length === 0 ? (
+              {loadError ? (
+                <div className="p-8 rounded-3xl border border-rose-500/30 bg-rose-500/10 text-rose-200 flex flex-col items-center justify-center text-center space-y-3">
+                  <AlertCircle size={32} className="text-rose-400" />
+                  <h4 className="text-sm font-bold text-white">Failed to Load Courses from Database</h4>
+                  <p className="text-xs text-rose-300/90 max-w-md">{loadError}</p>
+                  {onReloadData && (
+                    <button
+                      type="button"
+                      onClick={onReloadData}
+                      className="px-4 py-2 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/40 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all"
+                    >
+                      <RefreshCw size={13} />
+                      <span>Retry Loading Courses</span>
+                    </button>
+                  )}
+                </div>
+              ) : isLoading && courses.length === 0 ? (
+                <div className="py-16 text-center border border-white/10 rounded-3xl bg-white/[0.01] text-zinc-400 space-y-3">
+                  <RefreshCw size={28} className="mx-auto text-indigo-400 animate-spin" />
+                  <h4 className="text-sm font-bold text-white">Loading Course Catalog...</h4>
+                  <p className="text-xs text-zinc-500 max-w-sm mx-auto">
+                    Retrieving course records from the database.
+                  </p>
+                </div>
+              ) : filteredCourses.length === 0 ? (
                 <div className="py-16 text-center border border-dashed border-white/10 rounded-3xl bg-white/[0.01] text-zinc-400 space-y-3">
                   <BookOpen size={32} className="mx-auto text-zinc-600" />
                   <h4 className="text-sm font-bold text-white">No Courses Found in Catalog</h4>
@@ -1484,6 +1509,13 @@ export default function AcademicTab({
                         <td className="py-3.5 text-right font-bold text-white/70">{en.status || "Enrolled"}</td>
                       </tr>
                     ))}
+                    {enrollments.length === 0 && (
+                      <tr>
+                        <td colSpan={6} className="py-10 text-center text-white/35 font-mono text-xs">
+                          No student course enrollments found in the database.
+                        </td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -2050,15 +2082,19 @@ export default function AcademicTab({
         isOpen={deleteModalState.isOpen}
         title={
           deleteModalState.type === "course"
-            ? "Permanently Delete Course"
+            ? "Delete Course from Catalog"
             : deleteModalState.type === "student"
             ? "Remove Student from Course"
             : deleteModalState.type === "session"
-            ? "Permanently Delete Class Session"
+            ? "Delete Class Session"
             : "Reject Teacher Proposal"
         }
         itemName={deleteModalState.name}
-        message="This action will delete the record from the database. Are you sure you want to proceed?"
+        message={
+          deleteModalState.type === "course"
+            ? "This course will be removed from the active catalog and unpublished from the landing page while preserving existing student enrollments, lessons, assignments, and exams. Are you sure you want to proceed?"
+            : "This action will remove the record from the database. Are you sure you want to proceed?"
+        }
         isDeleting={isDeletingItem}
         onConfirm={handleConfirmDelete}
         onClose={() => setDeleteModalState({ isOpen: false, type: "course", id: "", name: "" })}

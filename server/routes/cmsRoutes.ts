@@ -95,7 +95,7 @@ router.get("/", async (req: Request, res: Response) => {
             aboutMe: { ...DEFAULT_CMS_CONFIG.aboutMe, ...(parsed.aboutMe || {}) },
             skills: { ...DEFAULT_CMS_CONFIG.skills, ...(parsed.skills || {}) },
             projects: { ...DEFAULT_CMS_CONFIG.projects, ...(parsed.projects || {}) },
-            classes: publishedCourses.length > 0 ? publishedCourses : (Array.isArray(parsed.classes) && parsed.classes.length > 0 ? parsed.classes : DEFAULT_CMS_CONFIG.classes),
+            classes: publishedCourses,
             testimonials: { ...DEFAULT_CMS_CONFIG.testimonials, ...(parsed.testimonials || {}) },
             contact: { ...DEFAULT_CMS_CONFIG.contact, ...(parsed.contact || {}) },
             footer: { ...DEFAULT_CMS_CONFIG.footer, ...(parsed.footer || {}) }
@@ -194,19 +194,7 @@ router.get("/", async (req: Request, res: Response) => {
         })) : DEFAULT_CMS_CONFIG.projects.projects
       },
 
-      classes: publishedCourses.length > 0 ? publishedCourses : (classes.length > 0 ? classes.map(c => ({
-        id: c.id,
-        courseImage: c.course_image,
-        courseName: c.course_name,
-        instructor: c.instructor,
-        price: c.price,
-        description: c.description,
-        sessions: c.sessions,
-        status: c.status,
-        displayOrder: c.display_order,
-        tags: typeof c.tags_json === "string" ? JSON.parse(c.tags_json || "[]") : (c.tags_json || []),
-        syllabus: typeof c.syllabus_json === "string" ? JSON.parse(c.syllabus_json || "[]") : (c.syllabus_json || [])
-      })) : DEFAULT_CMS_CONFIG.classes),
+      classes: publishedCourses,
 
       classesHeader: DEFAULT_CMS_CONFIG.classesHeader,
 

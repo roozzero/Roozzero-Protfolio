@@ -10,7 +10,7 @@ import NormalUserDashboard from "./components/NormalUserDashboard";
 import StudentDashboard from "./components/StudentDashboard";
 import AdminDashboard from "./components/AdminDashboard";
 import TeacherDashboard from "./components/TeacherDashboard";
-import { loadCmsConfig, saveCmsConfig, DEFAULT_HOMEPAGE_CLASSES } from "./constants/defaultCms";
+import { loadCmsConfig, saveCmsConfig } from "./constants/defaultCms";
 import { CMSFullConfig } from "./types/cms";
 import { authApi, cmsApi, coursesApi } from "./lib/api";
 
@@ -69,7 +69,8 @@ export default function App() {
   const [cmsConfig, setCmsConfig] = useState<CMSFullConfig>(() => loadCmsConfig());
 
   // Dynamic Classes state synchronized with the Database & CMS Admin Dashboard
-  const [homepageClasses, setHomepageClasses] = useState<any[]>(DEFAULT_HOMEPAGE_CLASSES);
+  const [homepageClasses, setHomepageClasses] = useState<any[]>([]);
+  const [homepageClassesError, setHomepageClassesError] = useState<string | null>(null);
 
   const refreshLandingData = () => {
     cmsApi.getCms()
@@ -86,11 +87,17 @@ export default function App() {
     coursesApi.getAll()
       .then((res: any) => {
         if (res.success && Array.isArray(res.data)) {
+          setHomepageClassesError(null);
           setHomepageClasses(res.data);
+        } else {
+          setHomepageClassesError(res?.error?.message || "Failed to load published courses.");
+          setHomepageClasses([]);
         }
       })
       .catch((err) => {
-        console.warn("Courses server sync deferred, using default catalog:", err?.message || err);
+        console.warn("Courses server sync error:", err?.message || err);
+        setHomepageClassesError(err?.message || "Failed to load published courses from database.");
+        setHomepageClasses([]);
       });
   };
 
@@ -299,6 +306,7 @@ export default function App() {
         onOpenLoginModal={() => setIsLoginModalOpen(true)}
         cmsConfig={cmsConfig}
         homepageClasses={homepageClasses}
+        homepageClassesError={homepageClassesError}
         currentText={currentText}
       />
 
