@@ -3,7 +3,7 @@ import path from "path";
 import cors from "cors";
 import helmet from "helmet";
 import cookieParser from "cookie-parser";
-import { isDbConnected } from "./db/pool";
+import { isDbConnected, getDatabaseEngine, isMysql } from "./db/pool";
 import { requireAuth, requireRole } from "./middleware/auth";
 
 import authRoutes from "./routes/authRoutes";
@@ -84,10 +84,13 @@ export function createExpressApp() {
 
   // Health check endpoint
   app.get("/api/health", (req, res) => {
+    const engine = getDatabaseEngine();
     res.json({
       success: true,
       status: "ok",
       database: isDbConnected() ? "connected" : "disconnected",
+      engine,
+      mysqlActive: isMysql(),
       timestamp: new Date().toISOString()
     });
   });
@@ -95,10 +98,16 @@ export function createExpressApp() {
   // Sanitized DB status
   app.get("/api/db-status", (req, res) => {
     const isConn = isDbConnected();
+    const engine = getDatabaseEngine();
     res.json({
       success: true,
       connected: isConn,
-      mode: isConn ? "MySQL Database (Active)" : "Offline Standby Mode"
+      engine,
+      mode: !isConn
+        ? "Offline Standby Mode"
+        : engine === "mysql"
+        ? "MySQL Database (Active)"
+        : "Sandbox SQLite Engine (MySQL Unreachable)"
     });
   });
 

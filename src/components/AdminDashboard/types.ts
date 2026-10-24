@@ -13,6 +13,30 @@ export interface AdminUser {
   avatar?: string;
 }
 
+export interface AdminUserProfile {
+  id: string;
+  name: string;
+  username?: string | null;
+  email: string;
+  phone?: string | null;
+  role: "admin" | "teacher" | "student" | "user" | string;
+  roleId: number;
+  roleName: string;
+  status: "Active" | "Inactive" | "Suspended" | string;
+  avatarUrl?: string | null;
+  bio?: string | null;
+  department?: string | null;
+  titlePrefix?: string | null;
+  specialization?: string | null;
+  provider?: string | null;
+  joinedDate?: string | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+  lastLoginAt?: string | null;
+  enrolledCoursesCount?: number;
+  assignedCoursesCount?: number;
+}
+
 export interface DashboardStats {
   totalUsers: number;
   normalUsers: number;

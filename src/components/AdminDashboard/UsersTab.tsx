@@ -2,10 +2,12 @@ import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
   Users, UserPlus, Search, Shield, Filter, Key,
-  Trash2, CheckCircle2, XCircle, Mail, Phone, Calendar, UserCheck, UserCog, AlertCircle, ArrowLeftRight, RotateCcw
+  Trash2, CheckCircle2, XCircle, Mail, Phone, Calendar, UserCheck, UserCog, AlertCircle, ArrowLeftRight, RotateCcw,
+  Eye, Building2, BookOpen, Clock, Globe, FileText, RefreshCw
 } from "lucide-react";
-import { AdminUser } from "./types";
+import { AdminUser, AdminUserProfile } from "./types";
 import { Student, Course } from "../../types/teacher";
+import { adminApi } from "../../lib/api";
 import DeleteConfirmModal from "../common/DeleteConfirmModal";
 
 interface UsersTabProps {
@@ -76,6 +78,38 @@ export default function UsersTab({
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [showAddModal, setShowAddModal] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
+
+  // User Profile Viewer Modal state (Read-only)
+  const [viewingUserId, setViewingUserId] = useState<string | null>(null);
+  const [viewedProfile, setViewedProfile] = useState<AdminUserProfile | null>(null);
+  const [isLoadingProfile, setIsLoadingProfile] = useState(false);
+  const [profileError, setProfileError] = useState<string | null>(null);
+
+  const handleOpenProfileViewer = async (userId: string) => {
+    setViewingUserId(userId);
+    setViewedProfile(null);
+    setProfileError(null);
+    setIsLoadingProfile(true);
+    try {
+      const res = await adminApi.getUserProfile(userId);
+      if (res.success && res.data?.user) {
+        setViewedProfile(res.data.user);
+      } else {
+        setProfileError("User profile data is unavailable.");
+      }
+    } catch (err: any) {
+      setProfileError(err?.message || "Failed to load user profile from database.");
+    } finally {
+      setIsLoadingProfile(false);
+    }
+  };
+
+  const handleCloseProfileViewer = () => {
+    setViewingUserId(null);
+    setViewedProfile(null);
+    setProfileError(null);
+    setIsLoadingProfile(false);
+  };
 
   // Sync tab with external activeSubTab prop when changed
   useEffect(() => {
@@ -503,6 +537,15 @@ export default function UsersTab({
                       </td>
                       <td className="py-3 px-4 text-right">
                         <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            onClick={() => handleOpenProfileViewer(u.id)}
+                            className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-white/10 text-white/80 hover:text-white border border-white/10 transition-all cursor-pointer font-sans text-[11px] font-bold"
+                            title="View user profile"
+                          >
+                            <Eye size={12} className="text-emerald-400" />
+                            <span>View Profile</span>
+                          </button>
+
                           {isMasterAdmin ? (
                             <span className="text-[10px] text-purple-400/80 font-mono px-2 py-1 bg-purple-500/10 border border-purple-500/20 rounded-lg">
                               Protected
@@ -547,6 +590,248 @@ export default function UsersTab({
           </table>
         </div>
       </div>
+
+      {/* Read-Only User Profile Viewer Modal */}
+      <AnimatePresence>
+        {viewingUserId && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+            onClick={handleCloseProfileViewer}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-xl bg-[#090a0d] border border-white/10 rounded-2xl p-6 space-y-5 shadow-2xl text-left max-h-[90vh] overflow-y-auto scrollbar-thin"
+            >
+              {/* Modal Header */}
+              <div className="flex items-center justify-between border-b border-white/[0.08] pb-3.5">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
+                    <Eye size={16} />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-white leading-tight">
+                      User Profile Details
+                    </h3>
+                    <p className="text-[11px] text-white/40 font-mono">
+                      Read-only administrative inspection record
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleCloseProfileViewer}
+                  className="text-white/40 hover:text-white transition-colors cursor-pointer"
+                  title="Close profile viewer"
+                >
+                  <XCircle size={18} />
+                </button>
+              </div>
+
+              {/* Loading State */}
+              {isLoadingProfile && (
+                <div className="py-14 flex flex-col items-center justify-center gap-3 text-white/50">
+                  <RefreshCw size={22} className="text-emerald-400 animate-spin" />
+                  <p className="text-xs font-mono">Loading user profile from database...</p>
+                </div>
+              )}
+
+              {/* Error State */}
+              {!isLoadingProfile && profileError && (
+                <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs space-y-3">
+                  <div className="flex items-center gap-2">
+                    <AlertCircle size={16} className="shrink-0" />
+                    <span>{profileError}</span>
+                  </div>
+                  <div className="flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() => handleOpenProfileViewer(viewingUserId)}
+                      className="px-3 py-1.5 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-300 font-bold text-[11px] transition-colors cursor-pointer"
+                    >
+                      Retry
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Empty State */}
+              {!isLoadingProfile && !profileError && !viewedProfile && (
+                <div className="py-12 text-center text-white/30 text-xs font-mono">
+                  No profile details available for this user.
+                </div>
+              )}
+
+              {/* Profile Details Content */}
+              {!isLoadingProfile && !profileError && viewedProfile && (
+                <div className="space-y-5">
+                  {/* Top Identity Banner */}
+                  <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/[0.06] flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                    {viewedProfile.avatarUrl ? (
+                      <img
+                        src={viewedProfile.avatarUrl}
+                        alt={viewedProfile.name}
+                        className="w-16 h-16 rounded-full object-cover border border-white/15 shrink-0"
+                      />
+                    ) : (
+                      <div
+                        className={`w-16 h-16 rounded-full font-black text-xl flex items-center justify-center font-mono shrink-0 ${
+                          getUserRoleKey(viewedProfile) === "admin"
+                            ? "bg-purple-500/15 border border-purple-500/30 text-purple-400"
+                            : getUserRoleKey(viewedProfile) === "teacher"
+                            ? "bg-amber-500/15 border border-amber-500/30 text-amber-400"
+                            : getUserRoleKey(viewedProfile) === "student"
+                            ? "bg-emerald-500/15 border border-emerald-500/30 text-emerald-400"
+                            : "bg-blue-500/15 border border-blue-500/30 text-blue-400"
+                        }`}
+                      >
+                        {viewedProfile.name ? viewedProfile.name.charAt(0).toUpperCase() : "U"}
+                      </div>
+                    )}
+
+                    <div className="min-w-0 flex-1 space-y-1.5">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h4 className="text-base font-black text-white truncate">
+                          {viewedProfile.titlePrefix ? `${viewedProfile.titlePrefix} ` : ""}
+                          {viewedProfile.name}
+                        </h4>
+                        {getRoleBadge(viewedProfile as unknown as AdminUser)}
+                        <span
+                          className={`px-2 py-0.5 rounded-full text-[9px] font-mono font-bold ${
+                            viewedProfile.status === "Active"
+                              ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                              : "bg-red-500/10 text-red-400 border border-red-500/20"
+                          }`}
+                        >
+                          {viewedProfile.status || "Active"}
+                        </span>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-3 text-[11px] font-mono text-white/50">
+                        <span>ID: {viewedProfile.id}</span>
+                        {viewedProfile.username && <span>@{viewedProfile.username}</span>}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Primary Information Grid */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                    <div className="p-3.5 rounded-xl bg-white/[0.015] border border-white/[0.05] space-y-1">
+                      <span className="text-[10px] font-mono uppercase text-white/40 flex items-center gap-1.5">
+                        <Mail size={11} className="text-emerald-400" />
+                        Email Address
+                      </span>
+                      <p className="font-mono text-white break-all">{viewedProfile.email}</p>
+                    </div>
+
+                    <div className="p-3.5 rounded-xl bg-white/[0.015] border border-white/[0.05] space-y-1">
+                      <span className="text-[10px] font-mono uppercase text-white/40 flex items-center gap-1.5">
+                        <Phone size={11} className="text-emerald-400" />
+                        Phone Number
+                      </span>
+                      <p className="font-mono text-white">
+                        {viewedProfile.phone ? viewedProfile.phone : <span className="text-white/30 italic">Not provided</span>}
+                      </p>
+                    </div>
+
+                    <div className="p-3.5 rounded-xl bg-white/[0.015] border border-white/[0.05] space-y-1">
+                      <span className="text-[10px] font-mono uppercase text-white/40 flex items-center gap-1.5">
+                        <Calendar size={11} className="text-emerald-400" />
+                        Registration Date
+                      </span>
+                      <p className="font-mono text-white">
+                        {viewedProfile.joinedDate || (viewedProfile.createdAt ? viewedProfile.createdAt.split("T")[0] : null) || (
+                          <span className="text-white/30 italic">Not available</span>
+                        )}
+                      </p>
+                    </div>
+
+                    <div className="p-3.5 rounded-xl bg-white/[0.015] border border-white/[0.05] space-y-1">
+                      <span className="text-[10px] font-mono uppercase text-white/40 flex items-center gap-1.5">
+                        <Clock size={11} className="text-emerald-400" />
+                        Last Login
+                      </span>
+                      <p className="font-mono text-white">
+                        {viewedProfile.lastLoginAt ? (
+                          viewedProfile.lastLoginAt.replace("T", " ").slice(0, 19)
+                        ) : (
+                          <span className="text-white/30 italic">No recorded login</span>
+                        )}
+                      </p>
+                    </div>
+
+                    <div className="p-3.5 rounded-xl bg-white/[0.015] border border-white/[0.05] space-y-1">
+                      <span className="text-[10px] font-mono uppercase text-white/40 flex items-center gap-1.5">
+                        <Building2 size={11} className="text-emerald-400" />
+                        Department
+                      </span>
+                      <p className="text-white">
+                        {viewedProfile.department ? viewedProfile.department : <span className="text-white/30 italic">Not provided</span>}
+                      </p>
+                    </div>
+
+                    <div className="p-3.5 rounded-xl bg-white/[0.015] border border-white/[0.05] space-y-1">
+                      <span className="text-[10px] font-mono uppercase text-white/40 flex items-center gap-1.5">
+                        <BookOpen size={11} className="text-emerald-400" />
+                        Specialization
+                      </span>
+                      <p className="text-white">
+                        {viewedProfile.specialization ? viewedProfile.specialization : <span className="text-white/30 italic">Not provided</span>}
+                      </p>
+                    </div>
+
+                    <div className="p-3.5 rounded-xl bg-white/[0.015] border border-white/[0.05] space-y-1">
+                      <span className="text-[10px] font-mono uppercase text-white/40 flex items-center gap-1.5">
+                        <Globe size={11} className="text-emerald-400" />
+                        Authentication Provider
+                      </span>
+                      <p className="font-mono text-white capitalize">
+                        {viewedProfile.provider || "local"}
+                      </p>
+                    </div>
+
+                    <div className="p-3.5 rounded-xl bg-white/[0.015] border border-white/[0.05] space-y-1">
+                      <span className="text-[10px] font-mono uppercase text-white/40 flex items-center gap-1.5">
+                        <BookOpen size={11} className="text-emerald-400" />
+                        {getUserRoleKey(viewedProfile) === "teacher" ? "Assigned Courses" : "Enrolled Courses"}
+                      </span>
+                      <p className="font-mono text-white font-bold">
+                        {getUserRoleKey(viewedProfile) === "teacher"
+                          ? `${viewedProfile.assignedCoursesCount ?? 0} course(s)`
+                          : `${viewedProfile.enrolledCoursesCount ?? 0} course(s)`}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Biography / Notes Section */}
+                  <div className="p-3.5 rounded-xl bg-white/[0.015] border border-white/[0.05] space-y-1.5 text-xs">
+                    <span className="text-[10px] font-mono uppercase text-white/40 flex items-center gap-1.5">
+                      <FileText size={11} className="text-emerald-400" />
+                      Biography
+                    </span>
+                    <p className="text-white/80 leading-relaxed">
+                      {viewedProfile.bio ? viewedProfile.bio : <span className="text-white/30 italic">No biography provided.</span>}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Modal Footer (Close Action Only - Read-Only View) */}
+              <div className="pt-3 border-t border-white/[0.08] flex items-center justify-end">
+                <button
+                  type="button"
+                  onClick={handleCloseProfileViewer}
+                  className="px-5 py-2 rounded-xl bg-white/[0.06] hover:bg-white/10 border border-white/10 text-white text-xs font-bold transition-all cursor-pointer"
+                >
+                  Close
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Role Change Modal */}
       <AnimatePresence>

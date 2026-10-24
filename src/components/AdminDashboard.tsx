@@ -148,7 +148,7 @@ export default function AdminDashboard({ onLogout, onGoHome }: AdminDashboardPro
     setIsUsersLoading(true);
     try {
       const [
-        dashRes, usersRes, enrollmentsRes, certsRes, annsRes, seasonsRes, logsRes, coursesRes, studentsRes, sessionsRes, assignmentsRes, discussionsRes, resourcesRes
+        dashRes, usersRes, enrollmentsRes, certsRes, annsRes, seasonsRes, logsRes, coursesRes, studentsRes, sessionsRes, assignmentsRes, discussionsRes, resourcesRes, examsRes
       ] = await Promise.all([
         adminApi.getDashboard().catch(() => ({ success: false, data: null })),
         adminApi.getUsers({ limit: 100 }).catch(() => ({ success: false, data: { users: [] } })),
@@ -162,7 +162,8 @@ export default function AdminDashboard({ onLogout, onGoHome }: AdminDashboardPro
         teacherApi.getSessions().catch(() => ({ success: false, data: [] })),
         teacherApi.getAssignments().catch(() => ({ success: false, data: [] })),
         teacherApi.getDiscussions().catch(() => ({ success: false, data: [] })),
-        teacherApi.getResources().catch(() => ({ success: false, data: [] }))
+        teacherApi.getResources().catch(() => ({ success: false, data: [] })),
+        adminApi.getExams().catch(() => ({ success: false, data: [] }))
       ]);
 
       if (dashRes.success && dashRes.data) {
@@ -216,6 +217,9 @@ export default function AdminDashboard({ onLogout, onGoHome }: AdminDashboardPro
       }
       if (resourcesRes.success && Array.isArray(resourcesRes.data)) {
         setResources(resourcesRes.data);
+      }
+      if (examsRes.success && Array.isArray(examsRes.data)) {
+        setExams(examsRes.data);
       }
 
       await refreshUnreadMessages();
@@ -326,26 +330,14 @@ export default function AdminDashboard({ onLogout, onGoHome }: AdminDashboardPro
     dispatchAlert(`Session ${id} status updated to ${status}.`);
   };
 
-  const handleApproveRequest = (id: string) => {
-    setCourseRequests(prev => prev.map(r => r.id === id ? { ...r, status: "Approved" } : r));
-    const req = courseRequests.find(r => r.id === id);
-    if (req && req.type === "New Course Season") {
-      // Auto-deploy season
-      const newSeason: CourseSeason = {
-        id: "season-" + Date.now(),
-        name: req.title,
-        courseId: "react-adv",
-        courseTitle: "Advanced React & Architecture",
-        startDate: "2026-09-01",
-        endDate: "2026-11-30",
-        maxCapacity: 20,
-        registrationStatus: "Open",
-        notes: req.details,
-        status: "Active"
-      };
-      setCourseSeasons(prev => [newSeason, ...prev]);
+  const handleApproveRequest = async (id: string) => {
+    try {
+      await adminApi.approveCourseProposal(id, true);
+      dispatchAlert(`Approved course proposal: ${id}`);
+      await loadAdminData();
+    } catch (err: any) {
+      dispatchAlert(err?.message || `Failed to approve proposal ${id}.`);
     }
-    dispatchAlert(`Approved Instructor Request: ${req?.title}`);
   };
 
   const handleRejectRequest = (id: string, notes?: string) => {
@@ -353,29 +345,50 @@ export default function AdminDashboard({ onLogout, onGoHome }: AdminDashboardPro
     dispatchAlert(`Rejected or returned request ${id}.`);
   };
 
-  const handleApproveCertificate = (id: string) => {
-    setCertificates(prev => prev.map(c => c.id === id ? { ...c, status: "Approved", issueDate: new Date().toISOString().split("T")[0] } : c));
-    dispatchAlert(`Digital Certificate ${id} approved & published.`);
+  const handleApproveCertificate = async (id: string) => {
+    try {
+      await adminApi.updateCertificateStatus(id, "Approved");
+      setCertificates(prev => prev.map(c => c.id === id ? { ...c, status: "Approved", issueDate: new Date().toISOString().split("T")[0] } : c));
+      dispatchAlert(`Digital Certificate ${id} approved & published.`);
+    } catch (err: any) {
+      dispatchAlert(err?.message || "Failed to approve certificate.");
+    }
   };
 
-  const handleRejectCertificate = (id: string, notes?: string) => {
-    setCertificates(prev => prev.map(c => c.id === id ? { ...c, status: "Rejected", notes } : c));
-    dispatchAlert(`Certificate ${id} rejected.`);
+  const handleRejectCertificate = async (id: string, notes?: string) => {
+    try {
+      await adminApi.updateCertificateStatus(id, "Rejected");
+      setCertificates(prev => prev.map(c => c.id === id ? { ...c, status: "Rejected", notes } : c));
+      dispatchAlert(`Certificate ${id} rejected.`);
+    } catch (err: any) {
+      dispatchAlert(err?.message || "Failed to reject certificate.");
+    }
   };
 
-  const handleAddUser = (user: Partial<AdminUser>) => {
-    setUsers(prev => [...prev, {
-      ...user,
-      id: "usr-" + Date.now(),
-      joinedDate: new Date().toISOString().split("T")[0],
-      lastLogin: "Never"
-    } as AdminUser]);
-    dispatchAlert(`Created Academy User: ${user.name}`);
+  const handleAddUser = async (user: Partial<AdminUser>) => {
+    try {
+      await adminApi.createUser({
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        role: user.role || "user",
+        password: "Academy@123"
+      });
+      dispatchAlert(`Created Academy User: ${user.name}`);
+      await loadAdminData();
+    } catch (err: any) {
+      dispatchAlert(err?.message || "Failed to create user account.");
+    }
   };
 
-  const handleUpdateUserStatus = (id: string, status: "Active" | "Suspended" | "Pending") => {
-    setUsers(prev => prev.map(u => u.id === id ? { ...u, status } : u));
-    dispatchAlert(`Account ${id} set to ${status}.`);
+  const handleUpdateUserStatus = async (id: string, status: "Active" | "Suspended" | "Pending") => {
+    try {
+      await adminApi.updateUser(id, { status });
+      setUsers(prev => prev.map(u => u.id === id ? { ...u, status } : u));
+      dispatchAlert(`Account ${id} set to ${status}.`);
+    } catch (err: any) {
+      dispatchAlert(err?.message || "Failed to update user status.");
+    }
   };
 
   const handleDeleteUser = async (id: string) => {
@@ -805,10 +818,23 @@ export default function AdminDashboard({ onLogout, onGoHome }: AdminDashboardPro
                 <ExamsView 
                   exams={exams}
                   courses={courses}
-                  onAddExam={(exam) => setExams(prev => [exam, ...prev])}
-                  onPublishExamResults={(id) => {
-                    setExams(prev => prev.map(e => e.id === id ? { ...e, status: "Published", passRate: 92, avgScore: 78 } : e));
-                    dispatchAlert(`Results for Examination ${id} published.`);
+                  onAddExam={async (exam) => {
+                    try {
+                      await adminApi.createExam(exam);
+                      await loadAdminData();
+                      dispatchAlert(`Created exam: ${exam.title}`);
+                    } catch (err: any) {
+                      dispatchAlert(err?.message || "Failed to create exam.");
+                    }
+                  }}
+                  onPublishExamResults={async (id) => {
+                    try {
+                      await adminApi.publishExamResults(id);
+                      await loadAdminData();
+                      dispatchAlert(`Results for Examination ${id} published.`);
+                    } catch (err: any) {
+                      dispatchAlert(err?.message || "Failed to publish exam results.");
+                    }
                   }}
                 />
               )}
@@ -890,10 +916,20 @@ export default function AdminDashboard({ onLogout, onGoHome }: AdminDashboardPro
                   discussions={discussions}
                   resources={resources}
                   activeSubTab={activeSubTab}
-                  onAddExam={(exam) => setExams(prev => [exam, ...prev])}
-                  onPublishExamResults={(id) => {
-                    setExams(prev => prev.map(e => e.id === id ? { ...e, status: "Published", passRate: 92, avgScore: 78 } : e));
-                    dispatchAlert(`Results for Examination ${id} published.`);
+                  onAddExam={async (exam) => {
+                    try {
+                      await adminApi.createExam(exam);
+                      await loadAdminData();
+                    } catch {}
+                  }}
+                  onPublishExamResults={async (id) => {
+                    try {
+                      await adminApi.publishExamResults(id);
+                      await loadAdminData();
+                      dispatchAlert(`Results for Examination ${id} published.`);
+                    } catch (err: any) {
+                      dispatchAlert(err?.message || "Failed to publish exam results.");
+                    }
                   }}
                   onApproveCertificate={handleApproveCertificate}
                   onRejectCertificate={handleRejectCertificate}

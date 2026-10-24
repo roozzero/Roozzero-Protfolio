@@ -1,8 +1,8 @@
-import React, { useState } from "react";
-import { motion } from "motion/react";
-import { Shield, Key, Lock, AlertTriangle, CheckCircle2, RefreshCw } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { Shield } from "lucide-react";
 import { AdminUser } from "./types";
 import { Student } from "../../types/teacher";
+import { adminApi } from "../../lib/api";
 
 interface SecurityTabProps {
   users: AdminUser[];
@@ -12,12 +12,29 @@ interface SecurityTabProps {
 
 export default function SecurityTab({
   users,
-  students,
   showCustomToast,
 }: SecurityTabProps) {
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(true);
   const [sessionTimeout, setSessionTimeout] = useState("30");
   const [enforcePasswordPolicy, setEnforcePasswordPolicy] = useState(true);
+  const [failedAttemptsCount, setFailedAttemptsCount] = useState<number>(0);
+
+  useEffect(() => {
+    let mounted = true;
+    adminApi
+      .getLoginHistory()
+      .then((res) => {
+        if (!mounted || !res.success || !Array.isArray(res.data)) return;
+        const failed = res.data.filter(
+          (entry: any) => String(entry.status || "").toLowerCase() === "failed"
+        ).length;
+        setFailedAttemptsCount(failed);
+      })
+      .catch(() => {});
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const handleSaveSecurity = () => {
     showCustomToast("Security policies updated successfully.");
@@ -98,13 +115,13 @@ export default function SecurityTab({
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.06] backdrop-blur-md">
           <p className="text-[10px] font-mono text-white/40 uppercase">Total User Accounts</p>
-          <p className="text-2xl font-bold text-white mt-1">{users.length + students.length}</p>
+          <p className="text-2xl font-bold text-white mt-1">{users.length}</p>
           <span className="text-[10px] text-emerald-400 font-mono">All encrypted</span>
         </div>
         <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.06] backdrop-blur-md">
           <p className="text-[10px] font-mono text-white/40 uppercase">Failed Login Attempts</p>
-          <p className="text-2xl font-bold text-emerald-400 mt-1">0</p>
-          <span className="text-[10px] text-white/40 font-mono">Past 24 hours</span>
+          <p className="text-2xl font-bold text-emerald-400 mt-1">{failedAttemptsCount}</p>
+          <span className="text-[10px] text-white/40 font-mono">Recorded in login history</span>
         </div>
         <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.06] backdrop-blur-md">
           <p className="text-[10px] font-mono text-white/40 uppercase">Firewall Status</p>

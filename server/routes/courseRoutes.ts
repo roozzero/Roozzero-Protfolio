@@ -12,10 +12,6 @@ const router = Router();
 // -------------------------------------------------------------
 router.get("/", async (req: Request, res: Response) => {
   try {
-    if (!isDbConnected()) {
-      return res.json({ success: true, data: DEFAULT_HOMEPAGE_CLASSES });
-    }
-
     const [rows]: [any[], any] = await query(`
       SELECT c.*, cat.name as category_name, u.name as teacher_name
       FROM courses c
@@ -74,7 +70,11 @@ router.get("/", async (req: Request, res: Response) => {
 
     return res.json({ success: true, data: courses });
   } catch (err: any) {
-    return res.json({ success: true, data: DEFAULT_HOMEPAGE_CLASSES });
+    console.error("[Get Published Courses Error]:", err);
+    return res.status(500).json({
+      success: false,
+      error: { code: "SERVER_ERROR", message: "Failed to retrieve published courses from database." }
+    });
   }
 });
 

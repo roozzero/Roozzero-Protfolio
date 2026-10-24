@@ -198,7 +198,6 @@ export function getDbPool(): mysql.Pool {
 }
 
 export async function testConnection(): Promise<boolean> {
-  // Only attempt remote/daemon MySQL if DB_HOST is explicitly provided or port 3306 responds quickly
   try {
     const p = getMysqlPool();
     const conn = await p.getConnection();
@@ -207,12 +206,20 @@ export async function testConnection(): Promise<boolean> {
     conn.release();
     console.log(`[Database] MySQL connection established on ${process.env.DB_HOST || "127.0.0.1"}:${process.env.DB_PORT || "3306"} (${process.env.DB_NAME || "roozzero_academy"})`);
     return true;
-  } catch {
+  } catch (mysqlErr: any) {
+    const strictMysql = process.env.STRICT_MYSQL === "true" || process.env.NODE_ENV === "production" || Boolean(process.env.DB_HOST);
+    if (strictMysql && process.env.ALLOW_SQLITE_FALLBACK !== "true") {
+      isConnected = false;
+      usingSqlite = false;
+      console.error(`[Database Error] MySQL connection failed (${process.env.DB_HOST || "127.0.0.1"}:${process.env.DB_PORT || "3306"}): ${mysqlErr.message}`);
+      return false;
+    }
+
     try {
+      console.warn(`[Database Notice] MySQL daemon unreachable (${mysqlErr.message}). Using local sandbox SQL engine.`);
       getSqliteDb();
       usingSqlite = true;
       isConnected = true;
-      console.log("[Database] Embedded SQL engine (database/roozzero_academy.sqlite) initialized and connected.");
       return true;
     } catch (sqliteErr: any) {
       isConnected = false;
@@ -227,7 +234,12 @@ export function isDbConnected(): boolean {
 }
 
 export function isMysql(): boolean {
-  return true;
+  return isConnected && !usingSqlite;
+}
+
+export function getDatabaseEngine(): "mysql" | "sqlite" | "disconnected" {
+  if (!isConnected) return "disconnected";
+  return usingSqlite ? "sqlite" : "mysql";
 }
 
 export async function query<T = any>(sql: string, params?: any[] | Record<string, any>): Promise<[T, any]> {

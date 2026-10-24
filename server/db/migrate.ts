@@ -35,8 +35,14 @@ export async function runMigrationsAndSeeds() {
           try {
             await pool.query(statement);
           } catch (stmtErr: any) {
-            if (!stmtErr.message.includes("already exists") && !stmtErr.message.includes("Duplicate column")) {
-              console.warn(`[Migration Warning ${file}]: ${stmtErr.message}`);
+            const msg = String(stmtErr.message || "");
+            if (
+              !msg.includes("already exists") &&
+              !msg.includes("Duplicate column") &&
+              !msg.includes("duplicate column name") &&
+              !msg.includes("Duplicate key name")
+            ) {
+              console.warn(`[Migration Warning ${file}]: ${msg}`);
             }
           }
         }
@@ -144,36 +150,19 @@ export async function runMigrationsAndSeeds() {
       }
     }
 
-    // Seed Teacher User
-    const [teacherCheck]: [any[], any] = await pool.query("SELECT * FROM users WHERE id = 'teacher-1' OR email = 'teacher@academy.local' OR role_id = 2 LIMIT 1");
-    if (teacherCheck.length === 0) {
-      try {
-        console.log("[Migration] Seeding initial Teacher user...");
-        const hashedTeacherPassword = await bcrypt.hash("Teacher@123", 10);
-        await pool.query(`
-          INSERT INTO users (id, username, email, password_hash, role_id, name, title_prefix, department, specialization, bio, status)
-          VALUES ('teacher-1', 'sarah_vance', 'teacher@academy.local', ?, 2, 'Dr. Sarah Vance', 'Dr.', 'Computer Science', 'Frontend & Reactive Systems', 'Lead instructor specializing in React architectures and secure frontend applications.', 'Active')
-          ON DUPLICATE KEY UPDATE name=VALUES(name)
-        `, [hashedTeacherPassword]);
-      } catch (err: any) {
-        console.warn("[Migration Warning Teacher]:", err.message);
-      }
-    }
-
-    // Seed Student User
-    const [studentCheck]: [any[], any] = await pool.query("SELECT * FROM users WHERE id = 'stu-1' OR email = 'student@academy.local' LIMIT 1");
-    if (studentCheck.length === 0) {
-      try {
-        console.log("[Migration] Seeding initial Student user...");
-        const hashedStudentPassword = await bcrypt.hash("Student@123", 10);
-        await pool.query(`
-          INSERT INTO users (id, username, email, password_hash, role_id, name, status)
-          VALUES ('stu-1', 'courtney_henry', 'student@academy.local', ?, 3, 'Courtney Henry', 'Active')
-          ON DUPLICATE KEY UPDATE name=VALUES(name)
-        `, [hashedStudentPassword]);
-      } catch (err: any) {
-        console.warn("[Migration Warning Student]:", err.message);
-      }
+    // Remove unintended demo users (@academy.local) and recalculate real course enrollment counts
+    try {
+      await pool.query(
+        "UPDATE courses SET teacher_id = NULL WHERE teacher_id IN ('teacher-1', 'stu-1', 'stu-2')"
+      );
+      await pool.query(
+        "DELETE FROM users WHERE id IN ('teacher-1', 'stu-1', 'stu-2') OR email IN ('teacher@academy.local', 'student@academy.local', 'courtney.henry@academy.local', 'cody.fisher@academy.local')"
+      );
+      await pool.query(
+        "UPDATE courses SET students_count = (SELECT COUNT(*) FROM enrollments e WHERE e.course_id = courses.id)"
+      );
+    } catch (cleanupErr: any) {
+      console.warn("[Migration Cleanup Notice]:", cleanupErr.message);
     }
 
     // Seed Course Categories
@@ -192,38 +181,6 @@ export async function runMigrationsAndSeeds() {
         INSERT IGNORE INTO course_categories (id, name, slug, description) VALUES
         (4, 'UI/UX & Design Systems', 'ui-ux-design', 'Interface design, design systems, and user experience')
       `).catch(() => {});
-    }
-
-    // Seed Courses from DEFAULT_HOMEPAGE_CLASSES
-    const [courseCount]: [any[], any] = await pool.query("SELECT COUNT(*) as count FROM courses");
-    if (courseCount[0].count === 0) {
-      console.log("[Migration] Seeding default academy courses...");
-      for (let i = 0; i < DEFAULT_HOMEPAGE_CLASSES.length; i++) {
-        const cls = DEFAULT_HOMEPAGE_CLASSES[i];
-        const categoryId = cls.id.includes("sec") || cls.id.includes("hunt") || cls.id.includes("bg") ? 2 : cls.id === "wordpress" ? 3 : 1;
-        await pool.query(`
-          INSERT INTO courses (id, title, code, slug, description, short_description, price, category_id, teacher_id, students_count, sessions_count, status, image, is_published, approval_status, syllabus_json, start_date, end_date)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'teacher-1', 24, ?, 'Published', ?, 1, 'Approved', ?, '2026-06-01', '2026-09-30')
-        `, [
-          cls.id,
-          cls.courseName,
-          `CRS-${100 + i}`,
-          cls.id,
-          cls.description || cls.shortDescription,
-          cls.shortDescription,
-          cls.price || "Free",
-          categoryId,
-          cls.sessions || 16,
-          cls.courseImage,
-          JSON.stringify((cls as any).syllabus || [])
-        ]);
-
-        // Insert first batch/season for each course
-        await pool.query(`
-          INSERT INTO course_seasons (id, name, course_id, start_date, end_date, max_capacity, registration_status, status)
-          VALUES (?, ?, ?, '2026-06-01', '2026-09-30', 30, 'Open', 'Active')
-        `, [`season-${cls.id}`, `${cls.courseName} - Summer 2026 Batch`, cls.id]);
-      }
     }
 
     // Seed Default CMS Settings

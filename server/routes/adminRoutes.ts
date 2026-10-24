@@ -154,6 +154,125 @@ router.get("/users", async (req: Request, res: Response) => {
 });
 
 // -------------------------------------------------------------
+// GET /api/admin/users/:id (Admin-Only User Profile Viewer)
+// -------------------------------------------------------------
+router.get("/users/:id", requireAuth, requireRole("Administrator"), async (req: Request, res: Response) => {
+  try {
+    const rawId = req.params.id;
+    const userId = typeof rawId === "string" ? rawId.trim() : "";
+
+    if (!userId || userId.length > 100 || !/^[a-zA-Z0-9._-]+$/.test(userId)) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: "VALIDATION_ERROR",
+          message: "A valid user identifier is required."
+        }
+      });
+    }
+
+    const [rows]: [any[], any] = await query(
+      `SELECT
+         u.id,
+         u.username,
+         u.email,
+         u.role_id,
+         u.provider,
+         u.name,
+         u.avatar_url,
+         u.bio,
+         u.phone,
+         u.department,
+         u.title_prefix,
+         u.specialization,
+         u.status,
+         u.created_at,
+         u.updated_at,
+         r.name as role_name,
+         (SELECT COUNT(*) FROM enrollments e WHERE e.student_id = u.id) as enrolled_courses_count,
+         (SELECT COUNT(*) FROM courses c WHERE c.teacher_id = u.id AND c.deleted_at IS NULL) as assigned_courses_count,
+         (SELECT lh.attempt_time FROM login_history lh WHERE lh.user_id = u.id AND lh.status = 'Success' ORDER BY lh.attempt_time DESC LIMIT 1) as last_login_at
+       FROM users u
+       INNER JOIN roles r ON u.role_id = r.id
+       WHERE u.id = ? AND u.deleted_at IS NULL
+       LIMIT 1`,
+      [userId]
+    );
+
+    if (!rows || rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: {
+          code: "USER_NOT_FOUND",
+          message: "The requested user profile could not be found."
+        }
+      });
+    }
+
+    const r = rows[0];
+    const lowerRole = (r.role_name || "").toLowerCase();
+    const roleMapped =
+      lowerRole === "administrator"
+        ? "admin"
+        : lowerRole === "teacher"
+        ? "teacher"
+        : lowerRole === "student"
+        ? "student"
+        : "user";
+
+    const formatDateStr = (val: any): string | null => {
+      if (!val) return null;
+      if (val instanceof Date) return val.toISOString();
+      return String(val);
+    };
+
+    const createdAtIso = formatDateStr(r.created_at);
+    const updatedAtIso = formatDateStr(r.updated_at);
+    const lastLoginIso = formatDateStr(r.last_login_at);
+
+    const profileData = {
+      id: r.id,
+      name: r.name,
+      username: r.username || null,
+      email: r.email,
+      phone: r.phone || null,
+      role: roleMapped,
+      roleId: Number(r.role_id),
+      roleName: r.role_name,
+      status: r.status || "Active",
+      avatarUrl: r.avatar_url || null,
+      bio: r.bio || null,
+      department: r.department || null,
+      titlePrefix: r.title_prefix || null,
+      specialization: r.specialization || null,
+      provider: r.provider || "local",
+      joinedDate: createdAtIso ? createdAtIso.split(" ")[0].split("T")[0] : null,
+      createdAt: createdAtIso,
+      updatedAt: updatedAtIso,
+      lastLoginAt: lastLoginIso,
+      enrolledCoursesCount: Number(r.enrolled_courses_count || 0),
+      assignedCoursesCount: Number(r.assigned_courses_count || 0)
+    };
+
+    return res.json({
+      success: true,
+      data: {
+        user: profileData
+      }
+    });
+  } catch (err: any) {
+    console.error("[Admin Get User Profile Error]:", err);
+    return res.status(500).json({
+      success: false,
+      error: {
+        code: "SERVER_ERROR",
+        message: "Failed to retrieve user profile."
+      }
+    });
+  }
+});
+
+// -------------------------------------------------------------
 // PATCH /api/admin/users/:userId/role
 // -------------------------------------------------------------
 router.patch("/users/:userId/role", async (req: Request, res: Response) => {
@@ -274,8 +393,16 @@ router.post("/users", async (req: Request, res: Response) => {
       return res.status(409).json({ success: false, error: { code: "EMAIL_EXISTS", message: "Email already exists." } });
     }
 
-    const roleId = role === "admin" || role === "Administrator" ? 1 : role === "teacher" || role === "Teacher" ? 2 : 3;
-    const prefix = roleId === 1 ? "admin" : roleId === 2 ? "teacher" : "stu";
+    const lowerRole = (role || "user").toString().toLowerCase().trim();
+    const roleId =
+      lowerRole === "admin" || lowerRole === "administrator"
+        ? 1
+        : lowerRole === "teacher"
+        ? 2
+        : lowerRole === "student"
+        ? 3
+        : 4;
+    const prefix = roleId === 1 ? "admin" : roleId === 2 ? "teacher" : roleId === 3 ? "stu" : "usr";
     const newId = `${prefix}-${crypto.randomBytes(6).toString("hex")}`;
     const username = emailNorm.split("@")[0].replace(/[^a-zA-Z0-9_]/g, "_");
 

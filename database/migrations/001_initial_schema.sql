@@ -592,15 +592,53 @@ CREATE TABLE IF NOT EXISTS `announcements` (
 
 CREATE TABLE IF NOT EXISTS `notifications` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
-  `user_id` VARCHAR(50) NOT NULL,
-  `type` VARCHAR(50) NOT NULL,
+  `user_id` VARCHAR(50) DEFAULT NULL,
+  `recipient_id` VARCHAR(50) DEFAULT NULL,
+  `type` VARCHAR(50) NOT NULL DEFAULT 'System',
   `title` VARCHAR(255) NOT NULL,
   `message` TEXT NOT NULL,
   `link` VARCHAR(255) DEFAULT NULL,
   `is_read` TINYINT(1) DEFAULT 0,
+  `read_status` TINYINT(1) DEFAULT 0,
+  `priority` VARCHAR(20) DEFAULT 'Medium',
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
-  INDEX `idx_notifications_user` (`user_id`, `is_read`)
+  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX `idx_notifications_user` (`user_id`, `is_read`),
+  INDEX `idx_notifications_recipient` (`recipient_id`, `read_status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `exams` (
+  `id` VARCHAR(50) PRIMARY KEY,
+  `course_id` VARCHAR(50) NOT NULL,
+  `teacher_id` VARCHAR(50) DEFAULT NULL,
+  `title` VARCHAR(255) NOT NULL,
+  `description` TEXT,
+  `duration_minutes` INT DEFAULT 60,
+  `due_date` DATE DEFAULT NULL,
+  `max_points` INT DEFAULT 100,
+  `pass_percentage` INT DEFAULT 60,
+  `status` VARCHAR(50) DEFAULT 'Published',
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted_at` TIMESTAMP NULL DEFAULT NULL,
+  FOREIGN KEY (`course_id`) REFERENCES `courses` (`id`) ON DELETE CASCADE,
+  INDEX `idx_exams_course` (`course_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `exam_submissions` (
+  `id` VARCHAR(50) PRIMARY KEY,
+  `exam_id` VARCHAR(50) NOT NULL,
+  `student_id` VARCHAR(50) NOT NULL,
+  `score` INT DEFAULT 0,
+  `max_points` INT DEFAULT 100,
+  `passed` TINYINT(1) DEFAULT 0,
+  `status` VARCHAR(50) DEFAULT 'Submitted',
+  `submitted_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `graded_at` TIMESTAMP NULL DEFAULT NULL,
+  FOREIGN KEY (`exam_id`) REFERENCES `exams` (`id`) ON DELETE CASCADE,
+  FOREIGN KEY (`student_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  INDEX `idx_exam_sub_exam` (`exam_id`),
+  INDEX `idx_exam_sub_student` (`student_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `calendar_events` (

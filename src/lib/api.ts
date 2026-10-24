@@ -536,6 +536,10 @@ export const adminApi = {
     return request<{ success: boolean; data: { users: any[]; total: number; totalPages: number } }>(`/admin/users?${query.toString()}`);
   },
 
+  async getUserProfile(id: string) {
+    return request<{ success: boolean; data: { user: any } }>(`/admin/users/${encodeURIComponent(id)}`);
+  },
+
   async updateUserRole(id: string, role: "User" | "Student" | "Teacher" | string) {
     return request<{ success: boolean; data: any }>(`/admin/users/${id}/role`, {
       method: "PATCH",

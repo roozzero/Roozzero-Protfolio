@@ -94,14 +94,6 @@ interface Ripple {
   y: number;
 }
 
-const FALLBACK_COURSE_SYLLABUS: Record<string, Array<{ id: string; title: string; description: string; duration?: string }>> = {
-  lumin: DEFAULT_HOMEPAGE_CLASSES.find((c) => c.id === "lumin")?.syllabus || [],
-  apex: DEFAULT_HOMEPAGE_CLASSES.find((c) => c.id === "apex")?.syllabus || [],
-  bgbunty: DEFAULT_HOMEPAGE_CLASSES.find((c) => c.id === "bgbunty")?.syllabus || [],
-  hunt: DEFAULT_HOMEPAGE_CLASSES.find((c) => c.id === "hunt")?.syllabus || [],
-  wordpress: DEFAULT_HOMEPAGE_CLASSES.find((c) => c.id === "wordpress")?.syllabus || [],
-};
-
 function getCourseSyllabus(cls: any): Array<{ id: string; title: string; description: string; duration?: string }> {
   if (Array.isArray(cls?.syllabus) && cls.syllabus.length > 0) {
     return cls.syllabus;
@@ -109,15 +101,7 @@ function getCourseSyllabus(cls: any): Array<{ id: string; title: string; descrip
   if (Array.isArray(cls?.syllabusJson) && cls.syllabusJson.length > 0) {
     return cls.syllabusJson;
   }
-  if (cls?.id && FALLBACK_COURSE_SYLLABUS[cls.id]) {
-    return FALLBACK_COURSE_SYLLABUS[cls.id];
-  }
-  return [
-    { id: "m1", title: "Module 1: Foundations & Architecture Setup", description: "Core concepts, project initialization, design tokens, and environment configuration.", duration: "45 mins" },
-    { id: "m2", title: "Module 2: Interactive Components & State Flow", description: "Building reusable components, state handling, and interactive layouts.", duration: "60 mins" },
-    { id: "m3", title: "Module 3: Visual Polish & Performance Engineering", description: "Optimization techniques, animation polish, and edge case resilience.", duration: "50 mins" },
-    { id: "m4", title: "Module 4: Production Deployment & Best Practices", description: "Testing, CI/CD pipeline integration, production builds, and documentation.", duration: "40 mins" }
-  ];
+  return [];
 }
 
 interface LandingViewProps {
