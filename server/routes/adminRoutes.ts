@@ -1,7 +1,7 @@
 import { Router, Request, Response } from "express";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
-import { query } from "../db/pool";
+import { query, getDbPool } from "../db/pool";
 import { requireAuth, requireRole } from "../middleware/auth";
 import { uploadProfile, uploadMedia } from "../middleware/upload";
 
@@ -472,30 +472,151 @@ router.put("/users/:id", async (req: Request, res: Response) => {
 });
 
 // -------------------------------------------------------------
-// DELETE /api/admin/users/:id
+// DELETE /api/admin/users/:id (Permanent Deletion with Transaction)
 // -------------------------------------------------------------
 router.delete("/users/:id", async (req: Request, res: Response) => {
   try {
-    const targetUserId = req.params.id;
+    const targetUserId = typeof req.params.id === "string" ? req.params.id.trim() : "";
+    if (!targetUserId) {
+      return res.status(400).json({
+        success: false,
+        error: { code: "VALIDATION_ERROR", message: "A valid user ID is required." }
+      });
+    }
+
     const canonicalAdminEmail = (process.env.ADMIN_EMAIL || "admin@roozzero.info").trim().toLowerCase();
     if (targetUserId === "admin-1" || targetUserId === req.user!.id) {
-      return res.status(403).json({ success: false, error: { code: "PROTECTED_ADMIN", message: "The Master Administrator account cannot be deleted." } });
+      return res.status(403).json({
+        success: false,
+        error: {
+          code: "PROTECTED_ADMIN",
+          message:
+            targetUserId === req.user!.id
+              ? "You cannot delete your own currently authenticated administrator account."
+              : "The Master Administrator account cannot be deleted."
+        }
+      });
     }
 
-    // Also check if target is an Administrator by role
-    const [targetRows]: [any[], any] = await query("SELECT u.id, u.email, r.name as role_name FROM users u JOIN roles r ON r.id = u.role_id WHERE u.id = ? LIMIT 1", [targetUserId]);
-    if (targetRows.length > 0) {
-      if (targetRows[0].role_name === "Administrator" || targetRows[0].email.toLowerCase() === canonicalAdminEmail) {
-        return res.status(403).json({ success: false, error: { code: "PROTECTED_ADMIN", message: "Administrator accounts cannot be deleted." } });
+    // Verify target user exists and check role/email protections
+    const [targetRows]: [any[], any] = await query(
+      `SELECT u.id, u.name, u.email, u.role_id, r.name as role_name
+       FROM users u
+       LEFT JOIN roles r ON r.id = u.role_id
+       WHERE u.id = ?
+       LIMIT 1`,
+      [targetUserId]
+    );
+
+    if (!targetRows || targetRows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: { code: "USER_NOT_FOUND", message: "User account not found." }
+      });
+    }
+
+    const targetUser = targetRows[0];
+    const roleNameLower = String(targetUser.role_name || "").toLowerCase();
+    const emailLower = String(targetUser.email || "").trim().toLowerCase();
+
+    if (
+      targetUser.id === "admin-1" ||
+      Number(targetUser.role_id) === 1 ||
+      roleNameLower === "administrator" ||
+      roleNameLower === "admin" ||
+      emailLower === canonicalAdminEmail
+    ) {
+      return res.status(403).json({
+        success: false,
+        error: { code: "PROTECTED_ADMIN", message: "Administrator accounts cannot be deleted." }
+      });
+    }
+
+    const pool = getDbPool();
+    const conn = await pool.getConnection();
+    try {
+      await conn.beginTransaction();
+
+      // Preserve grading audit history and system activity logs by nullifying historical user references
+      await conn.query("UPDATE submission_history SET changed_by = NULL WHERE changed_by = ?", [targetUserId]);
+      await conn.query("UPDATE activity_logs SET user_id = NULL WHERE user_id = ?", [targetUserId]);
+
+      // Detach user from courses where they were assigned as instructor or proposer (preserves courses)
+      await conn.query("UPDATE courses SET teacher_id = NULL WHERE teacher_id = ?", [targetUserId]);
+      await conn.query("UPDATE courses SET requested_by = NULL WHERE requested_by = ?", [targetUserId]);
+
+      // Delete active session tokens within the transaction
+      await conn.query("DELETE FROM sessions_tokens WHERE user_id = ?", [targetUserId]);
+
+      // Permanently delete the user record from the users table (cascades to enrollments, submissions, etc. via FK rules)
+      const [deleteResult]: [any, any] = await conn.query("DELETE FROM users WHERE id = ?", [targetUserId]);
+      const affectedRows = Number(deleteResult?.affectedRows ?? 0);
+
+      if (affectedRows === 0) {
+        await conn.rollback();
+        return res.status(404).json({
+          success: false,
+          error: {
+            code: "USER_NOT_FOUND",
+            message: "User account could not be deleted because no matching record was found."
+          }
+        });
       }
+
+      // Recalculate course student counts after enrollment removal
+      await conn.query(
+        "UPDATE courses SET students_count = (SELECT COUNT(*) FROM enrollments e INNER JOIN users u ON e.student_id = u.id WHERE e.course_id = courses.id AND u.deleted_at IS NULL)"
+      );
+
+      // Record administrative deletion audit entry
+      await conn.query(
+        "INSERT INTO activity_logs (user_id, action, details) VALUES (?, 'Delete User', ?)",
+        [
+          req.user!.id,
+          `Permanently deleted user ${targetUser.name} (${targetUser.email}, ID: ${targetUserId})`
+        ]
+      );
+
+      await conn.commit();
+
+      return res.json({
+        success: true,
+        data: {
+          id: targetUserId,
+          name: targetUser.name,
+          email: targetUser.email,
+          deleted: true
+        },
+        message: `User "${targetUser.name}" (${targetUser.email}) was permanently deleted.`
+      });
+    } catch (txErr: any) {
+      await conn.rollback();
+      const errCode = String(txErr?.code || "");
+      const errMsg = String(txErr?.message || "");
+      if (
+        errCode === "ER_ROW_IS_REFERENCED_2" ||
+        errCode === "ER_ROW_IS_REFERENCED" ||
+        txErr?.errno === 1451 ||
+        /foreign key constraint/i.test(errMsg)
+      ) {
+        return res.status(409).json({
+          success: false,
+          error: {
+            code: "FOREIGN_KEY_CONSTRAINT",
+            message: "Cannot delete this user because they are still referenced by protected records in the database."
+          }
+        });
+      }
+      throw txErr;
+    } finally {
+      conn.release();
     }
-
-    await query("UPDATE users SET deleted_at = NOW(), status = 'Inactive' WHERE id = ?", [targetUserId]);
-    await query("DELETE FROM sessions_tokens WHERE user_id = ?", [targetUserId]);
-
-    return res.json({ success: true, message: "User deleted successfully." });
   } catch (err: any) {
-    return res.status(500).json({ success: false, error: { code: "SERVER_ERROR", message: err.message } });
+    console.error("[Admin Delete User Error]:", err);
+    return res.status(500).json({
+      success: false,
+      error: { code: "SERVER_ERROR", message: err.message || "Failed to delete user account." }
+    });
   }
 });
 

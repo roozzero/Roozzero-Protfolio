@@ -36,11 +36,14 @@ export async function runMigrationsAndSeeds() {
             await pool.query(statement);
           } catch (stmtErr: any) {
             const msg = String(stmtErr.message || "");
+            const lowerMsg = msg.toLowerCase();
             if (
-              !msg.includes("already exists") &&
-              !msg.includes("Duplicate column") &&
-              !msg.includes("duplicate column name") &&
-              !msg.includes("Duplicate key name")
+              !lowerMsg.includes("already exists") &&
+              !lowerMsg.includes("duplicate column") &&
+              !lowerMsg.includes("duplicate key") &&
+              !lowerMsg.includes("duplicate foreign key") &&
+              !lowerMsg.includes("can't drop") &&
+              !lowerMsg.includes("check that column/key exists")
             ) {
               console.warn(`[Migration Warning ${file}]: ${msg}`);
             }
@@ -55,6 +58,37 @@ export async function runMigrationsAndSeeds() {
       await pool.query("ALTER TABLE `login_history` MODIFY COLUMN `user_id` VARCHAR(50) DEFAULT NULL");
     } catch {
       // Ignore if table does not exist yet or already altered
+    }
+
+    // Ensure submission_history.changed_by is nullable and uses ON DELETE SET NULL so permanent user deletion preserves grading history
+    try {
+      const [fkRows]: [any[], any] = await pool.query(`
+        SELECT kcu.CONSTRAINT_NAME, rc.DELETE_RULE
+        FROM information_schema.KEY_COLUMN_USAGE kcu
+        INNER JOIN information_schema.REFERENTIAL_CONSTRAINTS rc
+          ON kcu.CONSTRAINT_SCHEMA = rc.CONSTRAINT_SCHEMA
+         AND kcu.CONSTRAINT_NAME = rc.CONSTRAINT_NAME
+        WHERE kcu.TABLE_SCHEMA = DATABASE()
+          AND kcu.TABLE_NAME = 'submission_history'
+          AND kcu.COLUMN_NAME = 'changed_by'
+          AND kcu.REFERENCED_TABLE_NAME = 'users'
+      `);
+      let hasSetNullFk = false;
+      for (const fk of fkRows || []) {
+        if (String(fk.DELETE_RULE).toUpperCase() === "SET NULL") {
+          hasSetNullFk = true;
+        } else if (fk.CONSTRAINT_NAME) {
+          await pool.query(`ALTER TABLE \`submission_history\` DROP FOREIGN KEY \`${fk.CONSTRAINT_NAME}\``);
+        }
+      }
+      await pool.query("ALTER TABLE `submission_history` MODIFY COLUMN `changed_by` VARCHAR(50) DEFAULT NULL");
+      if (!hasSetNullFk) {
+        await pool.query(
+          "ALTER TABLE `submission_history` ADD CONSTRAINT `fk_submission_history_changed_by` FOREIGN KEY (`changed_by`) REFERENCES `users` (`id`) ON DELETE SET NULL"
+        );
+      }
+    } catch {
+      // Ignore in fallback mode or if table does not exist yet
     }
 
     // Seed Roles (RBAC: Administrator, Teacher, Student, User)

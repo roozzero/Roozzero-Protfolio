@@ -413,14 +413,19 @@ export default function AdminDashboard({ onLogout, onGoHome }: AdminDashboardPro
   };
 
   const handleDeleteUser = async (id: string) => {
-    setUsers(prev => prev.filter(u => u.id !== id));
     try {
-      await adminApi.deleteUser(id);
-      dispatchAlert(`User account ${id} permanently deleted from database.`);
+      const res = await adminApi.deleteUser(id);
+      if (!res?.success) {
+        throw new Error((res as any)?.error?.message || "Failed to delete user account.");
+      }
+      setUsers(prev => prev.filter(u => u.id !== id));
+      setStudents(prev => prev.filter(s => s.id !== id));
+      dispatchAlert(res.message || `User account ${id} permanently deleted from database.`);
       await loadAdminData();
     } catch (err: any) {
       console.error("Failed to delete user via API:", err);
-      dispatchAlert(err.message || "Failed to delete user account.");
+      dispatchAlert(err?.message || "Failed to delete user account.");
+      throw err;
     }
   };
 

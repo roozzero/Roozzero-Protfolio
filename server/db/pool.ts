@@ -157,6 +157,19 @@ const adapterPoolProxy = {
   query: (sql: string, params?: any) => query(sql, params),
   execute: (sql: string, params?: any) => execute(sql, params),
   getConnection: async () => ({
+    beginTransaction: async () => {
+      getSqliteDb().exec("BEGIN TRANSACTION;");
+    },
+    commit: async () => {
+      getSqliteDb().exec("COMMIT;");
+    },
+    rollback: async () => {
+      try {
+        getSqliteDb().exec("ROLLBACK;");
+      } catch {
+        // Ignore if no transaction is active
+      }
+    },
     query: (sql: string, params?: any) => query(sql, params),
     execute: (sql: string, params?: any) => execute(sql, params),
     release: () => {}

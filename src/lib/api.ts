@@ -566,7 +566,11 @@ export const adminApi = {
   },
 
   async deleteUser(id: string) {
-    return request<{ success: boolean }>(`/admin/users/${id}`, {
+    return request<{
+      success: boolean;
+      message?: string;
+      data?: { id: string; name?: string; email?: string; deleted?: boolean };
+    }>(`/admin/users/${encodeURIComponent(id)}`, {
       method: "DELETE"
     });
   },

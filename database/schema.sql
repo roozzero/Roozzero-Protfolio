@@ -479,11 +479,11 @@ CREATE TABLE `submission_history` (
   `submission_id` VARCHAR(50) NOT NULL,
   `grade` INT DEFAULT NULL,
   `feedback` TEXT,
-  `changed_by` VARCHAR(50) NOT NULL, -- user_id of grader
+  `changed_by` VARCHAR(50) DEFAULT NULL, -- user_id of grader (nullable to preserve audit history if user is deleted)
   `changed_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   `notes` VARCHAR(255) DEFAULT NULL,
   FOREIGN KEY (`submission_id`) REFERENCES `assignment_submissions` (`id`) ON DELETE CASCADE,
-  FOREIGN KEY (`changed_by`) REFERENCES `users` (`id`) ON DELETE RESTRICT
+  FOREIGN KEY (`changed_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 

@@ -18,7 +18,7 @@ interface UsersTabProps {
   onAddUser?: (user: Partial<AdminUser>) => void;
   onUpdateUserStatus?: (id: string, status: string) => void;
   onResetPassword?: (id: string) => void;
-  onDeleteUser?: (id: string) => void;
+  onDeleteUser?: (id: string) => Promise<void> | void;
   onAddStudent?: (student: Partial<Student>) => void;
   onUpdateUserRole: (id: string, newRole: "User" | "Student" | "Teacher" | "Administrator") => Promise<void>;
   isLoading?: boolean;
@@ -78,6 +78,7 @@ export default function UsersTab({
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [showAddModal, setShowAddModal] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
+  const [isDeletingUser, setIsDeletingUser] = useState(false);
 
   // User Profile Viewer Modal state (Read-only)
   const [viewingUserId, setViewingUserId] = useState<string | null>(null);
@@ -1027,15 +1028,31 @@ export default function UsersTab({
         isOpen={!!deleteTarget}
         title="Delete User Account"
         itemName={deleteTarget?.name || "User Account"}
-        message={`Are you sure you want to permanently delete the user account "${deleteTarget?.name}"? All associated credentials and enrollment records will be removed from the database.`}
+        message={`Are you sure you want to permanently delete "${deleteTarget?.name}" from the database? This action cannot be undone. Active sessions, credentials, and student enrollment/submission records will be permanently removed, while courses and grading audit history will be preserved.`}
         confirmLabel="Permanently Delete User"
-        onConfirm={() => {
-          if (deleteTarget && onDeleteUser) {
-            onDeleteUser(deleteTarget.id);
+        isDeleting={isDeletingUser}
+        onConfirm={async () => {
+          if (deleteTarget && onDeleteUser && !isDeletingUser) {
+            const targetId = deleteTarget.id;
+            setIsDeletingUser(true);
+            try {
+              await onDeleteUser(targetId);
+              if (viewingUserId === targetId) {
+                handleCloseProfileViewer();
+              }
+            } catch {
+              // Error notification is handled by onDeleteUser in AdminDashboard
+            } finally {
+              setIsDeletingUser(false);
+              setDeleteTarget(null);
+            }
+          }
+        }}
+        onClose={() => {
+          if (!isDeletingUser) {
             setDeleteTarget(null);
           }
         }}
-        onClose={() => setDeleteTarget(null)}
       />
     </div>
   );
