@@ -98,13 +98,18 @@ router.get("/resources/:id", requireAuth, async (req: Request, res: Response) =>
     }
 
     // Log download count
-    await query("INSERT INTO resource_downloads (resource_id, user_id) VALUES (?, ?)", [resId, userId]);
+    await query("INSERT INTO resource_downloads (resource_id, user_id) VALUES (?, ?)", [resId, userId]).catch(() => {});
 
-    if (!resource.file_path) {
-      return res.status(404).json({ success: false, error: { code: "NO_FILE", message: "Resource file has no physical asset." } });
+    const resolvedTarget = resource.file_path || resource.external_url || resource.file_url;
+    if (!resolvedTarget) {
+      return res.status(404).json({ success: false, error: { code: "NO_FILE", message: "Resource file has no physical asset or link." } });
     }
 
-    const safeRelPath = resource.file_path.replace(/^\/uploads\//, "");
+    if (/^https?:\/\//i.test(String(resolvedTarget))) {
+      return res.redirect(String(resolvedTarget));
+    }
+
+    const safeRelPath = String(resolvedTarget).replace(/^\/uploads\//, "");
     const absolutePath = path.resolve(UPLOAD_ROOT, safeRelPath);
 
     if (!absolutePath.startsWith(UPLOAD_ROOT) || !fs.existsSync(absolutePath)) {

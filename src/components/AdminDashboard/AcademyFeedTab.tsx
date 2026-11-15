@@ -10,14 +10,24 @@ import DeleteConfirmModal from "../common/DeleteConfirmModal";
 
 interface AcademyFeedTabProps {
   courses: any[];
+  initialSubTab?: string;
   showCustomToast?: (msg: string, type?: "success" | "info" | "warning") => void;
 }
 
 export default function AcademyFeedTab({
   courses,
+  initialSubTab,
   showCustomToast
 }: AcademyFeedTabProps) {
-  const [activeSubTab, setActiveSubTab] = useState<"all" | "announcements" | "events">("all");
+  const [activeSubTab, setActiveSubTab] = useState<"all" | "announcements" | "events">(
+    initialSubTab === "announcements" || initialSubTab === "events" ? initialSubTab : "all"
+  );
+
+  useEffect(() => {
+    if (initialSubTab === "announcements" || initialSubTab === "events" || initialSubTab === "all") {
+      setActiveSubTab(initialSubTab);
+    }
+  }, [initialSubTab]);
   const [searchTerm, setSearchTerm] = useState("");
   const [announcements, setAnnouncements] = useState<any[]>([]);
   const [activityLogs, setActivityLogs] = useState<any[]>([]);

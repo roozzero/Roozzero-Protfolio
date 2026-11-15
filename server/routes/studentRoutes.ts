@@ -392,7 +392,8 @@ router.get("/assignments", async (req: Request, res: Response) => {
   try {
     const studentId = req.user!.id;
     const [assignments]: [any[], any] = await query(`
-      SELECT a.id, a.course_id, a.title, a.description, a.publish_date, a.due_date, a.max_points, a.status,
+      SELECT a.id, a.course_id, a.title, a.description, a.instructions, a.publish_date, a.due_date, a.max_points, a.status,
+             a.attachment_url, a.attachment_name,
              c.title as course_title,
              sub.id as submission_id, sub.submitted_at, sub.github_url, sub.status as submission_status, sub.grade, sub.feedback,
              sub.submitted_file_name, sub.submitted_file_path, sub.corrected_file_name, sub.corrected_file_path
@@ -409,11 +410,14 @@ router.get("/assignments", async (req: Request, res: Response) => {
       courseId: a.course_id,
       courseTitle: a.course_title,
       title: a.title,
-      description: a.description,
-      publishDate: a.publish_date ? a.publish_date.toISOString().split("T")[0] : "",
-      dueDate: a.due_date ? a.due_date.toISOString().split("T")[0] : "",
+      description: a.description || "",
+      instructions: a.instructions || "",
+      publishDate: a.publish_date ? (a.publish_date instanceof Date ? a.publish_date.toISOString().split("T")[0] : String(a.publish_date).split("T")[0]) : "",
+      dueDate: a.due_date ? (a.due_date instanceof Date ? a.due_date.toISOString().split("T")[0] : String(a.due_date).split("T")[0]) : "",
       maxPoints: a.max_points,
       status: a.status,
+      attachmentUrl: a.attachment_url || null,
+      attachmentName: a.attachment_name || null,
       mySubmission: a.submission_id ? {
         id: a.submission_id,
         submittedAt: a.submitted_at,
@@ -588,26 +592,30 @@ router.get("/resources", async (req: Request, res: Response) => {
   try {
     const studentId = req.user!.id;
     const [rows]: [any[], any] = await query(`
-      SELECT r.id, r.title, r.description, r.course_id, r.file_type, r.file_size, r.uploaded_at, r.file_path,
+      SELECT r.id, r.title, r.description, r.course_id, r.file_type, r.file_size, r.uploaded_at, r.file_path, r.external_url, r.file_url,
              c.title as course_title
       FROM resources r
       INNER JOIN enrollments e ON r.course_id = e.course_id
       INNER JOIN courses c ON r.course_id = c.id
       WHERE e.student_id = ? AND r.visibility = 'Visible' AND r.deleted_at IS NULL
-      ORDER BY r.uploaded_at DESC
+      ORDER BY r.uploaded_at DESC, r.created_at DESC
     `, [studentId]);
 
-    const formatted = rows.map(r => ({
-      id: r.id,
-      title: r.title,
-      description: r.description,
-      courseId: r.course_id,
-      courseTitle: r.course_title,
-      fileType: r.file_type,
-      fileSize: r.file_size,
-      uploadedAt: r.uploaded_at ? r.uploaded_at.toISOString().split("T")[0] : "",
-      downloadUrl: `/api/files/resources/${r.id}`
-    }));
+    const formatted = rows.map(r => {
+      const extUrl = r.external_url || (r.file_url && /^https?:\/\//i.test(r.file_url) ? r.file_url : null);
+      return {
+        id: r.id,
+        title: r.title,
+        description: r.description || "",
+        courseId: r.course_id,
+        courseTitle: r.course_title,
+        fileType: r.file_type || "file",
+        fileSize: r.file_size || "",
+        uploadedAt: r.uploaded_at ? (r.uploaded_at instanceof Date ? r.uploaded_at.toISOString().split("T")[0] : String(r.uploaded_at).split("T")[0]) : "",
+        externalUrl: extUrl,
+        downloadUrl: extUrl || `/api/files/resources/${r.id}`
+      };
+    });
 
     return res.json({ success: true, data: formatted });
   } catch (err: any) {
@@ -641,15 +649,18 @@ router.get("/discussions", async (req: Request, res: Response) => {
         courseId: thread.course_id,
         courseTitle: thread.course_title,
         studentName: thread.student_name,
+        authorRole: thread.author_role || "Student",
         title: thread.title,
         text: thread.text,
         time: thread.time || "Recent",
+        createdAt: thread.created_at,
         status: thread.status,
         replies: replies.map(r => ({
           id: r.id,
           sender: r.sender_name,
           role: r.role,
           time: r.time,
+          createdAt: r.created_at,
           text: r.text
         }))
       });
@@ -676,8 +687,8 @@ router.post("/discussions", async (req: Request, res: Response) => {
 
     const threadId = `disc-${crypto.randomBytes(8).toString("hex")}`;
     await query(
-      `INSERT INTO discussion_threads (id, course_id, student_id, student_name, title, text, time, status)
-       VALUES (?, ?, ?, ?, ?, ?, 'Just now', 'New')`,
+      `INSERT INTO discussion_threads (id, course_id, student_id, student_name, author_role, title, text, time, status)
+       VALUES (?, ?, ?, ?, 'Student', ?, ?, 'Just now', 'New')`,
       [threadId, courseId, studentId, studentName, title, text]
     );
 
@@ -687,6 +698,7 @@ router.post("/discussions", async (req: Request, res: Response) => {
         id: threadId,
         courseId,
         studentName,
+        authorRole: "Student",
         title,
         text,
         time: "Just now",
@@ -710,18 +722,26 @@ router.post("/discussions/:id/replies", async (req: Request, res: Response) => {
     const role = req.user!.roleName;
     const { text } = req.body;
 
-    if (!text) {
+    if (!text || !String(text).trim()) {
       return res.status(400).json({ success: false, error: { code: "VALIDATION_ERROR", message: "Reply text is required." } });
+    }
+
+    const [tRows]: [any[], any] = await query("SELECT status FROM discussion_threads WHERE id = ? AND deleted_at IS NULL", [threadId]);
+    if (tRows.length === 0) {
+      return res.status(404).json({ success: false, error: { code: "NOT_FOUND", message: "Discussion thread not found." } });
+    }
+    if (tRows[0].status === "Closed") {
+      return res.status(400).json({ success: false, error: { code: "THREAD_CLOSED", message: "This discussion thread has been closed." } });
     }
 
     const replyId = `rep-${crypto.randomBytes(8).toString("hex")}`;
     await query(
       `INSERT INTO discussion_replies (id, thread_id, sender_id, sender_name, role, time, text)
        VALUES (?, ?, ?, ?, ?, 'Just now', ?)`,
-      [replyId, threadId, senderId, senderName, role, text]
+      [replyId, threadId, senderId, senderName, role, String(text).trim()]
     );
 
-    await query("UPDATE discussion_threads SET status = 'Replied' WHERE id = ?", [threadId]);
+    await query("UPDATE discussion_threads SET status = 'Replied' WHERE id = ? AND status != 'Closed'", [threadId]);
 
     return res.status(201).json({
       success: true,
@@ -730,7 +750,98 @@ router.post("/discussions/:id/replies", async (req: Request, res: Response) => {
         sender: senderName,
         role,
         time: "Just now",
-        text
+        text: String(text).trim()
+      }
+    });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: { code: "SERVER_ERROR", message: err.message } });
+  }
+});
+
+// -------------------------------------------------------------
+// GET /api/student/courses/:id/feedback (Enrolled student course feedback)
+// -------------------------------------------------------------
+router.get("/courses/:id/feedback", async (req: Request, res: Response) => {
+  try {
+    const studentId = req.user!.id;
+    const courseId = req.params.id;
+    const isAdmin = req.user!.roleName === "Administrator";
+
+    if (!isAdmin) {
+      const [enr]: [any[], any] = await query(
+        "SELECT id FROM enrollments WHERE student_id = ? AND course_id = ?",
+        [studentId, courseId]
+      );
+      if (enr.length === 0) {
+        return res.status(403).json({ success: false, error: { code: "FORBIDDEN", message: "You must be enrolled in this course to view feedback." } });
+      }
+    }
+
+    const [rows]: [any[], any] = await query(`
+      SELECT id, course_id as courseId, author_id as authorId, author_name as authorName, author_role as authorRole,
+             feedback_type as feedbackType, title, content, rating, visibility, created_at as createdAt, updated_at as updatedAt
+      FROM course_feedback
+      WHERE course_id = ? AND deleted_at IS NULL
+        AND (feedback_type = 'student' OR (feedback_type = 'admin' AND visibility = 'Visible'))
+      ORDER BY created_at DESC
+    `, [courseId]);
+
+    return res.json({
+      success: true,
+      data: {
+        adminFeedback: rows.filter((r: any) => r.feedbackType === "admin"),
+        studentFeedback: rows.filter((r: any) => r.feedbackType === "student")
+      }
+    });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: { code: "SERVER_ERROR", message: err.message } });
+  }
+});
+
+// -------------------------------------------------------------
+// POST /api/student/courses/:id/feedback (Student submits course feedback)
+// -------------------------------------------------------------
+router.post("/courses/:id/feedback", async (req: Request, res: Response) => {
+  try {
+    const studentId = req.user!.id;
+    const studentName = req.user!.name || "Student";
+    const courseId = req.params.id;
+    const { title, content, rating } = req.body;
+
+    if (!content || !String(content).trim()) {
+      return res.status(400).json({ success: false, error: { code: "VALIDATION_ERROR", message: "Feedback message is required." } });
+    }
+
+    const [enr]: [any[], any] = await query(
+      "SELECT id FROM enrollments WHERE student_id = ? AND course_id = ?",
+      [studentId, courseId]
+    );
+    if (enr.length === 0) {
+      return res.status(403).json({ success: false, error: { code: "FORBIDDEN", message: "Only enrolled students can submit feedback for this course." } });
+    }
+
+    const feedbackId = `fb-${Date.now()}-${crypto.randomBytes(3).toString("hex")}`;
+    const parsedRating = rating !== undefined && rating !== null && rating !== "" ? Math.min(5, Math.max(1, Number(rating))) : null;
+
+    await query(`
+      INSERT INTO course_feedback (id, course_id, author_id, author_name, author_role, feedback_type, title, content, rating, visibility)
+      VALUES (?, ?, ?, ?, 'Student', 'student', ?, ?, ?, 'Visible')
+    `, [feedbackId, courseId, studentId, studentName, title ? String(title).trim() : null, String(content).trim(), parsedRating]);
+
+    return res.status(201).json({
+      success: true,
+      data: {
+        id: feedbackId,
+        courseId,
+        authorId: studentId,
+        authorName: studentName,
+        authorRole: "Student",
+        feedbackType: "student",
+        title: title ? String(title).trim() : null,
+        content: String(content).trim(),
+        rating: parsedRating,
+        visibility: "Visible",
+        createdAt: new Date().toISOString()
       }
     });
   } catch (err: any) {

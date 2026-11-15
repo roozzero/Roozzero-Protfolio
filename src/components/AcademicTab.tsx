@@ -4,7 +4,8 @@ import {
   Plus, Edit2, Trash2, Check, X, Shield, BookOpen, Clock, Users, Award, 
   Copy, CheckCircle2, AlertTriangle, Layers, Calendar, Search, RefreshCw,
   Globe, Eye, EyeOff, ArrowLeft, UserPlus, UserMinus, Sparkles, Filter,
-  Crop, Upload, ExternalLink, ListChecks, DollarSign, CheckCircle, Video, AlertCircle
+  Crop, Upload, ExternalLink, ListChecks, DollarSign, CheckCircle, Video, AlertCircle,
+  FileText, Download, MessageSquare, Send, Lock, Unlock, Star, Link2, Paperclip, ClipboardList, MessageCircle
 } from "lucide-react";
 import { CourseRequest, Enrollment, AdminUser } from "./AdminDashboard/types";
 import { Course, Student } from "../types/teacher";
@@ -79,22 +80,27 @@ export default function AcademicTab({
     return rId === 2 || rName === "teacher" || rName === "instructor";
   });
 
-  // Selected Course for deep management (students, syllabus, sessions workspace)
+  // Selected Course for deep management (students, syllabus, sessions, resources, assignments, discussions, feedback workspace)
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
   const [courseDetailData, setCourseDetailData] = useState<any | null>(null);
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
-  const [courseWorkspaceTab, setCourseWorkspaceTab] = useState<"overview" | "students" | "syllabus" | "sessions">("overview");
+  const [detailError, setDetailError] = useState<string | null>(null);
+  const [courseWorkspaceTab, setCourseWorkspaceTab] = useState<
+    "overview" | "students" | "syllabus" | "sessions" | "resources" | "assignments" | "discussions" | "feedback"
+  >("overview");
 
   // Load course full details when selected
   const loadSelectedCourseDetail = async (courseId: string) => {
     setIsLoadingDetail(true);
+    setDetailError(null);
     try {
       const res = await adminApi.getCourseDetail(courseId);
       if (res.success && res.data) {
         setCourseDetailData(res.data);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Failed to load course details", err);
+      setDetailError(err?.message || "Failed to load course workspace data from database.");
     } finally {
       setIsLoadingDetail(false);
     }
@@ -181,7 +187,7 @@ export default function AcademicTab({
   // Delete Confirmation Modal State
   const [deleteModalState, setDeleteModalState] = useState<{
     isOpen: boolean;
-    type: "course" | "student" | "request" | "session";
+    type: "course" | "student" | "request" | "session" | "resource" | "assignment" | "discussion" | "feedback";
     id: string;
     name: string;
     studentId?: string;
@@ -192,6 +198,65 @@ export default function AcademicTab({
     name: ""
   });
   const [isDeletingItem, setIsDeletingItem] = useState(false);
+
+  // Course Resource Modal State
+  const [showResourceModal, setShowResourceModal] = useState(false);
+  const [editingResourceId, setEditingResourceId] = useState<string | null>(null);
+  const [resourceModalAlert, setResourceModalAlert] = useState<{ type: "error" | "success"; text: string } | null>(null);
+  const [isSavingResource, setIsSavingResource] = useState(false);
+  const [resourceFile, setResourceFile] = useState<File | null>(null);
+  const [resourceForm, setResourceForm] = useState({
+    title: "",
+    description: "",
+    externalUrl: "",
+    fileType: "pdf",
+    visibility: "Visible"
+  });
+
+  // Course Assignment Modal State
+  const [showAssignmentModal, setShowAssignmentModal] = useState(false);
+  const [editingAssignmentId, setEditingAssignmentId] = useState<string | null>(null);
+  const [assignmentModalAlert, setAssignmentModalAlert] = useState<{ type: "error" | "success"; text: string } | null>(null);
+  const [isSavingAssignment, setIsSavingAssignment] = useState(false);
+  const [assignmentFile, setAssignmentFile] = useState<File | null>(null);
+  const [assignmentForm, setAssignmentForm] = useState({
+    title: "",
+    description: "",
+    instructions: "",
+    publishDate: "",
+    dueDate: "",
+    maxPoints: 100,
+    status: "Published",
+    attachmentUrl: "",
+    attachmentName: ""
+  });
+
+  // Course Discussion Modal & Reply State
+  const [showDiscussionModal, setShowDiscussionModal] = useState(false);
+  const [discussionModalAlert, setDiscussionModalAlert] = useState<{ type: "error" | "success"; text: string } | null>(null);
+  const [isSavingDiscussion, setIsSavingDiscussion] = useState(false);
+  const [discussionForm, setDiscussionForm] = useState({
+    title: "",
+    text: ""
+  });
+  const [replyTexts, setReplyTexts] = useState<Record<string, string>>({});
+  const [replyingThreadId, setReplyingThreadId] = useState<string | null>(null);
+  const [togglingThreadId, setTogglingThreadId] = useState<string | null>(null);
+
+  // Course Feedback Modal State (Admin Feedback)
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [editingFeedbackId, setEditingFeedbackId] = useState<string | null>(null);
+  const [feedbackModalAlert, setFeedbackModalAlert] = useState<{ type: "error" | "success"; text: string } | null>(null);
+  const [isSavingFeedback, setIsSavingFeedback] = useState(false);
+  const [feedbackForm, setFeedbackForm] = useState<{
+    title: string;
+    content: string;
+    visibility: "Visible" | "Internal";
+  }>({
+    title: "",
+    content: "",
+    visibility: "Visible"
+  });
 
   // Toggle publish state loading tracking
   const [publishingCourseId, setPublishingCourseId] = useState<string | null>(null);
@@ -539,26 +604,369 @@ export default function AcademicTab({
         if (selectedCourseId === deleteModalState.id) {
           setSelectedCourseId(null);
         }
+        if (onReloadData) await onReloadData();
+        window.dispatchEvent(new CustomEvent("courses_updated"));
       } else if (deleteModalState.type === "student" && deleteModalState.studentId) {
         await adminApi.removeStudentFromCourse(deleteModalState.id, deleteModalState.studentId);
         showCustomToast?.(`Student removed from course roster.`, "success");
         if (selectedCourseId) await loadSelectedCourseDetail(selectedCourseId);
+        if (onReloadData) await onReloadData();
+        window.dispatchEvent(new CustomEvent("courses_updated"));
       } else if (deleteModalState.type === "request") {
         if (onRejectRequest) await onRejectRequest(deleteModalState.id, "Rejected by administrator");
         showCustomToast?.(`Course proposal rejected.`, "info");
+        if (onReloadData) await onReloadData();
       } else if (deleteModalState.type === "session") {
         await teacherApi.deleteSession(deleteModalState.id);
         showCustomToast?.(`Session "${deleteModalState.name}" deleted from database.`, "success");
         if (selectedCourseId) await loadSelectedCourseDetail(selectedCourseId);
+        if (onReloadData) await onReloadData();
+      } else if (deleteModalState.type === "resource" && selectedCourseId) {
+        await adminApi.deleteCourseResource(selectedCourseId, deleteModalState.id);
+        showCustomToast?.(`Resource "${deleteModalState.name}" deleted from course.`, "success");
+        await loadSelectedCourseDetail(selectedCourseId);
+      } else if (deleteModalState.type === "assignment" && selectedCourseId) {
+        await adminApi.deleteCourseAssignment(selectedCourseId, deleteModalState.id);
+        showCustomToast?.(`Assignment "${deleteModalState.name}" deleted from course.`, "success");
+        await loadSelectedCourseDetail(selectedCourseId);
+      } else if (deleteModalState.type === "discussion" && selectedCourseId) {
+        await adminApi.deleteCourseDiscussion(selectedCourseId, deleteModalState.id);
+        showCustomToast?.(`Discussion thread "${deleteModalState.name}" deleted.`, "success");
+        await loadSelectedCourseDetail(selectedCourseId);
+      } else if (deleteModalState.type === "feedback" && selectedCourseId) {
+        await adminApi.deleteCourseFeedback(selectedCourseId, deleteModalState.id);
+        showCustomToast?.(`Administrator feedback deleted.`, "success");
+        await loadSelectedCourseDetail(selectedCourseId);
       }
       setDeleteModalState({ isOpen: false, type: "course", id: "", name: "" });
-      if (onReloadData) await onReloadData();
-      window.dispatchEvent(new CustomEvent("courses_updated"));
     } catch (err: any) {
       console.error("Failed to delete item:", err);
       showCustomToast?.(err.message || "Failed to delete item.", "warning");
     } finally {
       setIsDeletingItem(false);
+    }
+  };
+
+  // --- COURSE RESOURCES HANDLERS ---
+  const handleOpenAddResource = () => {
+    setEditingResourceId(null);
+    setResourceModalAlert(null);
+    setResourceFile(null);
+    setResourceForm({
+      title: "",
+      description: "",
+      externalUrl: "",
+      fileType: "pdf",
+      visibility: "Visible"
+    });
+    setShowResourceModal(true);
+  };
+
+  const handleOpenEditResource = (resItem: any) => {
+    setEditingResourceId(resItem.id);
+    setResourceModalAlert(null);
+    setResourceFile(null);
+    setResourceForm({
+      title: resItem.title || "",
+      description: resItem.description || "",
+      externalUrl: resItem.externalUrl || "",
+      fileType: resItem.fileType || "pdf",
+      visibility: resItem.visibility || "Visible"
+    });
+    setShowResourceModal(true);
+  };
+
+  const handleSaveResource = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedCourseId || isSavingResource) return;
+
+    if (!resourceForm.title.trim()) {
+      setResourceModalAlert({ type: "error", text: "Resource title is required." });
+      return;
+    }
+
+    if (!editingResourceId && !resourceFile && !resourceForm.externalUrl.trim()) {
+      setResourceModalAlert({ type: "error", text: "Please upload a file or enter an external resource URL." });
+      return;
+    }
+
+    setIsSavingResource(true);
+    setResourceModalAlert(null);
+    try {
+      let payload: FormData | any;
+      if (resourceFile) {
+        const fd = new FormData();
+        fd.append("title", resourceForm.title.trim());
+        fd.append("description", resourceForm.description.trim());
+        fd.append("externalUrl", resourceForm.externalUrl.trim());
+        fd.append("fileType", resourceForm.fileType);
+        fd.append("visibility", resourceForm.visibility);
+        fd.append("file", resourceFile);
+        payload = fd;
+      } else {
+        payload = {
+          title: resourceForm.title.trim(),
+          description: resourceForm.description.trim(),
+          externalUrl: resourceForm.externalUrl.trim(),
+          fileType: resourceForm.fileType,
+          visibility: resourceForm.visibility
+        };
+      }
+
+      if (editingResourceId) {
+        await adminApi.updateCourseResource(selectedCourseId, editingResourceId, payload);
+        showCustomToast?.("Course resource updated successfully.", "success");
+      } else {
+        await adminApi.createCourseResource(selectedCourseId, payload);
+        showCustomToast?.("Course resource added successfully.", "success");
+      }
+
+      setShowResourceModal(false);
+      await loadSelectedCourseDetail(selectedCourseId);
+    } catch (err: any) {
+      setResourceModalAlert({ type: "error", text: err?.message || "Failed to save resource." });
+      showCustomToast?.(err?.message || "Failed to save resource.", "warning");
+    } finally {
+      setIsSavingResource(false);
+    }
+  };
+
+  // --- COURSE ASSIGNMENTS HANDLERS ---
+  const handleOpenAddAssignment = () => {
+    const today = new Date().toISOString().split("T")[0];
+    const nextWeek = new Date(Date.now() + 7 * 86400000).toISOString().split("T")[0];
+    setEditingAssignmentId(null);
+    setAssignmentModalAlert(null);
+    setAssignmentFile(null);
+    setAssignmentForm({
+      title: "",
+      description: "",
+      instructions: "",
+      publishDate: today,
+      dueDate: nextWeek,
+      maxPoints: 100,
+      status: "Published",
+      attachmentUrl: "",
+      attachmentName: ""
+    });
+    setShowAssignmentModal(true);
+  };
+
+  const handleOpenEditAssignment = (asg: any) => {
+    setEditingAssignmentId(asg.id);
+    setAssignmentModalAlert(null);
+    setAssignmentFile(null);
+    setAssignmentForm({
+      title: asg.title || "",
+      description: asg.description || "",
+      instructions: asg.instructions || "",
+      publishDate: asg.publishDate || asg.startDate || new Date().toISOString().split("T")[0],
+      dueDate: asg.dueDate || "",
+      maxPoints: Number(asg.maxPoints ?? 100),
+      status: asg.status || "Published",
+      attachmentUrl: asg.attachmentUrl || "",
+      attachmentName: asg.attachmentName || ""
+    });
+    setShowAssignmentModal(true);
+  };
+
+  const handleSaveAssignment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedCourseId || isSavingAssignment) return;
+
+    if (!assignmentForm.title.trim()) {
+      setAssignmentModalAlert({ type: "error", text: "Assignment title is required." });
+      return;
+    }
+    if (!assignmentForm.dueDate) {
+      setAssignmentModalAlert({ type: "error", text: "Due date is required." });
+      return;
+    }
+    if (assignmentForm.publishDate && assignmentForm.dueDate < assignmentForm.publishDate) {
+      setAssignmentModalAlert({ type: "error", text: "Due date cannot be earlier than publish/start date." });
+      return;
+    }
+
+    setIsSavingAssignment(true);
+    setAssignmentModalAlert(null);
+    try {
+      let payload: FormData | any;
+      if (assignmentFile) {
+        const fd = new FormData();
+        fd.append("title", assignmentForm.title.trim());
+        fd.append("description", assignmentForm.description.trim());
+        fd.append("instructions", assignmentForm.instructions.trim());
+        fd.append("publishDate", assignmentForm.publishDate);
+        fd.append("dueDate", assignmentForm.dueDate);
+        fd.append("maxPoints", String(assignmentForm.maxPoints || 100));
+        fd.append("status", assignmentForm.status);
+        fd.append("attachmentUrl", assignmentForm.attachmentUrl.trim());
+        fd.append("attachmentName", assignmentForm.attachmentName.trim());
+        fd.append("file", assignmentFile);
+        payload = fd;
+      } else {
+        payload = {
+          title: assignmentForm.title.trim(),
+          description: assignmentForm.description.trim(),
+          instructions: assignmentForm.instructions.trim(),
+          publishDate: assignmentForm.publishDate,
+          dueDate: assignmentForm.dueDate,
+          maxPoints: Number(assignmentForm.maxPoints || 100),
+          status: assignmentForm.status,
+          attachmentUrl: assignmentForm.attachmentUrl.trim(),
+          attachmentName: assignmentForm.attachmentName.trim()
+        };
+      }
+
+      if (editingAssignmentId) {
+        await adminApi.updateCourseAssignment(selectedCourseId, editingAssignmentId, payload);
+        showCustomToast?.("Assignment updated successfully.", "success");
+      } else {
+        await adminApi.createCourseAssignment(selectedCourseId, payload);
+        showCustomToast?.("Assignment created successfully.", "success");
+      }
+
+      setShowAssignmentModal(false);
+      await loadSelectedCourseDetail(selectedCourseId);
+    } catch (err: any) {
+      setAssignmentModalAlert({ type: "error", text: err?.message || "Failed to save assignment." });
+      showCustomToast?.(err?.message || "Failed to save assignment.", "warning");
+    } finally {
+      setIsSavingAssignment(false);
+    }
+  };
+
+  // --- COURSE DISCUSSIONS HANDLERS ---
+  const handleOpenAddDiscussion = () => {
+    setDiscussionModalAlert(null);
+    setDiscussionForm({ title: "", text: "" });
+    setShowDiscussionModal(true);
+  };
+
+  const handleSaveDiscussion = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedCourseId || isSavingDiscussion) return;
+
+    if (!discussionForm.title.trim() || !discussionForm.text.trim()) {
+      setDiscussionModalAlert({ type: "error", text: "Topic title and message are required." });
+      return;
+    }
+
+    setIsSavingDiscussion(true);
+    setDiscussionModalAlert(null);
+    try {
+      await adminApi.createCourseDiscussion(selectedCourseId, {
+        title: discussionForm.title.trim(),
+        text: discussionForm.text.trim()
+      });
+      showCustomToast?.("Discussion topic created.", "success");
+      setShowDiscussionModal(false);
+      await loadSelectedCourseDetail(selectedCourseId);
+    } catch (err: any) {
+      setDiscussionModalAlert({ type: "error", text: err?.message || "Failed to create discussion topic." });
+      showCustomToast?.(err?.message || "Failed to create discussion topic.", "warning");
+    } finally {
+      setIsSavingDiscussion(false);
+    }
+  };
+
+  const handleSendDiscussionReply = async (threadId: string) => {
+    if (!selectedCourseId || replyingThreadId) return;
+    const text = (replyTexts[threadId] || "").trim();
+    if (!text) {
+      showCustomToast?.("Please enter a reply message.", "warning");
+      return;
+    }
+
+    setReplyingThreadId(threadId);
+    try {
+      await adminApi.replyCourseDiscussion(selectedCourseId, threadId, text);
+      setReplyTexts((prev) => ({ ...prev, [threadId]: "" }));
+      showCustomToast?.("Reply posted to discussion.", "success");
+      await loadSelectedCourseDetail(selectedCourseId);
+    } catch (err: any) {
+      showCustomToast?.(err?.message || "Failed to post reply.", "warning");
+    } finally {
+      setReplyingThreadId(null);
+    }
+  };
+
+  const handleToggleDiscussionStatus = async (thread: any) => {
+    if (!selectedCourseId || togglingThreadId) return;
+    const nextStatus = thread.status === "Closed" ? "Open" : "Closed";
+    setTogglingThreadId(thread.id);
+    try {
+      await adminApi.updateCourseDiscussionStatus(selectedCourseId, thread.id, nextStatus);
+      showCustomToast?.(
+        nextStatus === "Closed" ? "Discussion thread closed." : "Discussion thread reopened.",
+        "info"
+      );
+      await loadSelectedCourseDetail(selectedCourseId);
+    } catch (err: any) {
+      showCustomToast?.(err?.message || "Failed to update discussion status.", "warning");
+    } finally {
+      setTogglingThreadId(null);
+    }
+  };
+
+  // --- COURSE FEEDBACK HANDLERS ---
+  const handleOpenAddFeedback = () => {
+    setEditingFeedbackId(null);
+    setFeedbackModalAlert(null);
+    setFeedbackForm({
+      title: "",
+      content: "",
+      visibility: "Visible"
+    });
+    setShowFeedbackModal(true);
+  };
+
+  const handleOpenEditFeedback = (fb: any) => {
+    setEditingFeedbackId(fb.id);
+    setFeedbackModalAlert(null);
+    setFeedbackForm({
+      title: fb.title || "",
+      content: fb.content || "",
+      visibility: fb.visibility === "Internal" ? "Internal" : "Visible"
+    });
+    setShowFeedbackModal(true);
+  };
+
+  const handleSaveFeedback = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedCourseId || isSavingFeedback) return;
+
+    if (!feedbackForm.content.trim()) {
+      setFeedbackModalAlert({ type: "error", text: "Feedback or note content is required." });
+      return;
+    }
+
+    setIsSavingFeedback(true);
+    setFeedbackModalAlert(null);
+    try {
+      if (editingFeedbackId) {
+        await adminApi.updateCourseFeedback(selectedCourseId, editingFeedbackId, {
+          title: feedbackForm.title.trim(),
+          content: feedbackForm.content.trim(),
+          visibility: feedbackForm.visibility
+        });
+        showCustomToast?.("Administrator feedback updated.", "success");
+      } else {
+        await adminApi.createCourseFeedback(selectedCourseId, {
+          title: feedbackForm.title.trim(),
+          content: feedbackForm.content.trim(),
+          visibility: feedbackForm.visibility
+        });
+        showCustomToast?.("Administrator feedback added to course.", "success");
+      }
+
+      setShowFeedbackModal(false);
+      await loadSelectedCourseDetail(selectedCourseId);
+    } catch (err: any) {
+      setFeedbackModalAlert({ type: "error", text: err?.message || "Failed to save course feedback." });
+      showCustomToast?.(err?.message || "Failed to save course feedback.", "warning");
+    } finally {
+      setIsSavingFeedback(false);
     }
   };
 
@@ -650,6 +1058,27 @@ export default function AcademicTab({
       ? courseDetailData.sessions
       : sessions.filter((s: any) => s.courseId === selectedCourseId);
 
+  const currentCourseResources: any[] =
+    courseDetailData && String(courseDetailData.id) === String(selectedCourseId) && Array.isArray(courseDetailData.resources)
+      ? courseDetailData.resources
+      : [];
+  const currentCourseAssignments: any[] =
+    courseDetailData && String(courseDetailData.id) === String(selectedCourseId) && Array.isArray(courseDetailData.assignments)
+      ? courseDetailData.assignments
+      : [];
+  const currentCourseDiscussions: any[] =
+    courseDetailData && String(courseDetailData.id) === String(selectedCourseId) && Array.isArray(courseDetailData.discussions)
+      ? courseDetailData.discussions
+      : [];
+  const currentCourseAdminFeedback: any[] =
+    courseDetailData && String(courseDetailData.id) === String(selectedCourseId) && Array.isArray(courseDetailData.feedback?.adminFeedback)
+      ? courseDetailData.feedback.adminFeedback
+      : [];
+  const currentCourseStudentFeedback: any[] =
+    courseDetailData && String(courseDetailData.id) === String(selectedCourseId) && Array.isArray(courseDetailData.feedback?.studentFeedback)
+      ? courseDetailData.feedback.studentFeedback
+      : [];
+
   return (
     <div className="space-y-6 text-left">
       {/* If Course Workspace is Open */}
@@ -680,7 +1109,7 @@ export default function AcademicTab({
                     {currentCourse.isPublished || currentCourse.status === "Published" ? "Published" : (currentCourse.status || "Draft")}
                   </span>
                 </div>
-                <h2 className="text-lg sm:text-xl font-black text-white mt-1">
+                <h2 dir="auto" className="text-lg sm:text-xl font-black text-white mt-1">
                   {currentCourse.title || currentCourse.courseName}
                 </h2>
               </div>
@@ -718,13 +1147,33 @@ export default function AcademicTab({
             </div>
           </div>
 
+          {detailError && (
+            <div className="p-4 rounded-2xl border border-rose-500/30 bg-rose-500/10 text-rose-200 flex items-center justify-between gap-3 text-xs">
+              <div className="flex items-center gap-2">
+                <AlertCircle size={16} className="text-rose-400 shrink-0" />
+                <span>{detailError}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => loadSelectedCourseDetail(selectedCourseId)}
+                className="px-3 py-1.5 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/30 text-white font-bold cursor-pointer shrink-0"
+              >
+                Retry
+              </button>
+            </div>
+          )}
+
           {/* Course Workspace Sub-Tabs */}
-          <div className="flex border-b border-white/[0.05] gap-4 sm:gap-8 text-xs overflow-x-auto scrollbar-none">
+          <div className="flex border-b border-white/[0.05] gap-4 sm:gap-6 text-xs overflow-x-auto scrollbar-none">
             {[
               { id: "overview" as const, label: "Course & Instructor", icon: BookOpen },
               { id: "students" as const, label: `Enrolled Students (${courseDetailData?.students?.length ?? currentCourse.studentsCount ?? 0})`, icon: Users },
               { id: "syllabus" as const, label: `Syllabus Curriculum (${(courseDetailData?.syllabus || currentCourse.syllabusJson || currentCourse.syllabus || []).length})`, icon: Layers },
-              { id: "sessions" as const, label: `Class Sessions (${currentCourseSessions.length})`, icon: Calendar }
+              { id: "sessions" as const, label: `Class Sessions (${currentCourseSessions.length})`, icon: Calendar },
+              { id: "resources" as const, label: `Resources (${currentCourseResources.length})`, icon: FileText },
+              { id: "assignments" as const, label: `Assignments (${currentCourseAssignments.length})`, icon: ClipboardList },
+              { id: "discussions" as const, label: `Discussions (${currentCourseDiscussions.length})`, icon: MessageSquare },
+              { id: "feedback" as const, label: `Feedback (${currentCourseAdminFeedback.length + currentCourseStudentFeedback.length})`, icon: MessageCircle }
             ].map((tab) => {
               const Icon = tab.icon;
               const isActive = courseWorkspaceTab === tab.id;
@@ -732,7 +1181,7 @@ export default function AcademicTab({
                 <button
                   key={tab.id}
                   onClick={() => setCourseWorkspaceTab(tab.id)}
-                  className={`pb-3 font-bold tracking-wide uppercase transition-all relative flex items-center gap-2 shrink-0 cursor-pointer ${
+                  className={`pb-3 font-bold tracking-wide uppercase transition-all relative flex items-center gap-1.5 shrink-0 cursor-pointer ${
                     isActive ? "text-indigo-400" : "text-white/40 hover:text-white"
                   }`}
                 >
@@ -749,70 +1198,107 @@ export default function AcademicTab({
             })}
           </div>
 
-          {/* TAB 1: OVERVIEW & INSTRUCTOR */}
+          {/* TAB 1: OVERVIEW & INSTRUCTOR (Equal-Height Two-Column Layout) */}
           {courseWorkspaceTab === "overview" && (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fade-in">
-              <div className="lg:col-span-2 space-y-6">
-                <div className="p-6 rounded-3xl bg-[#08080c] border border-white/[0.06] space-y-4">
-                  <h3 className="text-sm font-bold text-white flex items-center gap-2 border-b border-white/[0.04] pb-3">
-                    <BookOpen size={16} className="text-indigo-400" />
-                    <span>Course Curriculum Description</span>
-                  </h3>
-                  <p className="text-xs text-white/70 leading-relaxed whitespace-pre-wrap font-sans">
-                    {courseDetailData?.description || currentCourse.description || "No detailed syllabus description specified for this course yet."}
-                  </p>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch animate-fade-in">
+              <div className="lg:col-span-2 flex flex-col h-full">
+                <div className="flex-1 flex flex-col justify-between p-6 rounded-3xl bg-[#08080c] border border-white/[0.06] space-y-5">
+                  <div className="space-y-4">
+                    <h3 className="text-sm font-bold text-white flex items-center gap-2 border-b border-white/[0.04] pb-3">
+                      <BookOpen size={16} className="text-indigo-400" />
+                      <span>Course Curriculum Description</span>
+                    </h3>
+                    <p dir="auto" className="text-xs text-white/75 leading-relaxed whitespace-pre-wrap font-sans">
+                      {courseDetailData?.description || currentCourse.description || "No detailed syllabus description specified for this course yet."}
+                    </p>
+                  </div>
 
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-4 border-t border-white/[0.04] text-xs">
-                    <div>
-                      <span className="text-[10px] text-white/40 block font-mono uppercase">Sessions Total:</span>
-                      <span className="font-bold text-white font-mono mt-0.5 block">{currentCourse.sessionsCount || 12} Lessons</span>
-                    </div>
-                    <div>
-                      <span className="text-[10px] text-white/40 block font-mono uppercase">Enrolled Students:</span>
-                      <span className="font-bold text-emerald-400 font-mono mt-0.5 block">
-                        {courseDetailData?.students?.length ?? currentCourse.studentsCount ?? 0} Students
+                  {/* Polished Course Details & Pricing Summary Block */}
+                  <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/[0.06] space-y-3">
+                    <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-white/[0.05]">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-mono uppercase tracking-wider text-white/45">Course Tuition / Fee</span>
+                      </div>
+                      <span className="px-3 py-1 rounded-xl bg-indigo-500/15 border border-indigo-500/30 text-indigo-300 font-mono font-extrabold text-xs">
+                        {currentCourse.price || "Free"}
                       </span>
                     </div>
-                    <div>
-                      <span className="text-[10px] text-white/40 block font-mono uppercase">Start Date:</span>
-                      <span className="font-bold text-white font-mono mt-0.5 block">
-                        {currentCourse.startDate || currentCourse.start_date || "Not Set"}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-[10px] text-white/40 block font-mono uppercase">End Date:</span>
-                      <span className="font-bold text-white font-mono mt-0.5 block">
-                        {currentCourse.endDate || currentCourse.end_date || "Not Set"}
-                      </span>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
+                      <div>
+                        <span className="text-[10px] text-white/40 block font-mono uppercase">Total Class Sessions</span>
+                        <span className="font-bold text-white font-mono mt-0.5 block">
+                          {currentCourse.sessionsCount || 12} Sessions
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-white/40 block font-mono uppercase">Enrolled Students</span>
+                        <span className="font-bold text-emerald-400 font-mono mt-0.5 block">
+                          {courseDetailData?.students?.length ?? currentCourse.studentsCount ?? 0} Students
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-white/40 block font-mono uppercase">Start Date</span>
+                        <span className="font-bold text-white font-mono mt-0.5 block">
+                          {currentCourse.startDate || currentCourse.start_date || "Not Set"}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-white/40 block font-mono uppercase">End Date</span>
+                        <span className="font-bold text-white font-mono mt-0.5 block">
+                          {currentCourse.endDate || currentCourse.end_date || "Not Set"}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Right Column: Instructor & Publishing Card */}
-              <div className="space-y-6">
-                <div className="p-6 rounded-3xl bg-[#08080c] border border-white/[0.06] space-y-4">
-                  <h3 className="text-sm font-bold text-white flex items-center gap-2 border-b border-white/[0.04] pb-3">
-                    <Award size={16} className="text-indigo-400" />
-                    <span>Assigned Instructor</span>
-                  </h3>
+              {/* Right Column: Instructor & Publishing Card (Stretches to Equal Height) */}
+              <div className="flex flex-col h-full">
+                <div className="flex-1 flex flex-col justify-between p-6 rounded-3xl bg-[#08080c] border border-white/[0.06] space-y-5">
+                  <div className="space-y-4">
+                    <h3 className="text-sm font-bold text-white flex items-center gap-2 border-b border-white/[0.04] pb-3">
+                      <Award size={16} className="text-indigo-400" />
+                      <span>Assigned Instructor & Status</span>
+                    </h3>
 
-                  <div className="flex items-center gap-3">
-                    <div className="h-12 w-12 rounded-2xl bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center text-indigo-300 font-bold text-sm shrink-0">
-                      {((currentCourse.teacherName || currentCourse.instructor || "UN")).substring(0, 2).toUpperCase()}
+                    <div className="flex items-center gap-3 p-3.5 rounded-2xl bg-white/[0.02] border border-white/[0.05]">
+                      <div className="h-12 w-12 rounded-2xl bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center text-indigo-300 font-bold text-sm shrink-0">
+                        {((currentCourse.teacherName || currentCourse.instructor || "UN")).substring(0, 2).toUpperCase()}
+                      </div>
+                      <div className="min-w-0">
+                        <h4 dir="auto" className="text-sm font-bold text-white truncate">
+                          {currentCourse.teacherName || currentCourse.instructor || "Unassigned"}
+                        </h4>
+                        <p className="text-xs text-white/40 font-mono truncate">
+                          {currentCourse.teacherEmail || "Assigned Faculty"}
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <h4 className="text-sm font-bold text-white">{currentCourse.teacherName || currentCourse.instructor || "Unassigned"}</h4>
-                      <p className="text-xs text-white/40 font-mono">{currentCourse.teacherEmail || "Assigned Faculty"}</p>
+
+                    <div className="p-3.5 rounded-2xl bg-white/[0.02] border border-white/[0.05] space-y-2 text-xs">
+                      <div className="flex items-center justify-between">
+                        <span className="text-white/45 font-mono text-[10px] uppercase">Category</span>
+                        <span className="text-white font-bold">{currentCourse.categoryName || "General"}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-white/45 font-mono text-[10px] uppercase">Course Code</span>
+                        <span className="text-indigo-300 font-mono font-bold">{currentCourse.code}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-white/45 font-mono text-[10px] uppercase">Scheduled Sessions</span>
+                        <span className="text-white font-mono font-bold">{currentCourseSessions.length} Scheduled</span>
+                      </div>
                     </div>
                   </div>
 
-                  <div className="pt-3 border-t border-white/[0.04] flex items-center justify-between">
+                  <div className="pt-4 border-t border-white/[0.04] flex items-center justify-between">
                     <span className="text-xs text-white/60">Landing Page Publishing</span>
                     <button
                       type="button"
                       onClick={(e) => handleTogglePublish(currentCourse, e)}
-                      className={`px-3 py-1 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
                         currentCourse.isPublished || currentCourse.status === "Published"
                           ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20"
                           : "bg-white/5 text-zinc-400 border-white/10 hover:text-white"
@@ -1051,6 +1537,594 @@ export default function AcademicTab({
               )}
             </div>
           )}
+          {/* TAB 5: COURSE RESOURCES */}
+          {courseWorkspaceTab === "resources" && (
+            <div className="space-y-4 animate-fade-in">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <h3 className="text-sm font-bold text-white">Course Learning Resources</h3>
+                  <p className="text-[10px] text-white/40">
+                    Manage lecture files, slides, source code archives, and external links for {currentCourse.title}.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleOpenAddResource}
+                  className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition-all flex items-center gap-1.5 shadow-md shadow-indigo-600/20 cursor-pointer self-start sm:self-center"
+                >
+                  <Plus size={14} />
+                  <span>Add Resource</span>
+                </button>
+              </div>
+
+              {isLoadingDetail && !courseDetailData ? (
+                <div className="p-12 text-center rounded-3xl border border-white/10 bg-white/[0.01] text-zinc-400 space-y-2">
+                  <RefreshCw size={22} className="mx-auto text-indigo-400 animate-spin" />
+                  <p className="text-xs">Loading course resources...</p>
+                </div>
+              ) : currentCourseResources.length === 0 ? (
+                <div className="p-12 text-center rounded-3xl border border-dashed border-white/10 bg-white/[0.01] text-zinc-400 space-y-2">
+                  <FileText size={24} className="mx-auto text-zinc-600" />
+                  <p className="text-xs">No resources uploaded for this course yet. Click &ldquo;Add Resource&rdquo; to attach files or links.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch">
+                  {currentCourseResources.map((resItem: any) => (
+                    <div
+                      key={resItem.id}
+                      className="p-5 rounded-3xl bg-[#08080c] border border-white/[0.06] flex flex-col justify-between gap-4 hover:border-white/10 transition-all"
+                    >
+                      <div className="space-y-2.5">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <div className="h-9 w-9 rounded-xl bg-indigo-500/15 border border-indigo-500/30 flex items-center justify-center text-indigo-300 shrink-0">
+                              {resItem.externalUrl ? <Link2 size={16} /> : <FileText size={16} />}
+                            </div>
+                            <div className="min-w-0">
+                              <h4 dir="auto" className="text-xs font-bold text-white truncate">
+                                {resItem.title}
+                              </h4>
+                              <div className="flex flex-wrap items-center gap-2 text-[10px] font-mono text-white/45 mt-0.5">
+                                <span className="uppercase text-indigo-300 font-bold">{resItem.fileType || "file"}</span>
+                                {resItem.fileSize && <span>&bull; {resItem.fileSize}</span>}
+                                {resItem.uploadedAt && <span>&bull; {resItem.uploadedAt}</span>}
+                              </div>
+                            </div>
+                          </div>
+
+                          <span
+                            className={`px-2 py-0.5 rounded-full text-[9px] font-mono font-bold shrink-0 ${
+                              resItem.visibility === "Hidden"
+                                ? "bg-amber-500/15 text-amber-300 border border-amber-500/30"
+                                : "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30"
+                            }`}
+                          >
+                            {resItem.visibility || "Visible"}
+                          </span>
+                        </div>
+
+                        {resItem.description && (
+                          <p dir="auto" className="text-[11px] text-white/65 leading-relaxed">
+                            {resItem.description}
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="pt-3 border-t border-white/[0.04] flex items-center justify-between gap-2">
+                        {resItem.downloadUrl ? (
+                          <a
+                            href={resItem.downloadUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 text-indigo-300 text-[11px] font-bold transition-all"
+                          >
+                            {resItem.externalUrl ? <ExternalLink size={12} /> : <Download size={12} />}
+                            <span>{resItem.externalUrl ? "Open Resource Link" : "Download File"}</span>
+                          </a>
+                        ) : (
+                          <span className="text-[10px] font-mono text-white/30">No file attached</span>
+                        )}
+
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => handleOpenEditResource(resItem)}
+                            className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/60 hover:text-white cursor-pointer"
+                            title="Edit Resource"
+                          >
+                            <Edit2 size={12} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setDeleteModalState({
+                                isOpen: true,
+                                type: "resource",
+                                id: resItem.id,
+                                name: resItem.title
+                              })
+                            }
+                            className="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 cursor-pointer"
+                            title="Delete Resource"
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB 6: COURSE ASSIGNMENTS */}
+          {courseWorkspaceTab === "assignments" && (
+            <div className="space-y-4 animate-fade-in">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <h3 className="text-sm font-bold text-white">Course Assignments & Homework</h3>
+                  <p className="text-[10px] text-white/40">
+                    Create, edit, and manage coursework assignments, deadlines, and instructions for {currentCourse.title}.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleOpenAddAssignment}
+                  className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition-all flex items-center gap-1.5 shadow-md shadow-indigo-600/20 cursor-pointer self-start sm:self-center"
+                >
+                  <Plus size={14} />
+                  <span>Create Assignment</span>
+                </button>
+              </div>
+
+              {isLoadingDetail && !courseDetailData ? (
+                <div className="p-12 text-center rounded-3xl border border-white/10 bg-white/[0.01] text-zinc-400 space-y-2">
+                  <RefreshCw size={22} className="mx-auto text-indigo-400 animate-spin" />
+                  <p className="text-xs">Loading course assignments...</p>
+                </div>
+              ) : currentCourseAssignments.length === 0 ? (
+                <div className="p-12 text-center rounded-3xl border border-dashed border-white/10 bg-white/[0.01] text-zinc-400 space-y-2">
+                  <ClipboardList size={24} className="mx-auto text-zinc-600" />
+                  <p className="text-xs">No assignments created for this course yet. Click &ldquo;Create Assignment&rdquo; to publish coursework.</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {currentCourseAssignments.map((asg: any) => (
+                    <div
+                      key={asg.id}
+                      className="p-5 rounded-3xl bg-[#08080c] border border-white/[0.06] space-y-4 hover:border-white/10 transition-all"
+                    >
+                      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                        <div className="space-y-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <h4 dir="auto" className="text-sm font-bold text-white">
+                              {asg.title}
+                            </h4>
+                            <span
+                              className={`px-2 py-0.5 rounded-full text-[9px] font-mono font-bold ${
+                                asg.status === "Published"
+                                  ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30"
+                                  : asg.status === "Archived"
+                                  ? "bg-zinc-500/15 text-zinc-400 border border-zinc-500/30"
+                                  : "bg-amber-500/15 text-amber-300 border border-amber-500/30"
+                              }`}
+                            >
+                              {asg.status || "Published"}
+                            </span>
+                            <span className="px-2 py-0.5 rounded-full text-[9px] font-mono font-bold bg-indigo-500/15 text-indigo-300 border border-indigo-500/30">
+                              {asg.maxPoints || 100} Pts
+                            </span>
+                          </div>
+                          {asg.description && (
+                            <p dir="auto" className="text-xs text-white/70 leading-relaxed">
+                              {asg.description}
+                            </p>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => handleOpenEditAssignment(asg)}
+                            className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-white/60 hover:text-white cursor-pointer"
+                            title="Edit Assignment"
+                          >
+                            <Edit2 size={13} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setDeleteModalState({
+                                isOpen: true,
+                                type: "assignment",
+                                id: asg.id,
+                                name: asg.title
+                              })
+                            }
+                            className="p-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 cursor-pointer"
+                            title="Delete Assignment"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+                      </div>
+
+                      {asg.instructions && (
+                        <div className="p-3.5 rounded-2xl bg-white/[0.02] border border-white/[0.05] space-y-1">
+                          <span className="text-[10px] font-mono uppercase text-indigo-300 font-bold block">
+                            Submission Instructions
+                          </span>
+                          <p dir="auto" className="text-xs text-white/65 whitespace-pre-wrap leading-relaxed">
+                            {asg.instructions}
+                          </p>
+                        </div>
+                      )}
+
+                      <div className="pt-3 border-t border-white/[0.04] flex flex-wrap items-center justify-between gap-4 text-xs font-mono">
+                        <div className="flex flex-wrap items-center gap-4 text-white/55">
+                          <span>
+                            Publish/Start: <strong className="text-white">{asg.publishDate || "—"}</strong>
+                          </span>
+                          <span>
+                            Due Date: <strong className="text-indigo-300">{asg.dueDate || "—"}</strong>
+                          </span>
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-3">
+                          <span className="px-2.5 py-1 rounded-lg bg-white/[0.03] border border-white/[0.06] text-[10px] text-white/70">
+                            Submissions: <strong className="text-white">{asg.submissionsCount ?? 0}</strong>
+                          </span>
+                          <span className="px-2.5 py-1 rounded-lg bg-white/[0.03] border border-white/[0.06] text-[10px] text-white/70">
+                            Graded: <strong className="text-emerald-400">{asg.gradedCount ?? 0}</strong>
+                          </span>
+                          {asg.avgGrade !== null && asg.avgGrade !== undefined && (
+                            <span className="px-2.5 py-1 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-[10px] text-indigo-300">
+                              Avg Grade: <strong>{asg.avgGrade}</strong>
+                            </span>
+                          )}
+                          {asg.attachmentUrl && (
+                            <a
+                              href={asg.attachmentUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-500/15 hover:bg-indigo-500/25 border border-indigo-500/30 text-indigo-300 text-[10px] font-bold"
+                            >
+                              <Paperclip size={11} />
+                              <span>{asg.attachmentName || "Attachment"}</span>
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB 7: COURSE DISCUSSIONS */}
+          {courseWorkspaceTab === "discussions" && (
+            <div className="space-y-4 animate-fade-in">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <h3 className="text-sm font-bold text-white">Course Discussion Threads</h3>
+                  <p className="text-[10px] text-white/40">
+                    Create discussion topics, reply to student questions, and moderate threads for {currentCourse.title}.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleOpenAddDiscussion}
+                  className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition-all flex items-center gap-1.5 shadow-md shadow-indigo-600/20 cursor-pointer self-start sm:self-center"
+                >
+                  <Plus size={14} />
+                  <span>New Discussion Topic</span>
+                </button>
+              </div>
+
+              {isLoadingDetail && !courseDetailData ? (
+                <div className="p-12 text-center rounded-3xl border border-white/10 bg-white/[0.01] text-zinc-400 space-y-2">
+                  <RefreshCw size={22} className="mx-auto text-indigo-400 animate-spin" />
+                  <p className="text-xs">Loading course discussions...</p>
+                </div>
+              ) : currentCourseDiscussions.length === 0 ? (
+                <div className="p-12 text-center rounded-3xl border border-dashed border-white/10 bg-white/[0.01] text-zinc-400 space-y-2">
+                  <MessageSquare size={24} className="mx-auto text-zinc-600" />
+                  <p className="text-xs">No discussion threads for this course yet. Click &ldquo;New Discussion Topic&rdquo; to start a conversation.</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {currentCourseDiscussions.map((thread: any) => {
+                    const isClosed = thread.status === "Closed";
+                    return (
+                      <div
+                        key={thread.id}
+                        className="p-5 rounded-3xl bg-[#08080c] border border-white/[0.06] space-y-4"
+                      >
+                        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                          <div className="space-y-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <h4 dir="auto" className="text-sm font-bold text-white">
+                                {thread.title}
+                              </h4>
+                              <span
+                                className={`px-2 py-0.5 rounded-full text-[9px] font-mono font-bold ${
+                                  isClosed
+                                    ? "bg-rose-500/15 text-rose-400 border border-rose-500/30"
+                                    : thread.status === "Replied"
+                                    ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30"
+                                    : "bg-indigo-500/15 text-indigo-300 border border-indigo-500/30"
+                                }`}
+                              >
+                                {thread.status || "New"}
+                              </span>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-2 text-[10px] font-mono text-white/45">
+                              <span>
+                                By <strong className="text-white/80">{thread.authorName || thread.studentName || "User"}</strong>
+                              </span>
+                              <span className="px-1.5 py-0.2 rounded bg-white/[0.04] text-indigo-300">
+                                {thread.authorRole || "Student"}
+                              </span>
+                              <span>&bull; {thread.time || (thread.createdAt ? new Date(thread.createdAt).toLocaleDateString() : "Recent")}</span>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2 shrink-0">
+                            <button
+                              type="button"
+                              disabled={togglingThreadId === thread.id}
+                              onClick={() => handleToggleDiscussionStatus(thread)}
+                              className={`px-3 py-1.5 rounded-xl text-[11px] font-bold border transition-all flex items-center gap-1 cursor-pointer ${
+                                isClosed
+                                  ? "bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
+                                  : "bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border-amber-500/30"
+                              }`}
+                            >
+                              {isClosed ? <Unlock size={12} /> : <Lock size={12} />}
+                              <span>{isClosed ? "Reopen" : "Close"}</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setDeleteModalState({
+                                  isOpen: true,
+                                  type: "discussion",
+                                  id: thread.id,
+                                  name: thread.title
+                                })
+                              }
+                              className="p-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 cursor-pointer"
+                              title="Delete Discussion Thread"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
+                        </div>
+
+                        <p dir="auto" className="text-xs text-white/75 leading-relaxed whitespace-pre-wrap bg-white/[0.02] border border-white/[0.04] p-3.5 rounded-2xl">
+                          {thread.text}
+                        </p>
+
+                        {/* Replies List */}
+                        {Array.isArray(thread.replies) && thread.replies.length > 0 && (
+                          <div className="space-y-2.5 pl-4 border-l-2 border-indigo-500/20">
+                            {thread.replies.map((rep: any) => (
+                              <div key={rep.id} className="p-3 rounded-2xl bg-white/[0.02] border border-white/[0.05] space-y-1">
+                                <div className="flex items-center justify-between text-[10px] font-mono">
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-bold text-white">{rep.sender || rep.senderName}</span>
+                                    <span className="px-1.5 py-0.5 rounded bg-indigo-500/15 text-indigo-300 text-[9px] font-bold">
+                                      {rep.role || "Administrator"}
+                                    </span>
+                                  </div>
+                                  <span className="text-white/40">{rep.time || "Recent"}</span>
+                                </div>
+                                <p dir="auto" className="text-xs text-white/70 whitespace-pre-wrap">
+                                  {rep.text}
+                                </p>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Reply Input */}
+                        {!isClosed ? (
+                          <div className="flex items-center gap-2 pt-2">
+                            <input
+                              type="text"
+                              dir="auto"
+                              placeholder="Write an official reply to this thread..."
+                              value={replyTexts[thread.id] || ""}
+                              onChange={(e) => setReplyTexts((prev) => ({ ...prev, [thread.id]: e.target.value }))}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" && !e.shiftKey) {
+                                  e.preventDefault();
+                                  handleSendDiscussionReply(thread.id);
+                                }
+                              }}
+                              className="flex-1 bg-white/[0.02] border border-white/10 rounded-xl px-3.5 py-2 text-xs text-white placeholder-white/30 focus:outline-none focus:border-indigo-500"
+                            />
+                            <button
+                              type="button"
+                              disabled={replyingThreadId === thread.id || !(replyTexts[thread.id] || "").trim()}
+                              onClick={() => handleSendDiscussionReply(thread.id)}
+                              className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shrink-0"
+                            >
+                              {replyingThreadId === thread.id ? (
+                                <RefreshCw size={12} className="animate-spin" />
+                              ) : (
+                                <Send size={12} />
+                              )}
+                              <span>Reply</span>
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="text-[11px] font-mono text-rose-300/70 pt-1">
+                            This discussion is closed. Reopen the thread to post additional replies.
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB 8: COURSE FEEDBACK (Admin Feedback Separated from Student Feedback) */}
+          {courseWorkspaceTab === "feedback" && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch animate-fade-in">
+              {/* Section 1: Administrator Course Feedback & Notes */}
+              <div className="flex flex-col h-full">
+                <div className="flex-1 flex flex-col justify-between p-6 rounded-3xl bg-[#08080c] border border-white/[0.06] space-y-4">
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between gap-3 border-b border-white/[0.05] pb-3">
+                      <div>
+                        <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                          <MessageCircle size={16} className="text-indigo-400" />
+                          <span>Administrator Course Feedback & Notes ({currentCourseAdminFeedback.length})</span>
+                        </h3>
+                        <p className="text-[10px] text-white/40 mt-0.5">
+                          Official course-level feedback and notes authored by administrators.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleOpenAddFeedback}
+                        className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition-all flex items-center gap-1.5 shadow-md shadow-indigo-600/20 cursor-pointer shrink-0"
+                      >
+                        <Plus size={13} />
+                        <span>Add Feedback</span>
+                      </button>
+                    </div>
+
+                    {currentCourseAdminFeedback.length === 0 ? (
+                      <div className="py-12 text-center rounded-2xl border border-dashed border-white/10 bg-white/[0.01] text-zinc-400 space-y-2">
+                        <MessageCircle size={22} className="mx-auto text-zinc-600" />
+                        <p className="text-xs">No administrator feedback or notes recorded for this course yet.</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {currentCourseAdminFeedback.map((fb: any) => (
+                          <div
+                            key={fb.id}
+                            className="p-4 rounded-2xl bg-white/[0.02] border border-white/[0.06] space-y-2"
+                          >
+                            <div className="flex items-start justify-between gap-2">
+                              <div>
+                                {fb.title && (
+                                  <h4 dir="auto" className="text-xs font-bold text-white">
+                                    {fb.title}
+                                  </h4>
+                                )}
+                                <div className="flex flex-wrap items-center gap-2 text-[10px] font-mono text-white/45 mt-0.5">
+                                  <span>{fb.authorName || "Administrator"}</span>
+                                  <span>&bull; {fb.createdAt ? new Date(fb.createdAt).toLocaleDateString() : "Recent"}</span>
+                                  <span
+                                    className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${
+                                      fb.visibility === "Internal"
+                                        ? "bg-amber-500/15 text-amber-300 border border-amber-500/30"
+                                        : "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30"
+                                    }`}
+                                  >
+                                    {fb.visibility === "Internal" ? "Internal Note" : "Visible to Course"}
+                                  </span>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenEditFeedback(fb)}
+                                  className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/60 hover:text-white cursor-pointer"
+                                  title="Edit Feedback"
+                                >
+                                  <Edit2 size={12} />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setDeleteModalState({
+                                      isOpen: true,
+                                      type: "feedback",
+                                      id: fb.id,
+                                      name: fb.title || "Administrator Feedback"
+                                    })
+                                  }
+                                  className="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 cursor-pointer"
+                                  title="Delete Feedback"
+                                >
+                                  <Trash2 size={12} />
+                                </button>
+                              </div>
+                            </div>
+
+                            <p dir="auto" className="text-xs text-white/75 whitespace-pre-wrap leading-relaxed">
+                              {fb.content}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Section 2: Student-Submitted Course Feedback (Preserved Separately) */}
+              <div className="flex flex-col h-full">
+                <div className="flex-1 flex flex-col justify-between p-6 rounded-3xl bg-[#08080c] border border-white/[0.06] space-y-4">
+                  <div className="space-y-4">
+                    <div className="border-b border-white/[0.05] pb-3">
+                      <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                        <Star size={16} className="text-emerald-400" />
+                        <span>Student-Submitted Course Feedback ({currentCourseStudentFeedback.length})</span>
+                      </h3>
+                      <p className="text-[10px] text-white/40 mt-0.5">
+                        Feedback submitted by enrolled students is preserved separately and never overwritten by admin notes.
+                      </p>
+                    </div>
+
+                    {currentCourseStudentFeedback.length === 0 ? (
+                      <div className="py-12 text-center rounded-2xl border border-dashed border-white/10 bg-white/[0.01] text-zinc-400 space-y-2">
+                        <Star size={22} className="mx-auto text-zinc-600" />
+                        <p className="text-xs">No student feedback submitted for this course yet.</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {currentCourseStudentFeedback.map((sfb: any) => (
+                          <div
+                            key={sfb.id}
+                            className="p-4 rounded-2xl bg-white/[0.02] border border-white/[0.06] space-y-2"
+                          >
+                            <div className="flex items-center justify-between gap-2">
+                              <div>
+                                <h4 dir="auto" className="text-xs font-bold text-white">
+                                  {sfb.title || sfb.authorName || "Student Feedback"}
+                                </h4>
+                                <span className="text-[10px] font-mono text-white/45">
+                                  By {sfb.authorName || "Student"} &bull; {sfb.createdAt ? new Date(sfb.createdAt).toLocaleDateString() : "Recent"}
+                                </span>
+                              </div>
+                              {sfb.rating && (
+                                <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-[10px] font-mono font-bold">
+                                  {sfb.rating} / 5 ★
+                                </span>
+                              )}
+                            </div>
+                            <p dir="auto" className="text-xs text-white/75 whitespace-pre-wrap leading-relaxed">
+                              {sfb.content}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       ) : (
         /* Regular Catalog View */
@@ -1144,18 +2218,19 @@ export default function AcademicTab({
                   </p>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-stretch">
                   {filteredCourses.map((course) => {
                     const isPub = Boolean(course.isPublished || course.status === "Published" || course.is_published);
                     const isTeacherProposal = Boolean(course.requestedBy || course.approvalStatus === "Pending");
                     const courseSessionsCount = sessions.filter((s: any) => s.courseId === course.id).length;
+                    const totalPlannedSessions = course.sessionsCount || course.sessions || 12;
 
                     return (
                       <div 
                         key={course.id}
-                        className="bg-[#08080c] border border-white/[0.06] rounded-3xl p-5 hover:border-white/10 transition-all flex flex-col justify-between group relative"
+                        className="bg-[#08080c] border border-white/[0.06] rounded-3xl p-5 hover:border-white/15 transition-all flex flex-col justify-between group relative h-full"
                       >
-                        <div className="space-y-3">
+                        <div className="space-y-3.5">
                           {/* Course Cover Image Banner */}
                           <div className="relative aspect-[16/10] w-full rounded-2xl bg-zinc-900 border border-white/5 overflow-hidden">
                             <img 
@@ -1193,38 +2268,59 @@ export default function AcademicTab({
                             )}
                           </div>
 
-                          <div className="text-left space-y-1">
-                            <h4 className="font-extrabold text-sm text-white group-hover:text-indigo-400 transition-colors line-clamp-1">
-                              {course.title || course.courseName}
-                            </h4>
-                            <p className="text-[11px] text-zinc-400 line-clamp-2">
-                              {course.shortDescription || course.description || "No description provided."}
-                            </p>
-
-                            <div className="flex items-center justify-between text-[10px] text-white/40 font-mono pt-1">
-                              <span className="flex items-center gap-1">
-                                <Users size={11} /> {course.studentsCount || 0} Students
-                              </span>
-                              <span className="flex items-center gap-1">
-                                <Calendar size={11} /> {courseSessionsCount} Sessions
-                              </span>
-                              <span className="font-bold text-white">
-                                {course.price || "Free"}
-                              </span>
+                          {/* Course Information & Pricing Container (Subtle Balanced Dark Surface) */}
+                          <div className="p-3.5 rounded-2xl bg-white/[0.02] border border-white/[0.06] space-y-3">
+                            <div className="space-y-1">
+                              <h4 dir="auto" className="font-extrabold text-sm text-white group-hover:text-indigo-400 transition-colors line-clamp-1">
+                                {course.title || course.courseName}
+                              </h4>
+                              <p dir="auto" className="text-[11px] text-zinc-400 line-clamp-2 leading-relaxed">
+                                {course.shortDescription || course.description || "No description provided."}
+                              </p>
                             </div>
 
-                            {/* Dates display if available */}
-                            {(course.startDate || course.endDate) && (
-                              <div className="text-[9px] font-mono text-zinc-500 pt-0.5 flex items-center gap-1">
-                                <Clock size={10} />
-                                <span>{course.startDate || "TBD"} &rarr; {course.endDate || "TBD"}</span>
+                            {/* Aligned Course Tuition / Class Cost & Key Metrics */}
+                            <div className="pt-2.5 border-t border-white/[0.05] space-y-2">
+                              <div className="flex items-center justify-between gap-2 text-xs">
+                                <span className="text-[10px] font-mono uppercase tracking-wider text-white/45">
+                                  Course Fee / Tuition
+                                </span>
+                                <span className="px-2.5 py-0.5 rounded-lg bg-indigo-500/15 border border-indigo-500/30 font-mono font-extrabold text-indigo-300 text-xs">
+                                  {course.price || "Free"}
+                                </span>
                               </div>
-                            )}
+
+                              <div className="grid grid-cols-2 gap-2 pt-1 text-[10px] font-mono">
+                                <div className="flex items-center justify-between px-2.5 py-1.5 rounded-xl bg-black/40 border border-white/[0.04]">
+                                  <span className="text-white/40 flex items-center gap-1">
+                                    <Users size={11} className="text-emerald-400" /> Students
+                                  </span>
+                                  <span className="font-bold text-white">{course.studentsCount || 0}</span>
+                                </div>
+                                <div className="flex items-center justify-between px-2.5 py-1.5 rounded-xl bg-black/40 border border-white/[0.04]">
+                                  <span className="text-white/40 flex items-center gap-1">
+                                    <Calendar size={11} className="text-indigo-400" /> Classes
+                                  </span>
+                                  <span className="font-bold text-white">
+                                    {courseSessionsCount}/{totalPlannedSessions}
+                                  </span>
+                                </div>
+                              </div>
+
+                              {(course.startDate || course.endDate) && (
+                                <div className="flex items-center justify-between text-[10px] font-mono text-zinc-400 pt-0.5 px-1">
+                                  <span className="flex items-center gap-1 text-white/40">
+                                    <Clock size={10} /> Schedule
+                                  </span>
+                                  <span>{course.startDate || "TBD"} &rarr; {course.endDate || "TBD"}</span>
+                                </div>
+                              )}
+                            </div>
                           </div>
                         </div>
 
                         {/* Card Actions Footer */}
-                        <div className="mt-4 pt-4 border-t border-white/[0.04] space-y-2">
+                        <div className="mt-4 pt-3.5 border-t border-white/[0.04] space-y-2">
                           <div className="flex items-center justify-between gap-2">
                             {/* Manage Syllabus Button on Card */}
                             <button
@@ -2119,18 +3215,512 @@ export default function AcademicTab({
             ? "Remove Student from Course"
             : deleteModalState.type === "session"
             ? "Delete Class Session"
+            : deleteModalState.type === "resource"
+            ? "Delete Course Resource"
+            : deleteModalState.type === "assignment"
+            ? "Delete Course Assignment"
+            : deleteModalState.type === "discussion"
+            ? "Delete Discussion Thread"
+            : deleteModalState.type === "feedback"
+            ? "Delete Administrator Feedback"
             : "Reject Teacher Proposal"
         }
         itemName={deleteModalState.name}
         message={
           deleteModalState.type === "course"
             ? "This course will be removed from the active catalog and unpublished from the landing page while preserving existing student enrollments, lessons, assignments, and exams. Are you sure you want to proceed?"
-            : "This action will remove the record from the database. Are you sure you want to proceed?"
+            : "This action will remove the record from the course workspace in the database. Are you sure you want to proceed?"
         }
         isDeleting={isDeletingItem}
         onConfirm={handleConfirmDelete}
         onClose={() => setDeleteModalState({ isOpen: false, type: "course", id: "", name: "" })}
       />
+
+      {/* COURSE RESOURCE MODAL (ADD / EDIT) */}
+      <AnimatePresence>
+        {showResourceModal && (
+          <div className="fixed inset-0 bg-black/85 backdrop-blur-md flex items-center justify-center z-50 p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="w-full max-w-lg bg-[#0d0d12] border border-white/10 rounded-3xl p-6 text-left space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto"
+            >
+              <div className="flex justify-between items-center border-b border-white/[0.05] pb-3">
+                <div>
+                  <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                    <FileText size={16} className="text-indigo-400" />
+                    <span>{editingResourceId ? "Edit Course Resource" : "Add Course Resource"}</span>
+                  </h3>
+                  <p className="text-[10px] text-white/40">
+                    Upload a learning material file or attach an external resource URL.
+                  </p>
+                </div>
+                <button onClick={() => setShowResourceModal(false)} className="text-white/40 hover:text-white cursor-pointer">
+                  <X size={16} />
+                </button>
+              </div>
+
+              {resourceModalAlert && (
+                <div className="p-3 rounded-xl border bg-rose-500/10 border-rose-500/30 text-rose-300 text-xs flex items-center gap-2">
+                  <AlertCircle size={14} />
+                  <span>{resourceModalAlert.text}</span>
+                </div>
+              )}
+
+              <form onSubmit={handleSaveResource} className="space-y-4">
+                <div>
+                  <label className="block text-[10px] font-mono uppercase text-white/50 mb-1">Resource Title *</label>
+                  <input
+                    type="text"
+                    dir="auto"
+                    required
+                    value={resourceForm.title}
+                    onChange={(e) => setResourceForm((p) => ({ ...p, title: e.target.value }))}
+                    placeholder="e.g. Week 1 Lecture Slides & Starter Kit"
+                    className="w-full bg-white/[0.02] border border-white/10 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-mono uppercase text-white/50 mb-1">Description</label>
+                  <textarea
+                    rows={3}
+                    dir="auto"
+                    value={resourceForm.description}
+                    onChange={(e) => setResourceForm((p) => ({ ...p, description: e.target.value }))}
+                    placeholder="Brief explanation of this learning resource..."
+                    className="w-full bg-white/[0.02] border border-white/10 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[10px] font-mono uppercase text-white/50 mb-1">Resource Type</label>
+                    <select
+                      value={resourceForm.fileType}
+                      onChange={(e) => setResourceForm((p) => ({ ...p, fileType: e.target.value }))}
+                      className="w-full bg-[#08080c] border border-white/10 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
+                    >
+                      <option value="pdf">PDF Document</option>
+                      <option value="slides">Presentation Slides</option>
+                      <option value="zip">Source Code / Archive (ZIP)</option>
+                      <option value="doc">Document / Notes</option>
+                      <option value="video">Video Recording</option>
+                      <option value="link">External Web Link</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-mono uppercase text-white/50 mb-1">Visibility</label>
+                    <select
+                      value={resourceForm.visibility}
+                      onChange={(e) => setResourceForm((p) => ({ ...p, visibility: e.target.value }))}
+                      className="w-full bg-[#08080c] border border-white/10 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
+                    >
+                      <option value="Visible">Visible to Enrolled Students</option>
+                      <option value="Hidden">Hidden (Draft)</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-mono uppercase text-white/50 mb-1">
+                    Upload File {editingResourceId ? "(Leave empty to keep existing file)" : ""}
+                  </label>
+                  <input
+                    type="file"
+                    onChange={(e) => setResourceFile(e.target.files?.[0] || null)}
+                    className="w-full bg-white/[0.02] border border-white/10 rounded-xl px-3 py-2 text-xs text-white/70 file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-indigo-600/20 file:text-indigo-300"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-mono uppercase text-white/50 mb-1">
+                    Or External Resource URL
+                  </label>
+                  <input
+                    type="url"
+                    value={resourceForm.externalUrl}
+                    onChange={(e) => setResourceForm((p) => ({ ...p, externalUrl: e.target.value }))}
+                    placeholder="https://github.com/... or https://docs.google.com/..."
+                    className="w-full bg-white/[0.02] border border-white/10 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
+                  />
+                </div>
+
+                <div className="pt-3 border-t border-white/[0.05] flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowResourceModal(false)}
+                    className="px-4 py-2 rounded-xl bg-white/[0.04] text-white/60 hover:text-white text-xs font-bold cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSavingResource}
+                    className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+                  >
+                    {isSavingResource && <RefreshCw size={12} className="animate-spin" />}
+                    <span>{editingResourceId ? "Save Changes" : "Add Resource"}</span>
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* COURSE ASSIGNMENT MODAL (CREATE / EDIT) */}
+      <AnimatePresence>
+        {showAssignmentModal && (
+          <div className="fixed inset-0 bg-black/85 backdrop-blur-md flex items-center justify-center z-50 p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="w-full max-w-xl bg-[#0d0d12] border border-white/10 rounded-3xl p-6 text-left space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto"
+            >
+              <div className="flex justify-between items-center border-b border-white/[0.05] pb-3">
+                <div>
+                  <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                    <ClipboardList size={16} className="text-indigo-400" />
+                    <span>{editingAssignmentId ? "Edit Course Assignment" : "Create Course Assignment"}</span>
+                  </h3>
+                  <p className="text-[10px] text-white/40">
+                    Configure assignment requirements, instructions, dates, and optional attachments.
+                  </p>
+                </div>
+                <button onClick={() => setShowAssignmentModal(false)} className="text-white/40 hover:text-white cursor-pointer">
+                  <X size={16} />
+                </button>
+              </div>
+
+              {assignmentModalAlert && (
+                <div className="p-3 rounded-xl border bg-rose-500/10 border-rose-500/30 text-rose-300 text-xs flex items-center gap-2">
+                  <AlertCircle size={14} />
+                  <span>{assignmentModalAlert.text}</span>
+                </div>
+              )}
+
+              <form onSubmit={handleSaveAssignment} className="space-y-4">
+                <div>
+                  <label className="block text-[10px] font-mono uppercase text-white/50 mb-1">Assignment Title *</label>
+                  <input
+                    type="text"
+                    dir="auto"
+                    required
+                    value={assignmentForm.title}
+                    onChange={(e) => setAssignmentForm((p) => ({ ...p, title: e.target.value }))}
+                    placeholder="e.g. Project 1: Responsive Grid Architecture"
+                    className="w-full bg-white/[0.02] border border-white/10 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-mono uppercase text-white/50 mb-1">Overview Description</label>
+                  <textarea
+                    rows={2}
+                    dir="auto"
+                    value={assignmentForm.description}
+                    onChange={(e) => setAssignmentForm((p) => ({ ...p, description: e.target.value }))}
+                    placeholder="Summary of the assignment objectives..."
+                    className="w-full bg-white/[0.02] border border-white/10 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-mono uppercase text-white/50 mb-1">Detailed Instructions & Deliverables</label>
+                  <textarea
+                    rows={3}
+                    dir="auto"
+                    value={assignmentForm.instructions}
+                    onChange={(e) => setAssignmentForm((p) => ({ ...p, instructions: e.target.value }))}
+                    placeholder="Step-by-step instructions, grading criteria, and submission format..."
+                    className="w-full bg-white/[0.02] border border-white/10 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[10px] font-mono uppercase text-white/50 mb-1">Start / Publish Date</label>
+                    <input
+                      type="date"
+                      value={assignmentForm.publishDate}
+                      onChange={(e) => setAssignmentForm((p) => ({ ...p, publishDate: e.target.value }))}
+                      className="w-full bg-white/[0.02] border border-white/10 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-mono uppercase text-white/50 mb-1">Due Date *</label>
+                    <input
+                      type="date"
+                      required
+                      value={assignmentForm.dueDate}
+                      onChange={(e) => setAssignmentForm((p) => ({ ...p, dueDate: e.target.value }))}
+                      className="w-full bg-white/[0.02] border border-white/10 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[10px] font-mono uppercase text-white/50 mb-1">Max Points</label>
+                    <input
+                      type="number"
+                      min={1}
+                      max={1000}
+                      value={assignmentForm.maxPoints}
+                      onChange={(e) => setAssignmentForm((p) => ({ ...p, maxPoints: Number(e.target.value) || 100 }))}
+                      className="w-full bg-white/[0.02] border border-white/10 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-mono uppercase text-white/50 mb-1">Status</label>
+                    <select
+                      value={assignmentForm.status}
+                      onChange={(e) => setAssignmentForm((p) => ({ ...p, status: e.target.value }))}
+                      className="w-full bg-[#08080c] border border-white/10 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
+                    >
+                      <option value="Published">Published (Active for Students)</option>
+                      <option value="Draft">Draft (Hidden)</option>
+                      <option value="Archived">Archived</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-mono uppercase text-white/50 mb-1">
+                    Upload Attachment / Starter File (Optional)
+                  </label>
+                  <input
+                    type="file"
+                    onChange={(e) => setAssignmentFile(e.target.files?.[0] || null)}
+                    className="w-full bg-white/[0.02] border border-white/10 rounded-xl px-3 py-2 text-xs text-white/70 file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-indigo-600/20 file:text-indigo-300"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[10px] font-mono uppercase text-white/50 mb-1">Or Attachment / Resource URL</label>
+                    <input
+                      type="url"
+                      value={assignmentForm.attachmentUrl}
+                      onChange={(e) => setAssignmentForm((p) => ({ ...p, attachmentUrl: e.target.value }))}
+                      placeholder="https://..."
+                      className="w-full bg-white/[0.02] border border-white/10 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-mono uppercase text-white/50 mb-1">Attachment Label</label>
+                    <input
+                      type="text"
+                      dir="auto"
+                      value={assignmentForm.attachmentName}
+                      onChange={(e) => setAssignmentForm((p) => ({ ...p, attachmentName: e.target.value }))}
+                      placeholder="e.g. Starter Repository"
+                      className="w-full bg-white/[0.02] border border-white/10 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="pt-3 border-t border-white/[0.05] flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowAssignmentModal(false)}
+                    className="px-4 py-2 rounded-xl bg-white/[0.04] text-white/60 hover:text-white text-xs font-bold cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSavingAssignment}
+                    className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+                  >
+                    {isSavingAssignment && <RefreshCw size={12} className="animate-spin" />}
+                    <span>{editingAssignmentId ? "Save Assignment" : "Create Assignment"}</span>
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* COURSE DISCUSSION TOPIC MODAL */}
+      <AnimatePresence>
+        {showDiscussionModal && (
+          <div className="fixed inset-0 bg-black/85 backdrop-blur-md flex items-center justify-center z-50 p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="w-full max-w-lg bg-[#0d0d12] border border-white/10 rounded-3xl p-6 text-left space-y-4 shadow-2xl"
+            >
+              <div className="flex justify-between items-center border-b border-white/[0.05] pb-3">
+                <div>
+                  <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                    <MessageSquare size={16} className="text-indigo-400" />
+                    <span>Create Course Discussion Topic</span>
+                  </h3>
+                  <p className="text-[10px] text-white/40">
+                    Start a new discussion thread for {currentCourse?.title || currentCourse?.courseName}.
+                  </p>
+                </div>
+                <button onClick={() => setShowDiscussionModal(false)} className="text-white/40 hover:text-white cursor-pointer">
+                  <X size={16} />
+                </button>
+              </div>
+
+              {discussionModalAlert && (
+                <div className="p-3 rounded-xl border bg-rose-500/10 border-rose-500/30 text-rose-300 text-xs flex items-center gap-2">
+                  <AlertCircle size={14} />
+                  <span>{discussionModalAlert.text}</span>
+                </div>
+              )}
+
+              <form onSubmit={handleSaveDiscussion} className="space-y-4">
+                <div>
+                  <label className="block text-[10px] font-mono uppercase text-white/50 mb-1">Topic Title *</label>
+                  <input
+                    type="text"
+                    dir="auto"
+                    required
+                    value={discussionForm.title}
+                    onChange={(e) => setDiscussionForm((p) => ({ ...p, title: e.target.value }))}
+                    placeholder="e.g. Q&A Thread: Module 1 Architecture & Setup"
+                    className="w-full bg-white/[0.02] border border-white/10 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-mono uppercase text-white/50 mb-1">Discussion Message *</label>
+                  <textarea
+                    rows={4}
+                    dir="auto"
+                    required
+                    value={discussionForm.text}
+                    onChange={(e) => setDiscussionForm((p) => ({ ...p, text: e.target.value }))}
+                    placeholder="Write the discussion prompt or topic details..."
+                    className="w-full bg-white/[0.02] border border-white/10 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
+                  />
+                </div>
+
+                <div className="pt-3 border-t border-white/[0.05] flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowDiscussionModal(false)}
+                    className="px-4 py-2 rounded-xl bg-white/[0.04] text-white/60 hover:text-white text-xs font-bold cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSavingDiscussion}
+                    className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+                  >
+                    {isSavingDiscussion && <RefreshCw size={12} className="animate-spin" />}
+                    <span>Post Discussion Topic</span>
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* COURSE FEEDBACK MODAL (ADMIN FEEDBACK / NOTE) */}
+      <AnimatePresence>
+        {showFeedbackModal && (
+          <div className="fixed inset-0 bg-black/85 backdrop-blur-md flex items-center justify-center z-50 p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="w-full max-w-lg bg-[#0d0d12] border border-white/10 rounded-3xl p-6 text-left space-y-4 shadow-2xl"
+            >
+              <div className="flex justify-between items-center border-b border-white/[0.05] pb-3">
+                <div>
+                  <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                    <MessageCircle size={16} className="text-indigo-400" />
+                    <span>{editingFeedbackId ? "Edit Administrator Course Feedback" : "Add Administrator Course Feedback"}</span>
+                  </h3>
+                  <p className="text-[10px] text-white/40">
+                    Record official administrator feedback or internal curriculum notes for this course.
+                  </p>
+                </div>
+                <button onClick={() => setShowFeedbackModal(false)} className="text-white/40 hover:text-white cursor-pointer">
+                  <X size={16} />
+                </button>
+              </div>
+
+              {feedbackModalAlert && (
+                <div className="p-3 rounded-xl border bg-rose-500/10 border-rose-500/30 text-rose-300 text-xs flex items-center gap-2">
+                  <AlertCircle size={14} />
+                  <span>{feedbackModalAlert.text}</span>
+                </div>
+              )}
+
+              <form onSubmit={handleSaveFeedback} className="space-y-4">
+                <div>
+                  <label className="block text-[10px] font-mono uppercase text-white/50 mb-1">Title / Subject (Optional)</label>
+                  <input
+                    type="text"
+                    dir="auto"
+                    value={feedbackForm.title}
+                    onChange={(e) => setFeedbackForm((p) => ({ ...p, title: e.target.value }))}
+                    placeholder="e.g. Mid-Cohort Curriculum Review & Guidance"
+                    className="w-full bg-white/[0.02] border border-white/10 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-mono uppercase text-white/50 mb-1">Visibility</label>
+                  <select
+                    value={feedbackForm.visibility}
+                    onChange={(e) => setFeedbackForm((p) => ({ ...p, visibility: e.target.value as "Visible" | "Internal" }))}
+                    className="w-full bg-[#08080c] border border-white/10 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
+                  >
+                    <option value="Visible">Visible to Enrolled Students</option>
+                    <option value="Internal">Internal Administrator Note Only</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-mono uppercase text-white/50 mb-1">Feedback / Note Content *</label>
+                  <textarea
+                    rows={4}
+                    dir="auto"
+                    required
+                    value={feedbackForm.content}
+                    onChange={(e) => setFeedbackForm((p) => ({ ...p, content: e.target.value }))}
+                    placeholder="Enter course feedback, evaluation notes, or student guidance..."
+                    className="w-full bg-white/[0.02] border border-white/10 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
+                  />
+                </div>
+
+                <div className="pt-3 border-t border-white/[0.05] flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowFeedbackModal(false)}
+                    className="px-4 py-2 rounded-xl bg-white/[0.04] text-white/60 hover:text-white text-xs font-bold cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSavingFeedback}
+                    className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+                  >
+                    {isSavingFeedback && <RefreshCw size={12} className="animate-spin" />}
+                    <span>{editingFeedbackId ? "Save Changes" : "Save Feedback"}</span>
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* ENROLL STUDENT MODAL */}
       <AnimatePresence>

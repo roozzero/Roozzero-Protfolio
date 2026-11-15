@@ -809,6 +809,139 @@ export const adminApi = {
     return this.deleteCourseLesson(courseId, lessonId);
   },
 
+  // Course Resources (Admin Course Workspace)
+  async getCourseResources(courseId: string) {
+    return request<{ success: boolean; data: any[] }>(`/admin/courses/${courseId}/resources`);
+  },
+
+  async createCourseResource(courseId: string, payload: FormData | { title: string; description?: string; externalUrl?: string; fileType?: string; visibility?: string }) {
+    const isFormData = payload instanceof FormData;
+    return request<{ success: boolean; data: any; message: string }>(`/admin/courses/${courseId}/resources`, {
+      method: "POST",
+      body: isFormData ? payload : JSON.stringify(payload)
+    });
+  },
+
+  async updateCourseResource(courseId: string, resourceId: string, payload: FormData | { title?: string; description?: string; externalUrl?: string; fileType?: string; visibility?: string }) {
+    const isFormData = payload instanceof FormData;
+    return request<{ success: boolean; data: any; message: string }>(`/admin/courses/${courseId}/resources/${resourceId}`, {
+      method: "PUT",
+      body: isFormData ? payload : JSON.stringify(payload)
+    });
+  },
+
+  async deleteCourseResource(courseId: string, resourceId: string) {
+    return request<{ success: boolean; message: string }>(`/admin/courses/${courseId}/resources/${resourceId}`, {
+      method: "DELETE"
+    });
+  },
+
+  // Course Assignments (Admin Course Workspace)
+  async getCourseAssignments(courseId: string) {
+    return request<{ success: boolean; data: any[] }>(`/admin/courses/${courseId}/assignments`);
+  },
+
+  async createCourseAssignment(courseId: string, payload: FormData | {
+    title: string;
+    description?: string;
+    instructions?: string;
+    publishDate?: string;
+    startDate?: string;
+    dueDate: string;
+    maxPoints?: number;
+    status?: string;
+    attachmentUrl?: string;
+    attachmentName?: string;
+  }) {
+    const isFormData = payload instanceof FormData;
+    return request<{ success: boolean; data: any; message: string }>(`/admin/courses/${courseId}/assignments`, {
+      method: "POST",
+      body: isFormData ? payload : JSON.stringify(payload)
+    });
+  },
+
+  async updateCourseAssignment(courseId: string, assignmentId: string, payload: FormData | {
+    title?: string;
+    description?: string;
+    instructions?: string;
+    publishDate?: string;
+    startDate?: string;
+    dueDate?: string;
+    maxPoints?: number;
+    status?: string;
+    attachmentUrl?: string;
+    attachmentName?: string;
+  }) {
+    const isFormData = payload instanceof FormData;
+    return request<{ success: boolean; data: any; message: string }>(`/admin/courses/${courseId}/assignments/${assignmentId}`, {
+      method: "PUT",
+      body: isFormData ? payload : JSON.stringify(payload)
+    });
+  },
+
+  async deleteCourseAssignment(courseId: string, assignmentId: string) {
+    return request<{ success: boolean; message: string }>(`/admin/courses/${courseId}/assignments/${assignmentId}`, {
+      method: "DELETE"
+    });
+  },
+
+  // Course Discussions (Admin Course Workspace)
+  async getCourseDiscussions(courseId: string) {
+    return request<{ success: boolean; data: any[] }>(`/admin/courses/${courseId}/discussions`);
+  },
+
+  async createCourseDiscussion(courseId: string, data: { title: string; text: string }) {
+    return request<{ success: boolean; data: any; message: string }>(`/admin/courses/${courseId}/discussions`, {
+      method: "POST",
+      body: JSON.stringify(data)
+    });
+  },
+
+  async replyCourseDiscussion(courseId: string, threadId: string, text: string) {
+    return request<{ success: boolean; data: any; message: string }>(`/admin/courses/${courseId}/discussions/${threadId}/replies`, {
+      method: "POST",
+      body: JSON.stringify({ text })
+    });
+  },
+
+  async updateCourseDiscussionStatus(courseId: string, threadId: string, status: "Closed" | "Open" | "Replied" | "New") {
+    return request<{ success: boolean; data: { id: string; status: string }; message: string }>(`/admin/courses/${courseId}/discussions/${threadId}/status`, {
+      method: "PATCH",
+      body: JSON.stringify({ status })
+    });
+  },
+
+  async deleteCourseDiscussion(courseId: string, threadId: string) {
+    return request<{ success: boolean; message: string }>(`/admin/courses/${courseId}/discussions/${threadId}`, {
+      method: "DELETE"
+    });
+  },
+
+  // Course Feedback (Admin Course Workspace - Admin Feedback separated from Student Feedback)
+  async getCourseFeedback(courseId: string) {
+    return request<{ success: boolean; data: { adminFeedback: any[]; studentFeedback: any[] } }>(`/admin/courses/${courseId}/feedback`);
+  },
+
+  async createCourseFeedback(courseId: string, data: { title?: string; content: string; visibility?: "Visible" | "Internal" }) {
+    return request<{ success: boolean; data: any; message: string }>(`/admin/courses/${courseId}/feedback`, {
+      method: "POST",
+      body: JSON.stringify(data)
+    });
+  },
+
+  async updateCourseFeedback(courseId: string, feedbackId: string, data: { title?: string; content?: string; visibility?: "Visible" | "Internal" }) {
+    return request<{ success: boolean; data: any; message: string }>(`/admin/courses/${courseId}/feedback/${feedbackId}`, {
+      method: "PUT",
+      body: JSON.stringify(data)
+    });
+  },
+
+  async deleteCourseFeedback(courseId: string, feedbackId: string) {
+    return request<{ success: boolean; message: string }>(`/admin/courses/${courseId}/feedback/${feedbackId}`, {
+      method: "DELETE"
+    });
+  },
+
   async getExams() {
     return request<{ success: boolean; data: any[] }>("/admin/exams");
   },

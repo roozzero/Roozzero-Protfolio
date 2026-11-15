@@ -574,12 +574,10 @@ export default function AdminDashboard({ onLogout, onGoHome }: AdminDashboardPro
               { id: "inbox", label: "Inbox", icon: Mail, tab: "inbox", sub: "all" },
               { id: "users", label: "Users", icon: Users, tab: "users", sub: "all" },
               { id: "courses", label: "Courses", icon: BookOpen, tab: "academic", sub: "catalog" },
-              { id: "sessions", label: "Class Sessions", icon: Calendar, tab: "academic", sub: "sessions" },
               { id: "notifications", label: "Notifications", icon: Bell, tab: "notifications", sub: "all" },
               { id: "certificates", label: "Certificates", icon: Award, tab: "certificates", sub: "all" },
               { id: "exams", label: "Exams", icon: Sliders, tab: "exams", sub: "all" },
               { id: "discussions", label: "Discussions", icon: MessageSquare, tab: "discussions", sub: "all" },
-              { id: "announcements", label: "Announcements", icon: Megaphone, tab: "services", sub: "announcements" },
               { id: "systemSettings", label: "Settings", icon: Settings, tab: "settings", sub: "system" },
               { id: "security", label: "Security", icon: Shield, tab: "security", sub: "directory", isSecurity: true }
             ].map((menu) => {
@@ -587,10 +585,8 @@ export default function AdminDashboard({ onLogout, onGoHome }: AdminDashboardPro
               const active = isSec
                 ? activeTab === "security"
                 : menu.id === "courses"
-                  ? activeTab === "academic" && activeSubTab !== "sessions"
-                  : menu.id === "sessions"
-                    ? activeTab === "academic" && activeSubTab === "sessions"
-                    : activeTab === menu.tab;
+                  ? activeTab === "academic"
+                  : activeTab === menu.tab;
               const isInboxWithUnread = menu.id === "inbox" && unreadMessagesCount > 0;
               return (
                 <button
@@ -790,8 +786,11 @@ export default function AdminDashboard({ onLogout, onGoHome }: AdminDashboardPro
                   stats={dashboardStats || undefined}
                   onQuickAction={(tabId, subTab) => {
                     if (tabId === "announcements") {
-                      setActiveTab("services");
+                      setActiveTab("notifications");
                       setActiveSubTab("announcements");
+                    } else if (tabId === "sessions") {
+                      setActiveTab("academic");
+                      setActiveSubTab("sessions");
                     } else if (tabId === "users") {
                       setActiveTab("users");
                       setActiveSubTab(subTab || "all");
@@ -1074,6 +1073,7 @@ export default function AdminDashboard({ onLogout, onGoHome }: AdminDashboardPro
               {activeTab === "notifications" && (
                 <AcademyFeedTab 
                   courses={courses}
+                  initialSubTab={activeSubTab}
                   showCustomToast={(msg) => dispatchAlert(msg)}
                 />
               )}

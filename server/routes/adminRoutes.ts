@@ -3,7 +3,7 @@ import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import { query, getDbPool } from "../db/pool";
 import { requireAuth, requireRole } from "../middleware/auth";
-import { uploadProfile, uploadMedia } from "../middleware/upload";
+import { uploadProfile, uploadMedia, uploadResourceFile, uploadAssignmentFile } from "../middleware/upload";
 
 const router = Router();
 
@@ -1760,7 +1760,164 @@ router.post("/courses", async (req: Request, res: Response) => {
   }
 });
 
-// GET /api/admin/courses/:id (Full course detail: instructor, students, syllabus)
+// Helper functions to fetch course-scoped workspace collections
+async function fetchCourseResources(courseId: string) {
+  const [rows]: [any[], any] = await query(`
+    SELECT r.id, r.title, r.description, r.course_id as courseId, r.teacher_id as teacherId,
+           r.file_name as fileName, r.stored_name as storedName, r.file_path as filePath,
+           r.file_url as fileUrl, r.external_url as externalUrl,
+           r.file_type as fileType, r.file_size as fileSize, r.visibility,
+           r.uploaded_at as uploadedAt, r.created_at as createdAt, r.updated_at as updatedAt,
+           COALESCE(u.name, 'Administrator') as uploadedByName
+    FROM resources r
+    LEFT JOIN users u ON r.teacher_id = u.id
+    WHERE r.course_id = ? AND r.deleted_at IS NULL
+    ORDER BY r.created_at DESC, r.uploaded_at DESC
+  `, [courseId]);
+
+  return (rows || []).map((r: any) => {
+    const extUrl = r.externalUrl || (r.fileUrl && /^https?:\/\//i.test(r.fileUrl) ? r.fileUrl : null) || (r.filePath && /^https?:\/\//i.test(r.filePath) ? r.filePath : null);
+    const hasUploadedFile = Boolean(r.filePath && !/^https?:\/\//i.test(r.filePath));
+    return {
+      id: r.id,
+      courseId: r.courseId,
+      title: r.title,
+      description: r.description || "",
+      fileType: r.fileType || (extUrl ? "link" : "file"),
+      fileSize: r.fileSize || (extUrl ? "External Link" : ""),
+      fileName: r.fileName || "",
+      filePath: r.filePath || "",
+      externalUrl: extUrl || "",
+      downloadUrl: extUrl ? extUrl : (hasUploadedFile ? `/api/files/resources/${r.id}` : ""),
+      visibility: r.visibility || "Visible",
+      uploadedByName: r.uploadedByName || "Administrator",
+      uploadedAt: r.uploadedAt ? (r.uploadedAt instanceof Date ? r.uploadedAt.toISOString().split("T")[0] : String(r.uploadedAt).split("T")[0]) : "",
+      createdAt: r.createdAt ? (r.createdAt instanceof Date ? r.createdAt.toISOString() : String(r.createdAt)) : ""
+    };
+  });
+}
+
+async function fetchCourseAssignments(courseId: string) {
+  const [rows]: [any[], any] = await query(`
+    SELECT a.id, a.course_id as courseId, a.teacher_id as teacherId,
+           a.title, a.description, a.instructions,
+           a.publish_date as publishDate, a.due_date as dueDate,
+           a.max_points as maxPoints, a.status,
+           a.attachment_url as attachmentUrl, a.attachment_name as attachmentName,
+           a.created_at as createdAt, a.updated_at as updatedAt,
+           COALESCE(u.name, 'Administrator') as authorName,
+           (SELECT COUNT(*) FROM assignment_submissions s WHERE s.assignment_id = a.id) as submissions_count,
+           (SELECT COUNT(*) FROM assignment_submissions s WHERE s.assignment_id = a.id AND s.status = 'Graded') as graded_count,
+           (SELECT AVG(s.grade) FROM assignment_submissions s WHERE s.assignment_id = a.id AND s.grade IS NOT NULL) as avg_grade
+    FROM assignments a
+    LEFT JOIN users u ON a.teacher_id = u.id
+    WHERE a.course_id = ? AND a.deleted_at IS NULL
+    ORDER BY a.due_date ASC, a.created_at DESC
+  `, [courseId]);
+
+  return (rows || []).map((a: any) => ({
+    id: a.id,
+    courseId: a.courseId,
+    teacherId: a.teacherId,
+    authorName: a.authorName || "Administrator",
+    title: a.title,
+    description: a.description || "",
+    instructions: a.instructions || "",
+    publishDate: a.publishDate ? (a.publishDate instanceof Date ? a.publishDate.toISOString().split("T")[0] : String(a.publishDate).split("T")[0]) : "",
+    startDate: a.publishDate ? (a.publishDate instanceof Date ? a.publishDate.toISOString().split("T")[0] : String(a.publishDate).split("T")[0]) : "",
+    dueDate: a.dueDate ? (a.dueDate instanceof Date ? a.dueDate.toISOString().split("T")[0] : String(a.dueDate).split("T")[0]) : "",
+    maxPoints: Number(a.maxPoints ?? 100),
+    status: a.status || "Published",
+    attachmentUrl: a.attachmentUrl || "",
+    attachmentName: a.attachmentName || "",
+    submissionsCount: Number(a.submissions_count ?? 0),
+    gradedCount: Number(a.graded_count ?? 0),
+    avgGrade: a.avg_grade !== null && a.avg_grade !== undefined ? Math.round(Number(a.avg_grade) * 10) / 10 : null,
+    createdAt: a.createdAt ? (a.createdAt instanceof Date ? a.createdAt.toISOString() : String(a.createdAt)) : ""
+  }));
+}
+
+async function fetchCourseDiscussions(courseId: string) {
+  const [threads]: [any[], any] = await query(`
+    SELECT d.id, d.course_id as courseId, d.student_id as authorId,
+           d.student_name as authorName, COALESCE(d.author_role, 'Student') as authorRole,
+           d.title, d.text, d.time, d.status, d.created_at as createdAt, d.updated_at as updatedAt
+    FROM discussion_threads d
+    WHERE d.course_id = ? AND d.deleted_at IS NULL
+    ORDER BY d.created_at DESC
+  `, [courseId]);
+
+  const result = [];
+  for (const thread of threads || []) {
+    const [replies]: [any[], any] = await query(`
+      SELECT id, thread_id as threadId, sender_id as senderId, sender_name as senderName,
+             role, time, text, created_at as createdAt
+      FROM discussion_replies
+      WHERE thread_id = ?
+      ORDER BY created_at ASC
+    `, [thread.id]);
+
+    result.push({
+      id: thread.id,
+      courseId: thread.courseId,
+      authorId: thread.authorId,
+      authorName: thread.authorName || "User",
+      studentName: thread.authorName || "User",
+      authorRole: thread.authorRole || "Student",
+      title: thread.title,
+      text: thread.text,
+      time: thread.time || "Recent",
+      status: thread.status || "New",
+      createdAt: thread.createdAt ? (thread.createdAt instanceof Date ? thread.createdAt.toISOString() : String(thread.createdAt)) : "",
+      replies: (replies || []).map((r: any) => ({
+        id: r.id,
+        threadId: r.threadId,
+        senderId: r.senderId,
+        sender: r.senderName || "User",
+        senderName: r.senderName || "User",
+        role: r.role || "Administrator",
+        time: r.time || "Recent",
+        text: r.text,
+        createdAt: r.createdAt ? (r.createdAt instanceof Date ? r.createdAt.toISOString() : String(r.createdAt)) : ""
+      }))
+    });
+  }
+  return result;
+}
+
+async function fetchCourseFeedback(courseId: string) {
+  const [rows]: [any[], any] = await query(`
+    SELECT id, course_id as courseId, author_id as authorId, author_name as authorName,
+           author_role as authorRole, feedback_type as feedbackType,
+           title, content, rating, visibility,
+           created_at as createdAt, updated_at as updatedAt
+    FROM course_feedback
+    WHERE course_id = ? AND deleted_at IS NULL
+    ORDER BY created_at DESC
+  `, [courseId]);
+
+  const formatted = (rows || []).map((r: any) => ({
+    id: r.id,
+    courseId: r.courseId,
+    authorId: r.authorId,
+    authorName: r.authorName || "Administrator",
+    authorRole: r.authorRole || (r.feedbackType === "student" ? "Student" : "Administrator"),
+    feedbackType: r.feedbackType || "admin",
+    title: r.title || "",
+    content: r.content || "",
+    rating: r.rating !== null && r.rating !== undefined ? Number(r.rating) : null,
+    visibility: r.visibility || "Visible",
+    createdAt: r.createdAt ? (r.createdAt instanceof Date ? r.createdAt.toISOString() : String(r.createdAt)) : "",
+    updatedAt: r.updatedAt ? (r.updatedAt instanceof Date ? r.updatedAt.toISOString() : String(r.updatedAt)) : ""
+  }));
+
+  return {
+    adminFeedback: formatted.filter((f: any) => f.feedbackType === "admin"),
+    studentFeedback: formatted.filter((f: any) => f.feedbackType === "student")
+  };
+}
+
+// GET /api/admin/courses/:id (Full course detail: instructor, students, syllabus, sessions, resources, assignments, discussions, feedback)
 router.get("/courses/:id", async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -1802,6 +1959,13 @@ router.get("/courses/:id", async (req: Request, res: Response) => {
       ORDER BY s.date ASC
     `, [id]);
 
+    const [resources, assignments, discussions, feedback] = await Promise.all([
+      fetchCourseResources(id),
+      fetchCourseAssignments(id),
+      fetchCourseDiscussions(id),
+      fetchCourseFeedback(id)
+    ]);
+
     let parsedSyllabus = [];
     if (course.syllabus_json) {
       try {
@@ -1837,6 +2001,10 @@ router.get("/courses/:id", async (req: Request, res: Response) => {
           ...s,
           date: s.date ? (s.date instanceof Date ? s.date.toISOString().split("T")[0] : String(s.date).split("T")[0]) : ""
         })),
+        resources,
+        assignments,
+        discussions,
+        feedback,
         syllabus: parsedSyllabus,
         syllabusJson: parsedSyllabus,
         isPublished: Boolean(course.is_published || course.status === "Published"),
@@ -2527,6 +2695,761 @@ router.delete("/courses/:id/lessons/:lessonId", async (req: Request, res: Respon
     const { lessonId } = req.params;
     await query("DELETE FROM lessons WHERE id = ?", [lessonId]);
     return res.json({ success: true, message: "Lesson removed from syllabus." });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: { code: "SERVER_ERROR", message: err.message } });
+  }
+});
+
+// -------------------------------------------------------------
+// COURSE WORKSPACE EXTENSIONS: RESOURCES, ASSIGNMENTS, DISCUSSIONS, FEEDBACK
+// -------------------------------------------------------------
+
+// 1. COURSE RESOURCES (GET, POST, PUT, DELETE)
+router.get("/courses/:id/resources", async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const [cRows]: [any[], any] = await query("SELECT id FROM courses WHERE id = ? AND deleted_at IS NULL", [id]);
+    if (cRows.length === 0) {
+      return res.status(404).json({ success: false, error: { code: "COURSE_NOT_FOUND", message: "Course not found." } });
+    }
+    const resources = await fetchCourseResources(id);
+    return res.json({ success: true, data: resources });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: { code: "SERVER_ERROR", message: err.message } });
+  }
+});
+
+router.post("/courses/:id/resources", uploadResourceFile.single("file"), async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const [cRows]: [any[], any] = await query("SELECT id, title, teacher_id FROM courses WHERE id = ? AND deleted_at IS NULL", [id]);
+    if (cRows.length === 0) {
+      return res.status(404).json({ success: false, error: { code: "COURSE_NOT_FOUND", message: "Course not found." } });
+    }
+
+    const course = cRows[0];
+    const { title, description, externalUrl, resourceUrl, fileType, visibility } = req.body;
+    const file = req.file;
+
+    if (!title || !String(title).trim()) {
+      return res.status(400).json({ success: false, error: { code: "MISSING_TITLE", message: "Resource title is required." } });
+    }
+
+    const resolvedExternalUrl = (externalUrl || resourceUrl || "").trim();
+    if (!file && !resolvedExternalUrl) {
+      return res.status(400).json({
+        success: false,
+        error: { code: "MISSING_ASSET", message: "Please upload a file or provide an external resource URL." }
+      });
+    }
+
+    const resId = `res-${Date.now()}-${crypto.randomBytes(3).toString("hex")}`;
+    const effectiveTeacherId = course.teacher_id || req.user!.id;
+    const resolvedType = fileType
+      ? String(fileType).trim().toLowerCase()
+      : file
+        ? (file.originalname.split(".").pop()?.toLowerCase() || file.mimetype.split("/")[1] || "file")
+        : "link";
+    const resolvedSize = file ? `${Math.max(1, Math.round(file.size / 1024))} KB` : "External Link";
+    const resolvedFilePath = file ? `/uploads/resources/${file.filename}` : (resolvedExternalUrl || null);
+    const resolvedFileName = file ? file.originalname : (resolvedExternalUrl ? "External Resource" : null);
+    const resolvedVisibility = visibility === "Hidden" ? "Hidden" : "Visible";
+
+    await query(`
+      INSERT INTO resources (
+        id, title, description, course_id, teacher_id,
+        file_name, stored_name, file_path, file_url, external_url,
+        file_type, file_size, visibility, uploaded_at
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURDATE())
+    `, [
+      resId,
+      String(title).trim(),
+      description ? String(description).trim() : null,
+      id,
+      effectiveTeacherId,
+      resolvedFileName,
+      file ? file.filename : null,
+      resolvedFilePath,
+      resolvedFilePath,
+      resolvedExternalUrl || null,
+      resolvedType,
+      resolvedSize,
+      resolvedVisibility
+    ]);
+
+    await query("INSERT INTO activity_logs (user_id, action, details) VALUES (?, 'AddCourseResource', ?)", [
+      req.user!.id,
+      `Added resource "${String(title).trim()}" to course "${course.title}" (${id})`
+    ]);
+
+    const updatedResources = await fetchCourseResources(id);
+    const created = updatedResources.find((r: any) => r.id === resId) || updatedResources[0];
+
+    return res.status(201).json({
+      success: true,
+      data: created,
+      message: "Resource added to course successfully."
+    });
+  } catch (err: any) {
+    console.error("[Add Course Resource Error]:", err);
+    return res.status(500).json({ success: false, error: { code: "SERVER_ERROR", message: err.message } });
+  }
+});
+
+router.put("/courses/:id/resources/:resourceId", uploadResourceFile.single("file"), async (req: Request, res: Response) => {
+  try {
+    const { id, resourceId } = req.params;
+    const [existingRows]: [any[], any] = await query(
+      "SELECT * FROM resources WHERE id = ? AND course_id = ? AND deleted_at IS NULL",
+      [resourceId, id]
+    );
+    if (existingRows.length === 0) {
+      return res.status(404).json({ success: false, error: { code: "NOT_FOUND", message: "Resource not found for this course." } });
+    }
+
+    const existing = existingRows[0];
+    const { title, description, externalUrl, resourceUrl, fileType, visibility } = req.body;
+    const file = req.file;
+
+    if (title !== undefined && !String(title).trim()) {
+      return res.status(400).json({ success: false, error: { code: "MISSING_TITLE", message: "Resource title cannot be empty." } });
+    }
+
+    const nextTitle = title !== undefined ? String(title).trim() : existing.title;
+    const nextDescription = description !== undefined ? (String(description).trim() || null) : existing.description;
+    const incomingUrl = externalUrl !== undefined ? String(externalUrl).trim() : (resourceUrl !== undefined ? String(resourceUrl).trim() : undefined);
+    const nextExternalUrl = incomingUrl !== undefined ? (incomingUrl || null) : existing.external_url;
+    const nextFilePath = file
+      ? `/uploads/resources/${file.filename}`
+      : (incomingUrl !== undefined && incomingUrl ? incomingUrl : existing.file_path);
+    const nextFileName = file ? file.originalname : existing.file_name;
+    const nextStoredName = file ? file.filename : existing.stored_name;
+    const nextFileType = fileType !== undefined && String(fileType).trim()
+      ? String(fileType).trim().toLowerCase()
+      : file
+        ? (file.originalname.split(".").pop()?.toLowerCase() || "file")
+        : existing.file_type;
+    const nextFileSize = file ? `${Math.max(1, Math.round(file.size / 1024))} KB` : existing.file_size;
+    const nextVisibility = visibility === "Hidden" || visibility === "Visible" ? visibility : existing.visibility;
+
+    await query(`
+      UPDATE resources
+      SET title = ?,
+          description = ?,
+          file_name = ?,
+          stored_name = ?,
+          file_path = ?,
+          file_url = ?,
+          external_url = ?,
+          file_type = ?,
+          file_size = ?,
+          visibility = ?
+      WHERE id = ? AND course_id = ?
+    `, [
+      nextTitle,
+      nextDescription,
+      nextFileName,
+      nextStoredName,
+      nextFilePath,
+      nextFilePath,
+      nextExternalUrl,
+      nextFileType,
+      nextFileSize,
+      nextVisibility,
+      resourceId,
+      id
+    ]);
+
+    const updatedResources = await fetchCourseResources(id);
+    const updated = updatedResources.find((r: any) => r.id === resourceId);
+
+    return res.json({
+      success: true,
+      data: updated,
+      message: "Resource updated successfully."
+    });
+  } catch (err: any) {
+    console.error("[Update Course Resource Error]:", err);
+    return res.status(500).json({ success: false, error: { code: "SERVER_ERROR", message: err.message } });
+  }
+});
+
+router.delete("/courses/:id/resources/:resourceId", async (req: Request, res: Response) => {
+  try {
+    const { id, resourceId } = req.params;
+    const [existingRows]: [any[], any] = await query(
+      "SELECT id, title FROM resources WHERE id = ? AND course_id = ? AND deleted_at IS NULL",
+      [resourceId, id]
+    );
+    if (existingRows.length === 0) {
+      return res.status(404).json({ success: false, error: { code: "NOT_FOUND", message: "Resource not found for this course." } });
+    }
+
+    await query("UPDATE resources SET deleted_at = NOW() WHERE id = ? AND course_id = ?", [resourceId, id]);
+    await query("INSERT INTO activity_logs (user_id, action, details) VALUES (?, 'DeleteCourseResource', ?)", [
+      req.user!.id,
+      `Deleted resource "${existingRows[0].title}" (${resourceId}) from course ${id}`
+    ]);
+
+    return res.json({ success: true, message: "Resource deleted successfully." });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: { code: "SERVER_ERROR", message: err.message } });
+  }
+});
+
+// 2. COURSE ASSIGNMENTS (GET, POST, PUT, DELETE)
+router.get("/courses/:id/assignments", async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const [cRows]: [any[], any] = await query("SELECT id FROM courses WHERE id = ? AND deleted_at IS NULL", [id]);
+    if (cRows.length === 0) {
+      return res.status(404).json({ success: false, error: { code: "COURSE_NOT_FOUND", message: "Course not found." } });
+    }
+    const assignments = await fetchCourseAssignments(id);
+    return res.json({ success: true, data: assignments });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: { code: "SERVER_ERROR", message: err.message } });
+  }
+});
+
+router.post("/courses/:id/assignments", uploadAssignmentFile.single("file"), async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const [cRows]: [any[], any] = await query("SELECT id, title, teacher_id FROM courses WHERE id = ? AND deleted_at IS NULL", [id]);
+    if (cRows.length === 0) {
+      return res.status(404).json({ success: false, error: { code: "COURSE_NOT_FOUND", message: "Course not found." } });
+    }
+
+    const course = cRows[0];
+    const { title, description, instructions, publishDate, startDate, dueDate, maxPoints, status, attachmentUrl, attachmentName } = req.body;
+    const file = req.file;
+
+    if (!title || !String(title).trim()) {
+      return res.status(400).json({ success: false, error: { code: "MISSING_TITLE", message: "Assignment title is required." } });
+    }
+    if (!dueDate || !String(dueDate).trim()) {
+      return res.status(400).json({ success: false, error: { code: "MISSING_DUE_DATE", message: "Assignment due date is required." } });
+    }
+
+    const cleanPublishDate = (publishDate || startDate)
+      ? String(publishDate || startDate).substring(0, 10)
+      : new Date().toISOString().split("T")[0];
+    const cleanDueDate = String(dueDate).substring(0, 10);
+
+    if (cleanPublishDate && cleanDueDate && cleanDueDate < cleanPublishDate) {
+      return res.status(400).json({
+        success: false,
+        error: { code: "INVALID_DATE_RANGE", message: "Due date cannot be earlier than the publish/start date." }
+      });
+    }
+
+    const parsedPoints = maxPoints !== undefined && maxPoints !== null && maxPoints !== "" ? Number(maxPoints) : 100;
+    if (isNaN(parsedPoints) || parsedPoints < 1) {
+      return res.status(400).json({
+        success: false,
+        error: { code: "INVALID_MAX_POINTS", message: "Maximum points must be a positive number." }
+      });
+    }
+
+    const assignmentId = `asg-${Date.now()}-${crypto.randomBytes(3).toString("hex")}`;
+    const effectiveTeacherId = course.teacher_id || req.user!.id;
+    const resolvedStatus = status === "Draft" || status === "Archived" ? status : "Published";
+    const resolvedAttachmentUrl = file
+      ? `/uploads/assignments/${file.filename}`
+      : (attachmentUrl && String(attachmentUrl).trim() ? String(attachmentUrl).trim() : null);
+    const resolvedAttachmentName = file
+      ? file.originalname
+      : (attachmentName && String(attachmentName).trim() ? String(attachmentName).trim() : (resolvedAttachmentUrl ? "Assignment Resource" : null));
+
+    await query(`
+      INSERT INTO assignments (
+        id, course_id, teacher_id, title, description, instructions,
+        publish_date, due_date, max_points, status, attachment_url, attachment_name
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `, [
+      assignmentId,
+      id,
+      effectiveTeacherId,
+      String(title).trim(),
+      description ? String(description).trim() : "",
+      instructions ? String(instructions).trim() : null,
+      cleanPublishDate,
+      cleanDueDate,
+      Math.round(parsedPoints),
+      resolvedStatus,
+      resolvedAttachmentUrl,
+      resolvedAttachmentName
+    ]);
+
+    if (resolvedAttachmentUrl) {
+      await query(`
+        INSERT INTO assignment_files (assignment_id, file_name, file_url, file_size, file_type)
+        VALUES (?, ?, ?, ?, ?)
+      `, [
+        assignmentId,
+        resolvedAttachmentName || "Attachment",
+        resolvedAttachmentUrl,
+        file ? `${Math.max(1, Math.round(file.size / 1024))} KB` : "Link",
+        file ? (file.mimetype || "file") : "link"
+      ]).catch(() => {});
+    }
+
+    await query("INSERT INTO activity_logs (user_id, action, details) VALUES (?, 'CreateCourseAssignment', ?)", [
+      req.user!.id,
+      `Created assignment "${String(title).trim()}" (${assignmentId}) for course "${course.title}"`
+    ]);
+
+    const updatedAssignments = await fetchCourseAssignments(id);
+    const created = updatedAssignments.find((a: any) => a.id === assignmentId) || updatedAssignments[0];
+
+    return res.status(201).json({
+      success: true,
+      data: created,
+      message: "Assignment created successfully."
+    });
+  } catch (err: any) {
+    console.error("[Create Course Assignment Error]:", err);
+    return res.status(500).json({ success: false, error: { code: "SERVER_ERROR", message: err.message } });
+  }
+});
+
+router.put("/courses/:id/assignments/:assignmentId", uploadAssignmentFile.single("file"), async (req: Request, res: Response) => {
+  try {
+    const { id, assignmentId } = req.params;
+    const [existingRows]: [any[], any] = await query(
+      "SELECT * FROM assignments WHERE id = ? AND course_id = ? AND deleted_at IS NULL",
+      [assignmentId, id]
+    );
+    if (existingRows.length === 0) {
+      return res.status(404).json({ success: false, error: { code: "NOT_FOUND", message: "Assignment not found for this course." } });
+    }
+
+    const existing = existingRows[0];
+    const { title, description, instructions, publishDate, startDate, dueDate, maxPoints, status, attachmentUrl, attachmentName } = req.body;
+    const file = req.file;
+
+    if (title !== undefined && !String(title).trim()) {
+      return res.status(400).json({ success: false, error: { code: "MISSING_TITLE", message: "Assignment title cannot be empty." } });
+    }
+
+    const existingPub = existing.publish_date
+      ? (existing.publish_date instanceof Date ? existing.publish_date.toISOString().split("T")[0] : String(existing.publish_date).split("T")[0])
+      : new Date().toISOString().split("T")[0];
+    const existingDue = existing.due_date
+      ? (existing.due_date instanceof Date ? existing.due_date.toISOString().split("T")[0] : String(existing.due_date).split("T")[0])
+      : existingPub;
+
+    const nextPub = (publishDate !== undefined || startDate !== undefined)
+      ? String(publishDate || startDate || existingPub).substring(0, 10)
+      : existingPub;
+    const nextDue = dueDate !== undefined && String(dueDate).trim()
+      ? String(dueDate).substring(0, 10)
+      : existingDue;
+
+    if (nextPub && nextDue && nextDue < nextPub) {
+      return res.status(400).json({
+        success: false,
+        error: { code: "INVALID_DATE_RANGE", message: "Due date cannot be earlier than the publish/start date." }
+      });
+    }
+
+    const nextPoints = maxPoints !== undefined && maxPoints !== null && maxPoints !== ""
+      ? Math.max(1, Math.round(Number(maxPoints)))
+      : existing.max_points;
+
+    const nextStatus = status === "Draft" || status === "Published" || status === "Archived"
+      ? status
+      : existing.status;
+
+    const nextAttachmentUrl = file
+      ? `/uploads/assignments/${file.filename}`
+      : (attachmentUrl !== undefined ? (String(attachmentUrl).trim() || null) : existing.attachment_url);
+    const nextAttachmentName = file
+      ? file.originalname
+      : (attachmentName !== undefined ? (String(attachmentName).trim() || null) : existing.attachment_name);
+
+    await query(`
+      UPDATE assignments
+      SET title = ?,
+          description = ?,
+          instructions = ?,
+          publish_date = ?,
+          due_date = ?,
+          max_points = ?,
+          status = ?,
+          attachment_url = ?,
+          attachment_name = ?
+      WHERE id = ? AND course_id = ?
+    `, [
+      title !== undefined ? String(title).trim() : existing.title,
+      description !== undefined ? String(description).trim() : existing.description,
+      instructions !== undefined ? (String(instructions).trim() || null) : existing.instructions,
+      nextPub,
+      nextDue,
+      nextPoints,
+      nextStatus,
+      nextAttachmentUrl,
+      nextAttachmentName,
+      assignmentId,
+      id
+    ]);
+
+    const updatedAssignments = await fetchCourseAssignments(id);
+    const updated = updatedAssignments.find((a: any) => a.id === assignmentId);
+
+    return res.json({
+      success: true,
+      data: updated,
+      message: "Assignment updated successfully."
+    });
+  } catch (err: any) {
+    console.error("[Update Course Assignment Error]:", err);
+    return res.status(500).json({ success: false, error: { code: "SERVER_ERROR", message: err.message } });
+  }
+});
+
+router.delete("/courses/:id/assignments/:assignmentId", async (req: Request, res: Response) => {
+  try {
+    const { id, assignmentId } = req.params;
+    const [existingRows]: [any[], any] = await query(
+      "SELECT id, title FROM assignments WHERE id = ? AND course_id = ? AND deleted_at IS NULL",
+      [assignmentId, id]
+    );
+    if (existingRows.length === 0) {
+      return res.status(404).json({ success: false, error: { code: "NOT_FOUND", message: "Assignment not found for this course." } });
+    }
+
+    await query("UPDATE assignments SET deleted_at = NOW() WHERE id = ? AND course_id = ?", [assignmentId, id]);
+    await query("INSERT INTO activity_logs (user_id, action, details) VALUES (?, 'DeleteCourseAssignment', ?)", [
+      req.user!.id,
+      `Deleted assignment "${existingRows[0].title}" (${assignmentId}) from course ${id}`
+    ]);
+
+    return res.json({ success: true, message: "Assignment deleted successfully." });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: { code: "SERVER_ERROR", message: err.message } });
+  }
+});
+
+// 3. COURSE DISCUSSIONS (GET, POST TOPIC, POST REPLY, PATCH STATUS, DELETE)
+router.get("/courses/:id/discussions", async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const [cRows]: [any[], any] = await query("SELECT id FROM courses WHERE id = ? AND deleted_at IS NULL", [id]);
+    if (cRows.length === 0) {
+      return res.status(404).json({ success: false, error: { code: "COURSE_NOT_FOUND", message: "Course not found." } });
+    }
+    const discussions = await fetchCourseDiscussions(id);
+    return res.json({ success: true, data: discussions });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: { code: "SERVER_ERROR", message: err.message } });
+  }
+});
+
+router.post("/courses/:id/discussions", async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const [cRows]: [any[], any] = await query("SELECT id, title FROM courses WHERE id = ? AND deleted_at IS NULL", [id]);
+    if (cRows.length === 0) {
+      return res.status(404).json({ success: false, error: { code: "COURSE_NOT_FOUND", message: "Course not found." } });
+    }
+
+    const { title, text, message } = req.body;
+    const bodyText = text !== undefined ? text : message;
+
+    if (!title || !String(title).trim() || !bodyText || !String(bodyText).trim()) {
+      return res.status(400).json({
+        success: false,
+        error: { code: "MISSING_FIELDS", message: "Discussion title and message are required." }
+      });
+    }
+
+    const threadId = `disc-${Date.now()}-${crypto.randomBytes(3).toString("hex")}`;
+    const adminId = req.user!.id;
+    const adminName = req.user!.name || "Administrator";
+    const friendlyTime = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+
+    await query(`
+      INSERT INTO discussion_threads (id, course_id, student_id, student_name, author_role, title, text, time, status)
+      VALUES (?, ?, ?, ?, 'Administrator', ?, ?, ?, 'New')
+    `, [threadId, id, adminId, adminName, String(title).trim(), String(bodyText).trim(), friendlyTime]);
+
+    const discussions = await fetchCourseDiscussions(id);
+    const created = discussions.find((d: any) => d.id === threadId) || discussions[0];
+
+    return res.status(201).json({
+      success: true,
+      data: created,
+      message: "Discussion topic created successfully."
+    });
+  } catch (err: any) {
+    console.error("[Create Course Discussion Error]:", err);
+    return res.status(500).json({ success: false, error: { code: "SERVER_ERROR", message: err.message } });
+  }
+});
+
+router.post("/courses/:id/discussions/:threadId/replies", async (req: Request, res: Response) => {
+  try {
+    const { id, threadId } = req.params;
+    const { text, message } = req.body;
+    const replyText = text !== undefined ? text : message;
+
+    if (!replyText || !String(replyText).trim()) {
+      return res.status(400).json({
+        success: false,
+        error: { code: "MISSING_TEXT", message: "Reply message cannot be empty." }
+      });
+    }
+
+    const [tRows]: [any[], any] = await query(
+      "SELECT * FROM discussion_threads WHERE id = ? AND course_id = ? AND deleted_at IS NULL",
+      [threadId, id]
+    );
+    if (tRows.length === 0) {
+      return res.status(404).json({ success: false, error: { code: "NOT_FOUND", message: "Discussion thread not found for this course." } });
+    }
+
+    const replyId = `rep-${Date.now()}-${crypto.randomBytes(3).toString("hex")}`;
+    const adminId = req.user!.id;
+    const adminName = req.user!.name || "Administrator";
+    const friendlyTime = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+
+    await query(`
+      INSERT INTO discussion_replies (id, thread_id, sender_id, sender_name, role, time, text)
+      VALUES (?, ?, ?, ?, 'Administrator', ?, ?)
+    `, [replyId, threadId, adminId, adminName, friendlyTime, String(replyText).trim()]);
+
+    if (tRows[0].status !== "Closed") {
+      await query("UPDATE discussion_threads SET status = 'Replied' WHERE id = ?", [threadId]);
+    }
+
+    if (tRows[0].student_id && tRows[0].student_id !== adminId) {
+      await query(`
+        INSERT INTO notifications (user_id, type, title, message)
+        VALUES (?, 'Discussion', 'Administrator Replied', ?)
+      `, [tRows[0].student_id, `Administrator replied to "${tRows[0].title}"`]).catch(() => {});
+    }
+
+    const discussions = await fetchCourseDiscussions(id);
+    const updatedThread = discussions.find((d: any) => d.id === threadId);
+
+    return res.status(201).json({
+      success: true,
+      data: updatedThread,
+      message: "Reply posted successfully."
+    });
+  } catch (err: any) {
+    console.error("[Reply Course Discussion Error]:", err);
+    return res.status(500).json({ success: false, error: { code: "SERVER_ERROR", message: err.message } });
+  }
+});
+
+router.patch("/courses/:id/discussions/:threadId/status", async (req: Request, res: Response) => {
+  try {
+    const { id, threadId } = req.params;
+    const { status } = req.body;
+
+    const [tRows]: [any[], any] = await query(
+      "SELECT id, status FROM discussion_threads WHERE id = ? AND course_id = ? AND deleted_at IS NULL",
+      [threadId, id]
+    );
+    if (tRows.length === 0) {
+      return res.status(404).json({ success: false, error: { code: "NOT_FOUND", message: "Discussion thread not found." } });
+    }
+
+    const [replyCountRows]: [any[], any] = await query(
+      "SELECT COUNT(*) as cnt FROM discussion_replies WHERE thread_id = ?",
+      [threadId]
+    );
+    const hasReplies = Number(replyCountRows[0]?.cnt || 0) > 0;
+
+    let nextStatus = "New";
+    if (status === "Closed") {
+      nextStatus = "Closed";
+    } else if (status === "Open" || status === "Reopen" || status === "New" || status === "Replied") {
+      nextStatus = hasReplies ? "Replied" : "New";
+    }
+
+    await query("UPDATE discussion_threads SET status = ? WHERE id = ? AND course_id = ?", [nextStatus, threadId, id]);
+
+    return res.json({
+      success: true,
+      data: { id: threadId, status: nextStatus },
+      message: nextStatus === "Closed" ? "Discussion thread closed." : "Discussion thread reopened."
+    });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: { code: "SERVER_ERROR", message: err.message } });
+  }
+});
+
+router.delete("/courses/:id/discussions/:threadId", async (req: Request, res: Response) => {
+  try {
+    const { id, threadId } = req.params;
+    const [tRows]: [any[], any] = await query(
+      "SELECT id, title FROM discussion_threads WHERE id = ? AND course_id = ? AND deleted_at IS NULL",
+      [threadId, id]
+    );
+    if (tRows.length === 0) {
+      return res.status(404).json({ success: false, error: { code: "NOT_FOUND", message: "Discussion thread not found." } });
+    }
+
+    await query("UPDATE discussion_threads SET deleted_at = NOW() WHERE id = ? AND course_id = ?", [threadId, id]);
+    await query("INSERT INTO activity_logs (user_id, action, details) VALUES (?, 'DeleteCourseDiscussion', ?)", [
+      req.user!.id,
+      `Deleted discussion "${tRows[0].title}" (${threadId}) from course ${id}`
+    ]);
+
+    return res.json({ success: true, message: "Discussion thread deleted successfully." });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: { code: "SERVER_ERROR", message: err.message } });
+  }
+});
+
+// 4. COURSE FEEDBACK (GET, POST, PUT, DELETE - Admin feedback separated from Student feedback)
+router.get("/courses/:id/feedback", async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const [cRows]: [any[], any] = await query("SELECT id FROM courses WHERE id = ? AND deleted_at IS NULL", [id]);
+    if (cRows.length === 0) {
+      return res.status(404).json({ success: false, error: { code: "COURSE_NOT_FOUND", message: "Course not found." } });
+    }
+    const feedback = await fetchCourseFeedback(id);
+    return res.json({ success: true, data: feedback });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: { code: "SERVER_ERROR", message: err.message } });
+  }
+});
+
+router.post("/courses/:id/feedback", async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const [cRows]: [any[], any] = await query("SELECT id, title FROM courses WHERE id = ? AND deleted_at IS NULL", [id]);
+    if (cRows.length === 0) {
+      return res.status(404).json({ success: false, error: { code: "COURSE_NOT_FOUND", message: "Course not found." } });
+    }
+
+    const { title, content, visibility } = req.body;
+    if (!content || !String(content).trim()) {
+      return res.status(400).json({
+        success: false,
+        error: { code: "MISSING_CONTENT", message: "Feedback or note content is required." }
+      });
+    }
+
+    const feedbackId = `fb-${Date.now()}-${crypto.randomBytes(3).toString("hex")}`;
+    const adminId = req.user!.id;
+    const adminName = req.user!.name || "Administrator";
+    const resolvedVisibility = visibility === "Internal" ? "Internal" : "Visible";
+
+    await query(`
+      INSERT INTO course_feedback (
+        id, course_id, author_id, author_name, author_role,
+        feedback_type, title, content, rating, visibility
+      )
+      VALUES (?, ?, ?, ?, 'Administrator', 'admin', ?, ?, NULL, ?)
+    `, [
+      feedbackId,
+      id,
+      adminId,
+      adminName,
+      title && String(title).trim() ? String(title).trim() : null,
+      String(content).trim(),
+      resolvedVisibility
+    ]);
+
+    await query("INSERT INTO activity_logs (user_id, action, details) VALUES (?, 'CreateCourseFeedback', ?)", [
+      adminId,
+      `Added administrator course feedback to "${cRows[0].title}" (${id})`
+    ]);
+
+    const feedbackData = await fetchCourseFeedback(id);
+    const created = feedbackData.adminFeedback.find((f: any) => f.id === feedbackId) || feedbackData.adminFeedback[0];
+
+    return res.status(201).json({
+      success: true,
+      data: created,
+      message: "Administrator course feedback saved."
+    });
+  } catch (err: any) {
+    console.error("[Create Course Feedback Error]:", err);
+    return res.status(500).json({ success: false, error: { code: "SERVER_ERROR", message: err.message } });
+  }
+});
+
+router.put("/courses/:id/feedback/:feedbackId", async (req: Request, res: Response) => {
+  try {
+    const { id, feedbackId } = req.params;
+    const [existingRows]: [any[], any] = await query(
+      "SELECT * FROM course_feedback WHERE id = ? AND course_id = ? AND deleted_at IS NULL",
+      [feedbackId, id]
+    );
+    if (existingRows.length === 0) {
+      return res.status(404).json({ success: false, error: { code: "NOT_FOUND", message: "Feedback entry not found." } });
+    }
+
+    const existing = existingRows[0];
+    if (existing.feedback_type !== "admin") {
+      return res.status(403).json({
+        success: false,
+        error: { code: "STUDENT_FEEDBACK_PROTECTED", message: "Student-submitted feedback is preserved separately and cannot be overwritten by administrator edits." }
+      });
+    }
+
+    const { title, content, visibility } = req.body;
+    if (content !== undefined && !String(content).trim()) {
+      return res.status(400).json({
+        success: false,
+        error: { code: "MISSING_CONTENT", message: "Feedback content cannot be empty." }
+      });
+    }
+
+    const nextTitle = title !== undefined ? (String(title).trim() || null) : existing.title;
+    const nextContent = content !== undefined ? String(content).trim() : existing.content;
+    const nextVisibility = visibility === "Internal" || visibility === "Visible" ? visibility : existing.visibility;
+
+    await query(`
+      UPDATE course_feedback
+      SET title = ?,
+          content = ?,
+          visibility = ?
+      WHERE id = ? AND course_id = ? AND feedback_type = 'admin'
+    `, [nextTitle, nextContent, nextVisibility, feedbackId, id]);
+
+    const feedbackData = await fetchCourseFeedback(id);
+    const updated = feedbackData.adminFeedback.find((f: any) => f.id === feedbackId);
+
+    return res.json({
+      success: true,
+      data: updated,
+      message: "Administrator course feedback updated."
+    });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: { code: "SERVER_ERROR", message: err.message } });
+  }
+});
+
+router.delete("/courses/:id/feedback/:feedbackId", async (req: Request, res: Response) => {
+  try {
+    const { id, feedbackId } = req.params;
+    const [existingRows]: [any[], any] = await query(
+      "SELECT * FROM course_feedback WHERE id = ? AND course_id = ? AND deleted_at IS NULL",
+      [feedbackId, id]
+    );
+    if (existingRows.length === 0) {
+      return res.status(404).json({ success: false, error: { code: "NOT_FOUND", message: "Feedback entry not found." } });
+    }
+
+    if (existingRows[0].feedback_type !== "admin") {
+      return res.status(403).json({
+        success: false,
+        error: { code: "STUDENT_FEEDBACK_PROTECTED", message: "Student-submitted feedback records are preserved separately." }
+      });
+    }
+
+    await query("UPDATE course_feedback SET deleted_at = NOW() WHERE id = ? AND course_id = ? AND feedback_type = 'admin'", [feedbackId, id]);
+    return res.json({ success: true, message: "Administrator course feedback deleted." });
   } catch (err: any) {
     return res.status(500).json({ success: false, error: { code: "SERVER_ERROR", message: err.message } });
   }

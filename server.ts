@@ -27,15 +27,6 @@ async function startServer() {
   console.log("[Server] Roozzero Academy Production Server Starting...");
   console.log(`[Server] Environment: ${process.env.NODE_ENV || "development"}`);
 
-  // Test database connection and run migrations
-  const dbConnected = await testConnection();
-  if (dbConnected) {
-    console.log("[Server] Database connection established successfully.");
-    await runMigrationsAndSeeds();
-  } else {
-    console.warn("[Server] Database connection could not be established.");
-  }
-
   // Vite development middleware vs production static distribution
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
@@ -51,11 +42,25 @@ async function startServer() {
     });
   }
 
+  // Bind to port 3000 immediately so dev server readiness checks succeed without delay
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`[Server] Academy listening on port ${PORT}`);
     console.log(`[Server] Health check available at: http://localhost:${PORT}/api/health`);
     console.log("===================================================");
   });
+
+  // Test database connection and run migrations
+  try {
+    const dbConnected = await testConnection();
+    if (dbConnected) {
+      console.log("[Server] Database connection established successfully.");
+      await runMigrationsAndSeeds();
+    } else {
+      console.warn("[Server] Database connection could not be established.");
+    }
+  } catch (dbErr) {
+    console.error("[Server Database Init Error]:", dbErr);
+  }
 }
 
 startServer().catch((err) => {

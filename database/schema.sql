@@ -420,12 +420,16 @@ CREATE TABLE `session_attendance` (
 CREATE TABLE `assignments` (
   `id` VARCHAR(50) PRIMARY KEY,
   `course_id` VARCHAR(50) NOT NULL,
+  `teacher_id` VARCHAR(50) DEFAULT NULL,
   `title` VARCHAR(255) NOT NULL,
-  `description` TEXT NOT NULL,
+  `description` TEXT DEFAULT NULL,
+  `instructions` TEXT DEFAULT NULL,
   `publish_date` DATE NOT NULL,
   `due_date` DATE NOT NULL,
   `max_points` INT DEFAULT 100,
   `status` ENUM('Draft', 'Published', 'Archived') DEFAULT 'Published',
+  `attachment_url` TEXT DEFAULT NULL,
+  `attachment_name` VARCHAR(255) DEFAULT NULL,
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `deleted_at` TIMESTAMP NULL DEFAULT NULL,
@@ -504,13 +508,18 @@ CREATE TABLE `resource_categories` (
 CREATE TABLE `resources` (
   `id` VARCHAR(50) PRIMARY KEY,
   `title` VARCHAR(255) NOT NULL,
+  `description` TEXT DEFAULT NULL,
   `course_id` VARCHAR(50) NOT NULL,
-  `file_type` VARCHAR(50) NOT NULL, -- e.g. 'pdf', 'doc', 'zip', 'code'
+  `teacher_id` VARCHAR(50) DEFAULT NULL,
+  `file_type` VARCHAR(50) NOT NULL, -- e.g. 'pdf', 'doc', 'zip', 'code', 'link'
   `file_size` VARCHAR(50) DEFAULT NULL,
   `uploaded_at` DATE NOT NULL,
   `visibility` ENUM('Visible', 'Hidden') DEFAULT 'Visible',
   `file_name` VARCHAR(255) DEFAULT NULL,
-  `file_url` VARCHAR(255) DEFAULT NULL,
+  `stored_name` VARCHAR(255) DEFAULT NULL,
+  `file_path` TEXT DEFAULT NULL,
+  `file_url` TEXT DEFAULT NULL,
+  `external_url` TEXT DEFAULT NULL,
   `category_id` INT DEFAULT NULL,
   `download_count` INT DEFAULT 0,
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -534,7 +543,7 @@ CREATE TABLE `resource_downloads` (
 
 
 -- ==========================================
--- 6. DISCUSSIONS SCHEMA
+-- 6. DISCUSSIONS & COURSE FEEDBACK SCHEMA
 -- ==========================================
 
 -- Threads Table
@@ -542,7 +551,8 @@ CREATE TABLE `discussion_threads` (
   `id` VARCHAR(50) PRIMARY KEY,
   `course_id` VARCHAR(50) NOT NULL,
   `student_id` VARCHAR(50) NOT NULL,
-  `student_name` VARCHAR(150) NOT NULL, -- cached name or student name
+  `student_name` VARCHAR(150) NOT NULL, -- cached name or author name
+  `author_role` VARCHAR(30) DEFAULT 'Student',
   `title` VARCHAR(255) NOT NULL,
   `text` TEXT NOT NULL,
   `time` VARCHAR(50) DEFAULT NULL, -- friendly timestamp (e.g. '10:05 AM', 'Yesterday')
@@ -570,6 +580,27 @@ CREATE TABLE `discussion_replies` (
   FOREIGN KEY (`thread_id`) REFERENCES `discussion_threads` (`id`) ON DELETE CASCADE,
   FOREIGN KEY (`sender_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
   INDEX `idx_replies_thread` (`thread_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Course Feedback Table (Separates Administrator Course Feedback/Notes from Student Feedback)
+CREATE TABLE `course_feedback` (
+  `id` VARCHAR(50) PRIMARY KEY,
+  `course_id` VARCHAR(50) NOT NULL,
+  `author_id` VARCHAR(50) DEFAULT NULL,
+  `author_name` VARCHAR(150) NOT NULL,
+  `author_role` VARCHAR(30) NOT NULL DEFAULT 'Administrator',
+  `feedback_type` ENUM('admin', 'student') NOT NULL DEFAULT 'admin',
+  `title` VARCHAR(200) DEFAULT NULL,
+  `content` TEXT NOT NULL,
+  `rating` TINYINT UNSIGNED DEFAULT NULL,
+  `visibility` ENUM('Visible', 'Internal') NOT NULL DEFAULT 'Visible',
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted_at` TIMESTAMP NULL DEFAULT NULL,
+  FOREIGN KEY (`course_id`) REFERENCES `courses` (`id`) ON DELETE CASCADE,
+  FOREIGN KEY (`author_id`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+  INDEX `idx_course_feedback_course` (`course_id`),
+  INDEX `idx_course_feedback_type` (`feedback_type`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
