@@ -41,7 +41,7 @@ function translateMysqlToSqliteStatements(rawSql: string): string[] {
     const body = trimmed.slice(tableMatch[0].length);
     const results: string[] = [];
 
-    const addColRegex = /ADD\s+COLUMN\s+(?:IF\s+NOT\s+EXISTS\s+)?`?(\w+)`?\s+([^,;]+)/gi;
+    const addColRegex = /ADD\s+COLUMN\s+(?:IF\s+NOT\s+EXISTS\s+)?`?(\w+)`?\s+((?:[^,;(]|\([^)]*\))+)/gi;
     let match: RegExpExecArray | null;
     while ((match = addColRegex.exec(body)) !== null) {
       const colName = match[1];
@@ -194,7 +194,7 @@ export function getMysqlPool(): mysql.Pool {
     password,
     database,
     port,
-    connectTimeout: 2000,
+    connectTimeout: process.env.DB_HOST ? 2000 : 400,
     waitForConnections: true,
     connectionLimit: 15,
     queueLimit: 0,

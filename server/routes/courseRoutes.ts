@@ -182,7 +182,7 @@ router.post("/:id/enroll", requireAuth, async (req: Request, res: Response) => {
 
     await query(
       `INSERT INTO enrollments (student_id, course_id, season_id, status, joined_date, progress, attendance_percentage, avg_grade)
-       VALUES (?, ?, ?, ?, CURDATE(), 0, 100.00, 0.00)`,
+       VALUES (?, ?, ?, ?, CURDATE(), 0, 0.00, 0.00)`,
       [studentId, courseId, seasonId || null, status]
     );
 
@@ -311,7 +311,7 @@ router.post("/:id/registrations", optionalAuth, async (req: Request, res: Respon
     const regNotes = `Level: ${experienceLevel || "Intermediate"}. Notes: ${notes || ""}`.trim();
     await query(
       `INSERT INTO enrollments (student_id, course_id, status, joined_date, progress, attendance_percentage, avg_grade, notes)
-       VALUES (?, ?, 'Active', CURDATE(), 0, 100.00, 0.00, ?)`,
+       VALUES (?, ?, 'Active', CURDATE(), 0, 0.00, 0.00, ?)`,
       [studentId, courseId, regNotes]
     );
 

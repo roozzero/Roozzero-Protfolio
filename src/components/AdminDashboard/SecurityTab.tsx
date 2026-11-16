@@ -41,7 +41,7 @@ export default function SecurityTab({
   };
 
   return (
-    <div className="max-w-4xl space-y-6">
+    <div className="w-full space-y-6">
       <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/[0.06] backdrop-blur-md space-y-6">
         <div>
           <h3 className="text-sm font-bold text-white uppercase tracking-wider">

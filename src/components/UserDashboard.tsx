@@ -1279,28 +1279,7 @@ export default function UserDashboard({ onLogout, onGoHome }: UserDashboardProps
       });
 
     // 7. Notifications
-    studentApi.getNotifications()
-      .then((res) => {
-        if (!isMounted) return;
-        if (res.success && Array.isArray(res.data)) {
-          const mapped = res.data.map((n: any) => ({
-            id: String(n.id),
-            title: n.title,
-            preview: n.message,
-            timestamp: n.created_at ? new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "Just now",
-            read: Boolean(n.is_read),
-            type: (n.type?.toLowerCase() || "message") as any,
-            targetId: n.target_id ? String(n.target_id) : undefined
-          }));
-          setNotifications(mapped);
-        } else {
-          setNotifications([]);
-        }
-      })
-      .catch((err) => {
-        console.warn("Notifications sync warning:", err);
-        setNotifications([]);
-      });
+    fetchStudentNotifications(() => isMounted);
 
     // 8. Calendar
     studentApi.getCalendar()
@@ -1506,10 +1485,50 @@ export default function UserDashboard({ onLogout, onGoHome }: UserDashboardProps
       attendancePercentage:
         c.attendance_percentage !== null && c.attendance_percentage !== undefined
           ? Number(c.attendance_percentage)
-          : 100,
+          : 0,
       syllabus: normalizedSyllabus,
       lessons: normalizedSyllabus.map((m: any) => m.title)
     };
+  };
+
+  const fetchStudentNotifications = (checkMounted: () => boolean = () => true) => {
+    setIsLoadingNotifications(true);
+    studentApi.getNotifications()
+      .then((res) => {
+        if (!checkMounted()) return;
+        if (res.success && Array.isArray(res.data)) {
+          const mapped: NotificationItem[] = res.data.map((n: any) => ({
+            id: String(n.id),
+            title: n.title || "Notification",
+            preview: n.message || "",
+            message: n.message || "",
+            timestamp: n.created_at
+              ? new Date(n.created_at).toLocaleDateString("en-US", {
+                  month: "short",
+                  day: "numeric",
+                  year: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit"
+                })
+              : "Just now",
+            read: Boolean(n.is_read || n.read),
+            type: (n.type?.toLowerCase() || "message") as any,
+            category: n.type || "System",
+            priority: n.priority || "Medium",
+            targetId: n.target_id ? String(n.target_id) : undefined
+          }));
+          setNotifications(mapped);
+        } else {
+          setNotifications([]);
+        }
+      })
+      .catch((err) => {
+        console.warn("Notifications sync warning:", err);
+        if (checkMounted()) setNotifications([]);
+      })
+      .finally(() => {
+        if (checkMounted()) setIsLoadingNotifications(false);
+      });
   };
 
   const fetchStudentCoursesAndSessions = (checkMounted: () => boolean = () => true) => {
@@ -1673,7 +1692,7 @@ export default function UserDashboard({ onLogout, onGoHome }: UserDashboardProps
   }, [profileBio]);
   
   // Navigation states
-  const [activeTab, setActiveTab] = useState<"dashboard" | "inbox" | "courses" | "assignments" | "exams" | "discussions" | "achievements" | "calendar" | "settings">("dashboard");
+  const [activeTab, setActiveTab] = useState<"dashboard" | "inbox" | "notifications" | "courses" | "assignments" | "exams" | "discussions" | "achievements" | "calendar" | "settings">("dashboard");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
@@ -2122,16 +2141,40 @@ export default function UserDashboard({ onLogout, onGoHome }: UserDashboardProps
     id: string;
     title: string;
     preview: string;
+    message?: string;
     timestamp: string;
     read: boolean;
     type: "message" | "course" | "assignment" | "project" | "milestone";
+    category?: string;
+    priority?: string;
     targetId?: string;
   }
 
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [isLoadingNotifications, setIsLoadingNotifications] = useState(false);
+  const [notificationsFilter, setNotificationsFilter] = useState<"all" | "unread" | "read">("all");
+  const [notificationsSearch, setNotificationsSearch] = useState("");
   const [isNotificationDropdownOpen, setIsNotificationDropdownOpen] = useState(false);
   const notificationRef = useRef<HTMLDivElement>(null);
   const [pulseBadge, setPulseBadge] = useState(false);
+
+  const handleMarkNotificationRead = async (id: string) => {
+    setNotifications((prev) => prev.map((item) => (item.id === id ? { ...item, read: true } : item)));
+    try {
+      await studentApi.markNotificationRead(id);
+    } catch (err) {
+      console.warn("Mark notification read warning:", err);
+    }
+  };
+
+  const handleMarkAllNotificationsRead = async () => {
+    setNotifications((prev) => prev.map((item) => ({ ...item, read: true })));
+    try {
+      await studentApi.markAllNotificationsRead();
+    } catch (err) {
+      console.warn("Mark all notifications read warning:", err);
+    }
+  };
 
   // Dispatch helper to add new academic/milestone notification with instant pulse trigger
   const addNotification = (
@@ -2144,9 +2187,11 @@ export default function UserDashboard({ onLogout, onGoHome }: UserDashboardProps
       id: `n-${Date.now()}`,
       title,
       preview,
+      message: preview,
       timestamp: "Just now",
       read: false,
       type,
+      category: type,
       targetId
     };
     setNotifications(prev => [newNotif, ...prev]);
@@ -2278,8 +2323,8 @@ export default function UserDashboard({ onLogout, onGoHome }: UserDashboardProps
 
   // Click on single notification card
   const handleNotificationClick = (n: NotificationItem) => {
-    // Mark as read
-    setNotifications(prev => prev.map(item => item.id === n.id ? { ...item, read: true } : item));
+    // Mark as read in UI and database
+    handleMarkNotificationRead(n.id);
     setIsNotificationDropdownOpen(false);
 
     // Dynamic routing
@@ -2294,6 +2339,8 @@ export default function UserDashboard({ onLogout, onGoHome }: UserDashboardProps
       setActiveTab("dashboard");
     } else if (n.type === "milestone") {
       setActiveTab("achievements");
+    } else {
+      setActiveTab("notifications");
     }
   };
 
@@ -3148,9 +3195,10 @@ export default function UserDashboard({ onLogout, onGoHome }: UserDashboardProps
   const sidebarItems = [
     { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
     { id: "inbox", label: "Inbox", icon: Inbox, badge: emails.filter(e => !e.read).length },
+    { id: "notifications", label: "Notifications", icon: Bell, badge: notifications.filter(n => !n.read).length },
     { id: "courses", label: "My Courses", icon: BookOpen },
     { id: "assignments", label: "Assignments", icon: CheckSquare },
-    { id: "exams", label: "Examinations", icon: ClipboardList, badge: exams.filter(e => !e.submission).length },
+    { id: "exams", label: "Exams", icon: ClipboardList, badge: exams.filter(e => !e.submission).length },
     { id: "discussions", label: "Discussions", icon: MessageSquare },
     { id: "achievements", label: "Achievements", icon: Award },
     { id: "calendar", label: "Calendar", icon: CalendarIcon },
@@ -3187,7 +3235,7 @@ export default function UserDashboard({ onLogout, onGoHome }: UserDashboardProps
               <button 
                 id="sidebar-profile-trigger"
                 onClick={() => setIsProfileModalOpen(true)}
-                className="relative group focus:outline-none"
+                className="relative group focus:outline-none cursor-pointer"
                 title="View / Edit Profile Picture"
               >
                 <div className="h-11 w-11 rounded-full bg-gradient-to-tr from-indigo-500 via-cyan-400 to-emerald-400 p-[1.5px] flex items-center justify-center shadow-md transition-transform duration-300 group-hover:scale-105">
@@ -3212,7 +3260,7 @@ export default function UserDashboard({ onLogout, onGoHome }: UserDashboardProps
             <button 
               id="sidebar-logout-btn"
               onClick={onLogout}
-              className="p-2 rounded-xl text-white/40 hover:text-red-400 hover:bg-white/[0.04] transition-all border border-transparent hover:border-white/[0.05]"
+              className="p-2 rounded-xl text-white/40 hover:text-red-400 hover:bg-white/[0.04] transition-all border border-transparent hover:border-white/[0.05] cursor-pointer"
               title="Logout Account"
             >
               <LogOut size={14} />
@@ -3231,7 +3279,7 @@ export default function UserDashboard({ onLogout, onGoHome }: UserDashboardProps
                   key={item.id}
                   id={`sidebar-tab-${item.id}`}
                   onClick={() => setActiveTab(item.id)}
-                  className={`flex items-center gap-3 w-full px-3.5 py-3 rounded-xl font-sans text-xs font-semibold relative transition-all duration-300 ${
+                  className={`flex items-center gap-3 w-full px-3.5 py-3 rounded-xl font-sans text-xs font-semibold relative transition-all duration-300 cursor-pointer ${
                     isActive 
                       ? "text-white bg-white/[0.04] border border-white/[0.05] shadow-[0_4px_12px_rgba(0,0,0,0.4)]" 
                       : "text-white/60 hover:text-white hover:bg-white/[0.02]"
@@ -3260,7 +3308,7 @@ export default function UserDashboard({ onLogout, onGoHome }: UserDashboardProps
           <div className="pt-2 border-t border-white/[0.03]">
             <button 
               onClick={onGoHome}
-              className="flex items-center gap-3 w-full px-3.5 py-2.5 rounded-xl font-sans text-xs font-semibold text-white/40 hover:text-white/80 hover:bg-white/[0.02] transition-all"
+              className="flex items-center gap-3 w-full px-3.5 py-2.5 rounded-xl font-sans text-xs font-semibold text-white/40 hover:text-white/80 hover:bg-white/[0.02] transition-all cursor-pointer"
             >
               <ArrowLeft size={13} className="opacity-70" />
               <span>Back to Landing</span>
@@ -3308,7 +3356,7 @@ export default function UserDashboard({ onLogout, onGoHome }: UserDashboardProps
                   <span className="font-sans text-[10px] font-black tracking-widest text-white/40 uppercase">NAVIGATION</span>
                   <button 
                     onClick={() => setIsMobileMenuOpen(false)}
-                    className="p-1 rounded-lg border border-white/10 bg-white/[0.02] text-white/60 hover:text-white"
+                    className="p-1 rounded-lg border border-white/10 bg-white/[0.02] text-white/60 hover:text-white cursor-pointer"
                   >
                     <X size={15} />
                   </button>
@@ -3322,7 +3370,7 @@ export default function UserDashboard({ onLogout, onGoHome }: UserDashboardProps
                         setIsMobileMenuOpen(false);
                         setIsProfileModalOpen(true);
                       }}
-                      className="relative focus:outline-none"
+                      className="relative focus:outline-none cursor-pointer"
                     >
                       <div className="h-10 w-10 rounded-full bg-gradient-to-tr from-indigo-500 via-cyan-400 to-emerald-400 p-[1.5px] flex items-center justify-center">
                         <div className="h-full w-full rounded-full bg-[#0d0d12] flex items-center justify-center overflow-hidden">
@@ -3345,7 +3393,7 @@ export default function UserDashboard({ onLogout, onGoHome }: UserDashboardProps
                       setIsMobileMenuOpen(false);
                       if (onLogout) onLogout();
                     }}
-                    className="p-2 rounded-xl text-white/40 hover:text-red-400 hover:bg-white/[0.04] transition-all"
+                    className="p-2 rounded-xl text-white/40 hover:text-red-400 hover:bg-white/[0.04] transition-all cursor-pointer"
                   >
                     <LogOut size={14} />
                   </button>
@@ -3363,7 +3411,7 @@ export default function UserDashboard({ onLogout, onGoHome }: UserDashboardProps
                           setActiveTab(item.id);
                           setIsMobileMenuOpen(false);
                         }}
-                        className={`flex items-center gap-3 w-full px-3.5 py-3 rounded-xl font-sans text-xs font-semibold relative transition-all ${
+                        className={`flex items-center gap-3 w-full px-3.5 py-3 rounded-xl font-sans text-xs font-semibold relative transition-all cursor-pointer ${
                           isActive 
                             ? "text-white bg-white/[0.04] border border-white/[0.05] shadow-lg" 
                             : "text-white/60 hover:text-white hover:bg-white/[0.02]"
@@ -3387,7 +3435,7 @@ export default function UserDashboard({ onLogout, onGoHome }: UserDashboardProps
                       setIsMobileMenuOpen(false);
                       if (onGoHome) onGoHome();
                     }}
-                    className="flex items-center gap-3 w-full px-3.5 py-2.5 rounded-xl font-sans text-xs font-semibold text-white/40 hover:text-white/80 hover:bg-white/[0.02] transition-all"
+                    className="flex items-center gap-3 w-full px-3.5 py-2.5 rounded-xl font-sans text-xs font-semibold text-white/40 hover:text-white/80 hover:bg-white/[0.02] transition-all cursor-pointer"
                   >
                     <ArrowLeft size={13} className="opacity-70" />
                     <span>Back to Landing</span>
@@ -3496,7 +3544,7 @@ export default function UserDashboard({ onLogout, onGoHome }: UserDashboardProps
           <div ref={notificationRef} className="relative shrink-0 flex items-center">
             <button
               onClick={() => setIsNotificationDropdownOpen(!isNotificationDropdownOpen)}
-              className="p-2.5 rounded-full border border-white/10 bg-white/[0.02] text-white/60 hover:text-white hover:border-white/20 transition-all relative"
+              className="p-2.5 rounded-full border border-white/10 bg-white/[0.02] text-white/60 hover:text-white hover:border-white/20 transition-all relative cursor-pointer"
               title="Notifications"
             >
               <Bell size={15} />
@@ -3521,8 +3569,8 @@ export default function UserDashboard({ onLogout, onGoHome }: UserDashboardProps
                     <span className="font-sans text-[10px] font-bold text-white/40 tracking-wider uppercase">Latest Notifications</span>
                     {notifications.filter(n => !n.read).length > 0 && (
                       <button
-                        onClick={() => setNotifications(notifications.map(n => ({ ...n, read: true })))}
-                        className="text-[9px] font-bold text-indigo-400 hover:text-indigo-300 transition-colors"
+                        onClick={handleMarkAllNotificationsRead}
+                        className="text-[9px] font-bold text-indigo-400 hover:text-indigo-300 transition-colors cursor-pointer"
                       >
                         Mark all as read
                       </button>
@@ -3535,7 +3583,7 @@ export default function UserDashboard({ onLogout, onGoHome }: UserDashboardProps
                         <button
                           key={n.id}
                           onClick={() => handleNotificationClick(n)}
-                          className={`w-full p-2.5 rounded-xl hover:bg-white/[0.04] transition-all flex items-start gap-3 text-left border relative ${
+                          className={`w-full p-2.5 rounded-xl hover:bg-white/[0.04] transition-all flex items-start gap-3 text-left border relative cursor-pointer ${
                             !n.read 
                               ? "bg-white/[0.01] border-indigo-500/10" 
                               : "bg-transparent border-transparent"
@@ -3717,6 +3765,189 @@ export default function UserDashboard({ onLogout, onGoHome }: UserDashboardProps
                   );
                 })()}
               </div>
+            </div>
+          )}
+
+          {/* NOTIFICATIONS TAB */}
+          {activeTab === "notifications" && (
+            <div className="space-y-6 animate-fade-in text-left">
+              {/* Header */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/[0.05] pb-4">
+                <div className="space-y-1">
+                  <span className="text-[10px] text-indigo-400 font-bold uppercase tracking-wider block font-mono">
+                    Academy Alerts & Broadcasts
+                  </span>
+                  <h2 className="font-sans text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2">
+                    <Bell className="text-indigo-400" size={24} />
+                    <span>Notifications Center</span>
+                  </h2>
+                  <p className="text-xs text-white/40 max-w-2xl leading-relaxed">
+                    Official academy announcements, course updates, certificate issuances, and system notifications targeted to your account.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2.5 self-start sm:self-center">
+                  <button
+                    type="button"
+                    onClick={() => fetchStudentNotifications()}
+                    disabled={isLoadingNotifications}
+                    className="px-3.5 py-2 rounded-xl bg-white/[0.02] border border-white/10 hover:bg-white/[0.06] text-xs font-bold text-white/80 transition-all flex items-center gap-2 cursor-pointer"
+                  >
+                    <RefreshCw size={13} className={isLoadingNotifications ? "animate-spin text-indigo-400" : ""} />
+                    <span>Refresh</span>
+                  </button>
+                  {notifications.some((n) => !n.read) && (
+                    <button
+                      type="button"
+                      onClick={handleMarkAllNotificationsRead}
+                      className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-xs font-bold text-white transition-all shadow-lg shadow-indigo-600/20 flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <CheckCircle2 size={14} />
+                      <span>Mark All Read</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Filter & Search Bar */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-1.5 p-1 rounded-xl bg-white/[0.02] border border-white/[0.05] w-fit">
+                  {(["all", "unread", "read"] as const).map((flt) => {
+                    const count =
+                      flt === "all"
+                        ? notifications.length
+                        : flt === "unread"
+                        ? notifications.filter((n) => !n.read).length
+                        : notifications.filter((n) => n.read).length;
+                    return (
+                      <button
+                        key={flt}
+                        type="button"
+                        onClick={() => setNotificationsFilter(flt)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-bold capitalize transition-all cursor-pointer ${
+                          notificationsFilter === flt
+                            ? "bg-indigo-600 text-white shadow-md"
+                            : "text-white/50 hover:text-white"
+                        }`}
+                      >
+                        {flt} ({count})
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="relative w-full sm:w-72">
+                  <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30" />
+                  <input
+                    type="text"
+                    placeholder="Search notifications..."
+                    value={notificationsSearch}
+                    onChange={(e) => setNotificationsSearch(e.target.value)}
+                    className="w-full bg-white/[0.02] border border-white/10 rounded-xl pl-9 pr-4 py-2 text-xs text-white placeholder-white/30 focus:outline-none focus:border-indigo-500/50 transition-all"
+                  />
+                </div>
+              </div>
+
+              {/* Notifications List */}
+              {(() => {
+                const filteredNotifs = notifications.filter((n) => {
+                  if (notificationsFilter === "unread" && n.read) return false;
+                  if (notificationsFilter === "read" && !n.read) return false;
+                  if (notificationsSearch.trim()) {
+                    const q = notificationsSearch.toLowerCase();
+                    return (
+                      n.title.toLowerCase().includes(q) ||
+                      (n.message || n.preview || "").toLowerCase().includes(q) ||
+                      (n.category || "").toLowerCase().includes(q)
+                    );
+                  }
+                  return true;
+                });
+
+                if (isLoadingNotifications) {
+                  return (
+                    <div className="py-20 text-center flex flex-col items-center justify-center space-y-3">
+                      <RefreshCw className="animate-spin text-indigo-400" size={24} />
+                      <p className="text-xs text-white/40">Loading your notifications...</p>
+                    </div>
+                  );
+                }
+
+                if (filteredNotifs.length === 0) {
+                  return (
+                    <div className="py-20 text-center border border-dashed border-white/10 rounded-3xl bg-white/[0.01] space-y-3">
+                      <div className="h-12 w-12 rounded-full bg-white/[0.03] border border-white/10 flex items-center justify-center mx-auto text-white/30">
+                        <Bell size={22} />
+                      </div>
+                      <h4 className="text-sm font-bold text-white">No Notifications Found</h4>
+                      <p className="text-xs text-white/40 max-w-sm mx-auto">
+                        {notifications.length === 0
+                          ? "You don't have any notifications yet. Announcements and updates from the academy will appear here."
+                          : "No notifications match your current filter or search query."}
+                      </p>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="space-y-3">
+                    {filteredNotifs.map((n) => (
+                      <div
+                        key={n.id}
+                        className={`p-5 rounded-2xl border transition-all flex flex-col sm:flex-row sm:items-start justify-between gap-4 ${
+                          !n.read
+                            ? "bg-[#0a0b12] border-indigo-500/30 shadow-lg shadow-indigo-950/10"
+                            : "bg-[#08080c] border-white/[0.06] hover:border-white/10"
+                        }`}
+                      >
+                        <div className="flex items-start gap-3.5 flex-1 min-w-0">
+                          <div className="p-2.5 rounded-xl bg-white/[0.03] border border-white/10 shrink-0 mt-0.5">
+                            {getNotificationIcon(n.type)}
+                          </div>
+                          <div className="space-y-1.5 flex-1 min-w-0">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="px-2 py-0.5 rounded-md text-[9px] font-mono font-bold uppercase tracking-wider bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                                {n.category || "Notification"}
+                              </span>
+                              {!n.read ? (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                                  Unread
+                                </span>
+                              ) : (
+                                <span className="px-2 py-0.5 rounded-md text-[9px] font-mono uppercase tracking-wider bg-white/[0.03] text-white/40 border border-white/[0.06]">
+                                  Read
+                                </span>
+                              )}
+                              <span className="text-[10px] font-mono text-white/35">
+                                {n.timestamp}
+                              </span>
+                            </div>
+                            <h3 className={`text-sm font-sans ${!n.read ? "font-black text-white" : "font-bold text-white/85"}`}>
+                              {n.title}
+                            </h3>
+                            <p className="text-xs text-white/60 leading-relaxed whitespace-pre-wrap">
+                              {n.message || n.preview}
+                            </p>
+                          </div>
+                        </div>
+
+                        {!n.read && (
+                          <div className="flex items-center shrink-0 self-end sm:self-center">
+                            <button
+                              type="button"
+                              onClick={() => handleMarkNotificationRead(n.id)}
+                              className="px-3 py-1.5 rounded-xl bg-white/[0.04] hover:bg-indigo-600/20 border border-white/10 hover:border-indigo-500/30 text-[11px] font-bold text-indigo-300 hover:text-white transition-all cursor-pointer"
+                            >
+                              Mark as Read
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
             </div>
           )}
 
@@ -6090,38 +6321,24 @@ export default function UserDashboard({ onLogout, onGoHome }: UserDashboardProps
                       })()}
 
                       {courseDetailsTab === "Attendance" && (() => {
-                        const getCourseAttendance = (): number => {
-                          if (selectedCourse.id === "1") return 95;
-                          if (selectedCourse.id === "2") return 84;
-                          return 100;
-                        };
-
-                        const attendanceRate = getCourseAttendance();
                         const sessionsList = courseSessions[selectedCourse.id] || [];
-                        
-                        const getAttendanceStatusForSession = (sessNum: number) => {
-                          if (attendanceRate >= 95) {
-                            if (sessNum === 4) return "Late";
-                            if (sessNum === 7) return "Excused";
-                            return "Present";
-                          } else if (attendanceRate >= 80) {
-                            if (sessNum === 3 || sessNum === 8) return "Absent";
-                            if (sessNum === 5) return "Late";
-                            return "Present";
-                          } else if (attendanceRate === 0) {
-                            return "Absent";
-                          } else {
-                            if (sessNum % 5 === 0) return "Absent";
-                            if (sessNum % 4 === 0) return "Late";
-                            return "Present";
-                          }
-                        };
+                        const recordedSessions = sessionsList.filter(
+                          (s) =>
+                            s.attendance === "Present" ||
+                            s.attendance === "Late" ||
+                            s.attendance === "Excused" ||
+                            s.attendance === "Absent"
+                        );
 
-                        const completedSess = sessionsList.filter(s => s.status === "Completed" || s.sessionNum <= selectedCourse.completedSessions);
-                        const excusedSessCount = completedSess.filter(s => getAttendanceStatusForSession(s.sessionNum) === "Excused").length;
-                        const presentSessCount = completedSess.filter(s => getAttendanceStatusForSession(s.sessionNum) === "Present").length;
-                        const lateSessCount = completedSess.filter(s => getAttendanceStatusForSession(s.sessionNum) === "Late").length;
-                        const absentSessCount = completedSess.filter(s => getAttendanceStatusForSession(s.sessionNum) === "Absent").length;
+                        const presentSessCount = recordedSessions.filter((s) => s.attendance === "Present").length;
+                        const lateSessCount = recordedSessions.filter((s) => s.attendance === "Late").length;
+                        const excusedSessCount = recordedSessions.filter((s) => s.attendance === "Excused").length;
+                        const absentSessCount = recordedSessions.filter((s) => s.attendance === "Absent").length;
+
+                        const attendanceRate =
+                          recordedSessions.length > 0
+                            ? Math.round(((presentSessCount + lateSessCount + excusedSessCount) / recordedSessions.length) * 100)
+                            : Number(selectedCourse.attendancePercentage) || 0;
 
                         return (
                           <div className="space-y-6 text-left animate-fade-in pb-10">
@@ -6187,53 +6404,65 @@ export default function UserDashboard({ onLogout, onGoHome }: UserDashboardProps
                                     </tr>
                                   </thead>
                                   <tbody>
-                                    {sessionsList.map((sess) => {
-                                      const isSessionCompleted = sess.status === "Completed" || sess.sessionNum <= selectedCourse.completedSessions;
-                                      const status = isSessionCompleted ? getAttendanceStatusForSession(sess.sessionNum) : "Upcoming";
-                                      
-                                      return (
-                                        <tr key={sess.id} className="border-b border-white/[0.03] hover:bg-white/[0.01] transition-colors">
-                                          <td className="p-4 text-xs font-mono font-bold text-white/70">
-                                            Session {sess.sessionNum}
-                                          </td>
-                                          <td className="p-4 text-xs font-bold text-white">
-                                            {sess.topic}
-                                          </td>
-                                          <td className="p-4 text-xs text-white/40 font-mono">
-                                            {sess.date} @ {sess.time}
-                                          </td>
-                                          <td className="p-4">
-                                            {isSessionCompleted ? (
-                                              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider border ${
-                                                status === "Present"
-                                                  ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400"
-                                                  : status === "Late"
-                                                  ? "bg-amber-500/10 border-amber-500/20 text-amber-400"
-                                                  : status === "Excused"
-                                                  ? "bg-indigo-500/10 border-indigo-500/20 text-indigo-400"
-                                                  : "bg-rose-500/10 border-rose-500/20 text-rose-400"
-                                              }`}>
-                                                <span className={`w-1 h-1 rounded-full ${
+                                    {sessionsList.length === 0 ? (
+                                      <tr>
+                                        <td colSpan={4} className="p-8 text-center text-xs text-white/40">
+                                          No class sessions or attendance records found for this course yet.
+                                        </td>
+                                      </tr>
+                                    ) : (
+                                      sessionsList.map((sess) => {
+                                        const hasRecordedStatus =
+                                          sess.attendance === "Present" ||
+                                          sess.attendance === "Late" ||
+                                          sess.attendance === "Excused" ||
+                                          sess.attendance === "Absent";
+                                        const status = hasRecordedStatus ? sess.attendance! : (sess.status === "Completed" ? "Not Recorded" : "Upcoming");
+
+                                        return (
+                                          <tr key={sess.id} className="border-b border-white/[0.03] hover:bg-white/[0.01] transition-colors">
+                                            <td className="p-4 text-xs font-mono font-bold text-white/70">
+                                              Session {sess.sessionNum}
+                                            </td>
+                                            <td className="p-4 text-xs font-bold text-white">
+                                              {sess.topic}
+                                            </td>
+                                            <td className="p-4 text-xs text-white/40 font-mono">
+                                              {sess.date} @ {sess.time}
+                                            </td>
+                                            <td className="p-4">
+                                              {hasRecordedStatus ? (
+                                                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider border ${
                                                   status === "Present"
-                                                    ? "bg-emerald-400"
+                                                    ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400"
                                                     : status === "Late"
-                                                    ? "bg-amber-400"
+                                                    ? "bg-amber-500/10 border-amber-500/20 text-amber-400"
                                                     : status === "Excused"
-                                                    ? "bg-indigo-400"
-                                                    : "bg-rose-400"
-                                                }`} />
-                                                {status}
-                                              </span>
-                                            ) : (
-                                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider bg-white/[0.03] border border-white/[0.06] text-white/30">
-                                                <span className="w-1.5 h-1.5 rounded-full bg-white/20" />
-                                                Upcoming
-                                              </span>
-                                            )}
-                                          </td>
-                                        </tr>
-                                      );
-                                    })}
+                                                    ? "bg-indigo-500/10 border-indigo-500/20 text-indigo-400"
+                                                    : "bg-rose-500/10 border-rose-500/20 text-rose-400"
+                                                }`}>
+                                                  <span className={`w-1 h-1 rounded-full ${
+                                                    status === "Present"
+                                                      ? "bg-emerald-400"
+                                                      : status === "Late"
+                                                      ? "bg-amber-400"
+                                                      : status === "Excused"
+                                                      ? "bg-indigo-400"
+                                                      : "bg-rose-400"
+                                                  }`} />
+                                                  {status}
+                                                </span>
+                                              ) : (
+                                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider bg-white/[0.03] border border-white/[0.06] text-white/30">
+                                                  <span className="w-1.5 h-1.5 rounded-full bg-white/20" />
+                                                  {status}
+                                                </span>
+                                              )}
+                                            </td>
+                                          </tr>
+                                        );
+                                      })
+                                    )}
                                   </tbody>
                                 </table>
                               </div>

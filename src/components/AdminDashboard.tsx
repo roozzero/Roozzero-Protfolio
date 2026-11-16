@@ -371,6 +371,7 @@ export default function AdminDashboard({ onLogout, onGoHome }: AdminDashboardPro
       await adminApi.updateCertificateStatus(id, "Approved");
       setCertificates(prev => prev.map(c => c.id === id ? { ...c, status: "Approved", issueDate: new Date().toISOString().split("T")[0] } : c));
       dispatchAlert(`Digital Certificate ${id} approved & published.`);
+      await loadAdminData();
     } catch (err: any) {
       dispatchAlert(err?.message || "Failed to approve certificate.");
     }
@@ -381,9 +382,25 @@ export default function AdminDashboard({ onLogout, onGoHome }: AdminDashboardPro
       await adminApi.updateCertificateStatus(id, "Rejected");
       setCertificates(prev => prev.map(c => c.id === id ? { ...c, status: "Rejected", notes } : c));
       dispatchAlert(`Certificate ${id} rejected.`);
+      await loadAdminData();
     } catch (err: any) {
       dispatchAlert(err?.message || "Failed to reject certificate.");
     }
+  };
+
+  const handleIssueCertificate = async (studentId: string, courseId: string) => {
+    const res = await adminApi.issueCertificate(studentId, courseId);
+    if (!res.success) {
+      throw new Error((res as any)?.error?.message || "Failed to issue certificate.");
+    }
+    if (res.data) {
+      setCertificates(prev => {
+        const exists = prev.some(c => c.id === res.data.id);
+        return exists ? prev.map(c => c.id === res.data.id ? res.data : c) : [res.data, ...prev];
+      });
+    }
+    dispatchAlert(res.message || "Certificate issued and saved to database.");
+    await loadAdminData();
   };
 
   const handleAddUser = async (user: Partial<AdminUser>) => {
@@ -577,7 +594,6 @@ export default function AdminDashboard({ onLogout, onGoHome }: AdminDashboardPro
               { id: "notifications", label: "Notifications", icon: Bell, tab: "notifications", sub: "all" },
               { id: "certificates", label: "Certificates", icon: Award, tab: "certificates", sub: "all" },
               { id: "exams", label: "Exams", icon: Sliders, tab: "exams", sub: "all" },
-              { id: "discussions", label: "Discussions", icon: MessageSquare, tab: "discussions", sub: "all" },
               { id: "systemSettings", label: "Settings", icon: Settings, tab: "settings", sub: "system" },
               { id: "security", label: "Security", icon: Shield, tab: "security", sub: "directory", isSecurity: true }
             ].map((menu) => {
@@ -680,7 +696,7 @@ export default function AdminDashboard({ onLogout, onGoHome }: AdminDashboardPro
             
             <button 
               onClick={onGoHome}
-              className="px-3 py-1 border border-white/10 hover:bg-white/5 rounded-xl text-[10px] text-white/70 font-black uppercase tracking-wider"
+              className="px-3 py-1 border border-white/10 hover:bg-white/5 rounded-xl text-[10px] text-white/70 font-black uppercase tracking-wider cursor-pointer"
             >
               Back to Home
             </button>
@@ -854,7 +870,15 @@ export default function AdminDashboard({ onLogout, onGoHome }: AdminDashboardPro
                   onApproveSeason={(id) => setCourseSeasons(prev => prev.map(s => s.id === id ? { ...s, status: "Active", registrationStatus: "Open" } : s))}
                   onCancelSeason={(id) => setCourseSeasons(prev => prev.map(s => s.id === id ? { ...s, status: "Cancelled", registrationStatus: "Not Available" } : s))}
                   onUpdateEnrollmentPayment={(id, payStatus) => setEnrollments(prev => prev.map(e => e.id === id ? { ...e, paymentStatus: payStatus } : e))}
-                  onUpdateEnrollmentStatus={(id, status) => setEnrollments(prev => prev.map(e => e.id === id ? { ...e, courseStatus: status } : e))}
+                  onUpdateEnrollmentStatus={async (id, status) => {
+                    try {
+                      await adminApi.updateEnrollment(id, { status });
+                      setEnrollments(prev => prev.map(e => e.id === id ? { ...e, courseStatus: status } : e));
+                      await loadAdminData();
+                    } catch (err: any) {
+                      dispatchAlert(err?.message || "Failed to update enrollment status.");
+                    }
+                  }}
                   onApproveRequest={handleApproveRequest}
                   onRejectRequest={handleRejectRequest}
                   onAddSeason={(ns) => setCourseSeasons(prev => [ns, ...prev])}
@@ -863,12 +887,14 @@ export default function AdminDashboard({ onLogout, onGoHome }: AdminDashboardPro
                 />
               )}
 
-              {/* Standalone Modules: Certificates, Exams, Discussions */}
+              {/* Standalone Modules: Certificates, Exams */}
               {activeTab === "certificates" && (
                 <CertificatesView 
                   certificates={certificates}
                   onApproveCertificate={handleApproveCertificate}
                   onRejectCertificate={handleRejectCertificate}
+                  onIssueCertificate={handleIssueCertificate}
+                  onReloadCertificates={loadAdminData}
                 />
               )}
 

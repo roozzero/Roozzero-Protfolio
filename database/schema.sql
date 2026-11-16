@@ -366,7 +366,7 @@ CREATE TABLE `enrollments` (
   `course_id` VARCHAR(50) NOT NULL,
   `status` ENUM('Active', 'Completed', 'Dropped', 'Inactive') DEFAULT 'Active',
   `progress` INT DEFAULT 0,
-  `attendance_percentage` DECIMAL(5,2) DEFAULT 100.00,
+  `attendance_percentage` DECIMAL(5,2) DEFAULT 0.00,
   `avg_grade` DECIMAL(5,2) DEFAULT 0.00,
   `joined_date` DATE NOT NULL,
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -615,6 +615,9 @@ CREATE TABLE `certificates` (
   `student_name` VARCHAR(150) NOT NULL,
   `course_id` VARCHAR(50) NOT NULL,
   `course_title` VARCHAR(255) NOT NULL,
+  `certificate_number` VARCHAR(100) DEFAULT NULL UNIQUE,
+  `verification_token` VARCHAR(100) DEFAULT NULL UNIQUE,
+  `final_grade` DECIMAL(5,2) DEFAULT NULL,
   `gpa` DECIMAL(3,2) DEFAULT NULL,
   `status` ENUM('Draft', 'Waiting for Admin Approval', 'Approved', 'Rejected') DEFAULT 'Draft',
   `issue_date` DATE DEFAULT NULL,
@@ -626,7 +629,8 @@ CREATE TABLE `certificates` (
   FOREIGN KEY (`student_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
   FOREIGN KEY (`course_id`) REFERENCES `courses` (`id`) ON DELETE CASCADE,
   INDEX `idx_certificates_student` (`student_id`),
-  INDEX `idx_certificates_course` (`course_id`)
+  INDEX `idx_certificates_course` (`course_id`),
+  INDEX `idx_certificates_token` (`verification_token`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Calendar Events Table
@@ -811,6 +815,7 @@ CREATE TABLE `exam_submissions` (
   `score` INT DEFAULT 0,
   `max_points` INT DEFAULT 100,
   `passed` TINYINT(1) DEFAULT 0,
+  `feedback` TEXT DEFAULT NULL,
   `status` VARCHAR(50) DEFAULT 'Submitted',
   `submitted_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   `graded_at` TIMESTAMP NULL DEFAULT NULL,

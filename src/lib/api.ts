@@ -284,8 +284,14 @@ export const studentApi = {
     return request<{ success: boolean; data: any[] }>("/student/notifications");
   },
 
-  async markNotificationRead(id: number) {
+  async markNotificationRead(id: string | number) {
     return request<{ success: boolean }>(`/student/notifications/${id}/read`, {
+      method: "PATCH"
+    });
+  },
+
+  async markAllNotificationsRead() {
+    return request<{ success: boolean }>("/student/notifications/read-all", {
       method: "PATCH"
     });
   },
@@ -630,8 +636,26 @@ export const adminApi = {
     return request<{ success: boolean; data: any[] }>("/admin/enrollments");
   },
 
+  async updateEnrollment(id: string | number, data: { status?: string; progress?: number; avgGrade?: number }) {
+    return request<{ success: boolean; data: any; message?: string }>(`/admin/enrollments/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data)
+    });
+  },
+
   async getCertificates() {
     return request<{ success: boolean; data: any[] }>("/admin/certificates");
+  },
+
+  async getEligibleCertificates() {
+    return request<{ success: boolean; data: any[] }>("/admin/certificates/eligible");
+  },
+
+  async issueCertificate(studentId: string, courseId: string) {
+    return request<{ success: boolean; data: any; message?: string }>("/admin/certificates/issue", {
+      method: "POST",
+      body: JSON.stringify({ studentId, courseId })
+    });
   },
 
   async updateCertificateStatus(id: string, status: string) {

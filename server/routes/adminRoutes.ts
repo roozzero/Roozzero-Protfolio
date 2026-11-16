@@ -1077,6 +1077,7 @@ router.get("/enrollments", async (req: Request, res: Response) => {
              e.season_id as seasonId, COALESCE(cs.name, 'Core Cohort') as seasonName,
              e.joined_date as enrollmentDate, e.joined_date as joinedDate,
              COALESCE(e.progress, 0) as progress,
+             COALESCE(e.avg_grade, 0) as avgGrade,
              'Paid' as paymentStatus,
              e.status as courseStatus
       FROM enrollments e
@@ -1093,21 +1094,319 @@ router.get("/enrollments", async (req: Request, res: Response) => {
 });
 
 // -------------------------------------------------------------
+// PUT /api/admin/enrollments/:id (Update enrollment status, progress, or final grade)
+// -------------------------------------------------------------
+router.put("/enrollments/:id", async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { status, progress, avgGrade } = req.body;
+
+    const [existing]: [any[], any] = await query("SELECT * FROM enrollments WHERE id = ?", [id]);
+    if (existing.length === 0) {
+      return res.status(404).json({ success: false, error: { code: "NOT_FOUND", message: "Enrollment not found." } });
+    }
+
+    const row = existing[0];
+    const nextStatus = status !== undefined ? String(status) : row.status;
+    const allowedStatuses = ["Active", "Pending", "Completed", "Dropped", "Inactive"];
+    const normalizedStatus = nextStatus === "Enrolled" ? "Active" : nextStatus;
+    if (!allowedStatuses.includes(normalizedStatus)) {
+      return res.status(400).json({ success: false, error: { code: "INVALID_STATUS", message: "Invalid enrollment status." } });
+    }
+
+    const nextProgress = progress !== undefined ? Math.max(0, Math.min(100, Number(progress) || 0)) : (normalizedStatus === "Completed" ? 100 : Number(row.progress || 0));
+    const nextGrade = avgGrade !== undefined ? Math.max(0, Math.min(100, Number(avgGrade) || 0)) : Number(row.avg_grade || 0);
+
+    await query(
+      `UPDATE enrollments SET status = ?, progress = ?, avg_grade = ? WHERE id = ?`,
+      [normalizedStatus, nextProgress, nextGrade, id]
+    );
+
+    return res.json({
+      success: true,
+      data: {
+        id: Number(id),
+        status: normalizedStatus,
+        courseStatus: normalizedStatus,
+        progress: nextProgress,
+        avgGrade: nextGrade
+      },
+      message: "Enrollment record updated."
+    });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: { code: "SERVER_ERROR", message: err.message } });
+  }
+});
+
+// -------------------------------------------------------------
 // GET /api/admin/certificates
 // -------------------------------------------------------------
 router.get("/certificates", async (req: Request, res: Response) => {
   try {
     const [rows]: [any[], any] = await query(`
-      SELECT cert.id, cert.student_id as studentId, u.name as studentName,
+      SELECT cert.id, cert.student_id as studentId, u.name as studentName, u.email as studentEmail,
              cert.course_id as courseId, c.title as courseTitle,
-             cert.gpa, cert.status, cert.issue_date as issueDate, cert.certificate_number as certificateNumber
+             COALESCE(cert.final_grade, e.avg_grade) as finalGrade,
+             COALESCE(e.status, 'Completed') as completionStatus,
+             cert.gpa, cert.status, cert.issue_date as issueDate,
+             cert.certificate_number as certificateNumber,
+             COALESCE(cert.verification_token, cert.certificate_number) as verificationCode
       FROM certificates cert
       INNER JOIN users u ON cert.student_id = u.id
       INNER JOIN courses c ON cert.course_id = c.id
+      LEFT JOIN enrollments e ON e.student_id = cert.student_id AND e.course_id = cert.course_id
+      WHERE u.deleted_at IS NULL AND c.deleted_at IS NULL
       ORDER BY cert.created_at DESC
     `);
-    return res.json({ success: true, data: rows });
+
+    const formatted = (rows || []).map((r: any) => ({
+      id: r.id,
+      studentId: r.studentId,
+      studentName: r.studentName,
+      studentEmail: r.studentEmail || "",
+      courseId: r.courseId,
+      courseTitle: r.courseTitle,
+      finalGrade: r.finalGrade !== null && r.finalGrade !== undefined ? Number(r.finalGrade) : null,
+      completionStatus: r.completionStatus || "Completed",
+      gpa: r.gpa !== null && r.gpa !== undefined ? String(r.gpa) : null,
+      status: r.status || "Draft",
+      issueDate: r.issueDate ? (r.issueDate instanceof Date ? r.issueDate.toISOString().split("T")[0] : String(r.issueDate).split("T")[0]) : "",
+      certificateNumber: r.certificateNumber || "",
+      verificationCode: r.verificationCode || r.certificateNumber || ""
+    }));
+
+    return res.json({ success: true, data: formatted });
   } catch (err: any) {
+    return res.status(500).json({ success: false, error: { code: "SERVER_ERROR", message: err.message } });
+  }
+});
+
+// -------------------------------------------------------------
+// GET /api/admin/certificates/eligible
+// Returns students who:
+//   1. Are enrolled in the course
+//   2. Have completed the course (enrollments.status = 'Completed')
+//   3. Have a final course grade strictly greater than 75 (enrollments.avg_grade > 75)
+// -------------------------------------------------------------
+router.get("/certificates/eligible", async (req: Request, res: Response) => {
+  try {
+    const [rows]: [any[], any] = await query(`
+      SELECT e.id as enrollmentId,
+             e.student_id as studentId,
+             u.name as studentName,
+             u.email as studentEmail,
+             e.course_id as courseId,
+             c.title as courseTitle,
+             c.code as courseCode,
+             e.avg_grade as finalGrade,
+             e.status as completionStatus,
+             e.progress as progress,
+             cert.id as certificateId,
+             cert.status as certificateStatus,
+             cert.certificate_number as certificateNumber,
+             COALESCE(cert.verification_token, cert.certificate_number) as verificationCode,
+             cert.issue_date as issueDate
+      FROM enrollments e
+      INNER JOIN users u ON e.student_id = u.id
+      INNER JOIN courses c ON e.course_id = c.id
+      LEFT JOIN certificates cert ON cert.student_id = e.student_id AND cert.course_id = e.course_id
+      WHERE u.deleted_at IS NULL
+        AND c.deleted_at IS NULL
+        AND e.status = 'Completed'
+        AND e.avg_grade > 75
+      ORDER BY e.avg_grade DESC, u.name ASC
+    `);
+
+    const formatted = (rows || []).map((r: any) => ({
+      enrollmentId: r.enrollmentId,
+      studentId: r.studentId,
+      studentName: r.studentName,
+      studentEmail: r.studentEmail || "",
+      courseId: r.courseId,
+      courseTitle: r.courseTitle,
+      courseCode: r.courseCode || "",
+      finalGrade: Number(r.finalGrade),
+      completionStatus: r.completionStatus,
+      progress: Number(r.progress ?? 100),
+      certificateId: r.certificateId || null,
+      certificateStatus: r.certificateId ? (r.certificateStatus || "Draft") : "Not Issued",
+      certificateNumber: r.certificateNumber || null,
+      verificationCode: r.verificationCode || null,
+      issueDate: r.issueDate ? (r.issueDate instanceof Date ? r.issueDate.toISOString().split("T")[0] : String(r.issueDate).split("T")[0]) : null
+    }));
+
+    return res.json({ success: true, data: formatted });
+  } catch (err: any) {
+    console.error("[Get Eligible Certificate Candidates Error]:", err);
+    return res.status(500).json({ success: false, error: { code: "SERVER_ERROR", message: err.message } });
+  }
+});
+
+// -------------------------------------------------------------
+// POST /api/admin/certificates/issue
+// Issues a certificate for an eligible student and course
+// -------------------------------------------------------------
+router.post("/certificates/issue", async (req: Request, res: Response) => {
+  try {
+    const { studentId, courseId } = req.body;
+    if (!studentId || !courseId) {
+      return res.status(400).json({
+        success: false,
+        error: { code: "MISSING_FIELDS", message: "Student ID and Course ID are required." }
+      });
+    }
+
+    const [enrollRows]: [any[], any] = await query(`
+      SELECT e.id, e.student_id, e.course_id, e.status, e.avg_grade,
+             u.name as student_name, u.email as student_email,
+             c.title as course_title
+      FROM enrollments e
+      INNER JOIN users u ON e.student_id = u.id
+      INNER JOIN courses c ON e.course_id = c.id
+      WHERE e.student_id = ? AND e.course_id = ? AND u.deleted_at IS NULL AND c.deleted_at IS NULL
+      LIMIT 1
+    `, [studentId, courseId]);
+
+    if (enrollRows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: { code: "ENROLLMENT_NOT_FOUND", message: "Student is not enrolled in the specified course." }
+      });
+    }
+
+    const enrollment = enrollRows[0];
+    if (enrollment.status !== "Completed") {
+      return res.status(400).json({
+        success: false,
+        error: { code: "COURSE_NOT_COMPLETED", message: "Student has not completed this course and is not eligible for a certificate." }
+      });
+    }
+
+    const finalGrade = Number(enrollment.avg_grade || 0);
+    if (!(finalGrade > 75)) {
+      return res.status(400).json({
+        success: false,
+        error: { code: "INSUFFICIENT_GRADE", message: "Student's final course grade must be strictly greater than 75 to receive a certificate." }
+      });
+    }
+
+    // Check for existing certificate to prevent duplicates for the same student and course
+    const [existingCertRows]: [any[], any] = await query(
+      "SELECT * FROM certificates WHERE student_id = ? AND course_id = ? LIMIT 1",
+      [studentId, courseId]
+    );
+
+    const todayStr = new Date().toISOString().split("T")[0];
+    const gpaVal = Math.min(4.0, Number((finalGrade / 25).toFixed(2)));
+
+    if (existingCertRows.length > 0) {
+      const existingCert = existingCertRows[0];
+      if (existingCert.status === "Approved") {
+        return res.status(409).json({
+          success: false,
+          error: { code: "DUPLICATE_CERTIFICATE", message: "A certificate has already been issued for this student and course." }
+        });
+      }
+
+      const certNumber = existingCert.certificate_number || `RZ-${new Date().getFullYear()}-${crypto.randomBytes(3).toString("hex").toUpperCase()}`;
+      const verifToken = existingCert.verification_token || `VRF-${crypto.randomBytes(6).toString("hex").toUpperCase()}`;
+
+      await query(`
+        UPDATE certificates
+        SET status = 'Approved',
+            issue_date = ?,
+            certificate_number = ?,
+            verification_token = ?,
+            final_grade = ?,
+            gpa = ?
+        WHERE id = ?
+      `, [todayStr, certNumber, verifToken, finalGrade, gpaVal, existingCert.id]);
+
+      await query(`
+        INSERT INTO notifications (user_id, recipient_id, type, title, message, link)
+        VALUES (?, ?, 'Certificate', ?, ?, '#dashboard')
+      `, [
+        studentId,
+        studentId,
+        `Certificate Issued: ${enrollment.course_title}`,
+        `Congratulations! Your graduation certificate (${certNumber}) for ${enrollment.course_title} has been approved and issued.`
+      ]);
+
+      return res.json({
+        success: true,
+        data: {
+          id: existingCert.id,
+          studentId,
+          studentName: enrollment.student_name,
+          studentEmail: enrollment.student_email,
+          courseId,
+          courseTitle: enrollment.course_title,
+          finalGrade,
+          completionStatus: "Completed",
+          gpa: String(gpaVal),
+          status: "Approved",
+          issueDate: todayStr,
+          certificateNumber: certNumber,
+          verificationCode: verifToken
+        },
+        message: "Certificate approved and issued successfully."
+      });
+    }
+
+    const newCertId = `cert-${Date.now()}-${crypto.randomBytes(3).toString("hex")}`;
+    const certNumber = `RZ-${new Date().getFullYear()}-${crypto.randomBytes(3).toString("hex").toUpperCase()}`;
+    const verifToken = `VRF-${crypto.randomBytes(6).toString("hex").toUpperCase()}`;
+
+    await query(`
+      INSERT INTO certificates (
+        id, student_id, student_name, course_id, course_title,
+        certificate_number, verification_token, final_grade, gpa, issue_date, status
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Approved')
+    `, [
+      newCertId,
+      studentId,
+      enrollment.student_name,
+      courseId,
+      enrollment.course_title,
+      certNumber,
+      verifToken,
+      finalGrade,
+      gpaVal,
+      todayStr
+    ]);
+
+    await query(`
+      INSERT INTO notifications (user_id, recipient_id, type, title, message, link)
+      VALUES (?, ?, 'Certificate', ?, ?, '#dashboard')
+    `, [
+      studentId,
+      studentId,
+      `Certificate Issued: ${enrollment.course_title}`,
+      `Congratulations! Your graduation certificate (${certNumber}) for ${enrollment.course_title} has been officially issued.`
+    ]);
+
+    return res.status(201).json({
+      success: true,
+      data: {
+        id: newCertId,
+        studentId,
+        studentName: enrollment.student_name,
+        studentEmail: enrollment.student_email,
+        courseId,
+        courseTitle: enrollment.course_title,
+        finalGrade,
+        completionStatus: "Completed",
+        gpa: String(gpaVal),
+        status: "Approved",
+        issueDate: todayStr,
+        certificateNumber: certNumber,
+        verificationCode: verifToken
+      },
+      message: "Certificate issued and saved to database."
+    });
+  } catch (err: any) {
+    console.error("[Issue Certificate Error]:", err);
     return res.status(500).json({ success: false, error: { code: "SERVER_ERROR", message: err.message } });
   }
 });
@@ -1119,7 +1418,22 @@ router.put("/certificates/:id/status", async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
-    await query("UPDATE certificates SET status = ? WHERE id = ?", [status, id]);
+    const [existing]: [any[], any] = await query("SELECT * FROM certificates WHERE id = ? LIMIT 1", [id]);
+    if (existing.length === 0) {
+      return res.status(404).json({ success: false, error: { code: "NOT_FOUND", message: "Certificate not found." } });
+    }
+    const cert = existing[0];
+    if (status === "Approved") {
+      const todayStr = new Date().toISOString().split("T")[0];
+      const certNumber = cert.certificate_number || `RZ-${new Date().getFullYear()}-${crypto.randomBytes(3).toString("hex").toUpperCase()}`;
+      const verifToken = cert.verification_token || `VRF-${crypto.randomBytes(6).toString("hex").toUpperCase()}`;
+      await query(
+        "UPDATE certificates SET status = ?, issue_date = COALESCE(issue_date, ?), certificate_number = ?, verification_token = ? WHERE id = ?",
+        [status, todayStr, certNumber, verifToken, id]
+      );
+    } else {
+      await query("UPDATE certificates SET status = ? WHERE id = ?", [status, id]);
+    }
     return res.json({ success: true, message: "Certificate status updated." });
   } catch (err: any) {
     return res.status(500).json({ success: false, error: { code: "SERVER_ERROR", message: err.message } });
@@ -1152,12 +1466,51 @@ router.get("/announcements", async (req: Request, res: Response) => {
 router.post("/announcements", async (req: Request, res: Response) => {
   try {
     const { title, description, courseId, audience, status } = req.body;
+    if (!title || !String(title).trim() || !description || !String(description).trim()) {
+      return res.status(400).json({
+        success: false,
+        error: { code: "VALIDATION_ERROR", message: "Title and description are required." }
+      });
+    }
     const adminId = req.user!.id;
     const newId = `ann-${Date.now()}`;
+    const resolvedCourseId = courseId && String(courseId).trim() ? String(courseId).trim() : "all";
+    const resolvedAudience = audience || "Everyone";
+    const resolvedStatus = status || "Published";
+
     await query(`
       INSERT INTO announcements (id, title, description, course_id, author_id, audience, status, published_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
-    `, [newId, title, description, courseId || "all", adminId, audience || "Everyone", status || "Published"]);
+    `, [newId, String(title).trim(), String(description).trim(), resolvedCourseId, adminId, resolvedAudience, resolvedStatus]);
+
+    // Dispatch notification records to targeted students if published and not faculty-only
+    if (resolvedStatus === "Published" && resolvedAudience !== "Teachers") {
+      let targetStudentIds: string[] = [];
+      if (resolvedCourseId !== "all") {
+        const [enrolledRows]: [any[], any] = await query(
+          `SELECT DISTINCT e.student_id
+           FROM enrollments e
+           INNER JOIN users u ON e.student_id = u.id
+           WHERE e.course_id = ? AND e.status IN ('Active', 'Completed') AND u.deleted_at IS NULL`,
+          [resolvedCourseId]
+        );
+        targetStudentIds = enrolledRows.map((r: any) => String(r.student_id));
+      } else {
+        const [studentRows]: [any[], any] = await query(
+          "SELECT id FROM users WHERE role_id = 3 AND deleted_at IS NULL"
+        );
+        targetStudentIds = studentRows.map((r: any) => String(r.id));
+      }
+
+      for (const stuId of targetStudentIds) {
+        await query(
+          `INSERT INTO notifications (user_id, recipient_id, type, title, message, link)
+           VALUES (?, ?, 'Announcement', ?, ?, ?)`,
+          [stuId, stuId, String(title).trim(), String(description).trim(), `ann:${newId}`]
+        ).catch(() => {});
+      }
+    }
+
     return res.status(201).json({ success: true, data: { id: newId } });
   } catch (err: any) {
     return res.status(500).json({ success: false, error: { code: "SERVER_ERROR", message: err.message } });
@@ -1170,6 +1523,7 @@ router.post("/announcements", async (req: Request, res: Response) => {
 router.delete("/announcements/:id", async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    await query("DELETE FROM notifications WHERE link = ?", [`ann:${id}`]).catch(() => {});
     await query("DELETE FROM announcements WHERE id = ?", [id]);
     return res.json({ success: true, message: "Announcement deleted from database permanently." });
   } catch (err: any) {
@@ -2554,7 +2908,7 @@ router.post("/courses/:id/enroll", async (req: Request, res: Response) => {
 
     await query(`
       INSERT INTO enrollments (student_id, course_id, season_id, status, joined_date, progress, attendance_percentage, avg_grade)
-      VALUES (?, ?, ?, 'Active', CURDATE(), 0, 100.00, 0.00)
+      VALUES (?, ?, ?, 'Active', CURDATE(), 0, 0.00, 0.00)
     `, [studentId, id, seasonId || null]);
 
     // Synchronize exact students_count from enrollments

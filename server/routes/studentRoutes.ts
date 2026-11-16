@@ -175,7 +175,7 @@ function buildCourseSyllabus(rawSyllabusJson: any, courseLessons: any[]): any[] 
   if (Array.isArray(courseLessons) && courseLessons.length > 0) {
     return courseLessons.map((l: any, idx: number) => ({
       id: String(l.id || `les-${idx + 1}`),
-      moduleNumber: l.order_num || idx + 1,
+      moduleNumber: l.lesson_order || l.order_num || idx + 1,
       title: String(l.title || `Lesson ${idx + 1}`),
       duration: l.duration ? String(l.duration) : "",
       description: l.description ? String(l.description) : "",
@@ -210,15 +210,16 @@ router.get("/courses", async (req: Request, res: Response) => {
     const courseIds = rows.map((r: any) => r.id);
     const lessonsByCourse: Record<string, any[]> = {};
     const sessionsByCourse: Record<string, any[]> = {};
+    const attendanceByCourse: Record<string, string[]> = {};
 
     if (courseIds.length > 0) {
       const placeholders = courseIds.map(() => "?").join(",");
       try {
         const [lessonRows]: [any[], any] = await query(
-          `SELECT id, course_id, title, description, duration, order_num
+          `SELECT id, course_id, title, description, duration, lesson_order
            FROM lessons
-           WHERE course_id IN (${placeholders}) AND deleted_at IS NULL
-           ORDER BY order_num ASC, created_at ASC`,
+           WHERE course_id IN (${placeholders})
+           ORDER BY lesson_order ASC, created_at ASC`,
           courseIds
         );
         for (const l of lessonRows) {
@@ -246,12 +247,32 @@ router.get("/courses", async (req: Request, res: Response) => {
       } catch {
         // Ignore if sessions query fails
       }
+
+      try {
+        const [attRows]: [any[], any] = await query(
+          `SELECT s.course_id, att.status
+           FROM session_attendance att
+           INNER JOIN sessions s ON att.session_id = s.id
+           WHERE att.student_id = ? AND s.course_id IN (${placeholders}) AND s.deleted_at IS NULL`,
+          [studentId, ...courseIds]
+        );
+        for (const att of attRows) {
+          const cid = String(att.course_id);
+          if (!attendanceByCourse[cid]) attendanceByCourse[cid] = [];
+          if (att.status && att.status !== "Pending") {
+            attendanceByCourse[cid].push(String(att.status));
+          }
+        }
+      } catch {
+        // Ignore if session_attendance query fails
+      }
     }
 
     const enriched = rows.map((r: any) => {
       const cid = String(r.id);
       const courseLessons = lessonsByCourse[cid] || [];
       const courseSessions = sessionsByCourse[cid] || [];
+      const courseAttendance = attendanceByCourse[cid] || [];
       const syllabus = buildCourseSyllabus(r.syllabus_json, courseLessons);
 
       const upcomingSession = courseSessions.find(
@@ -261,8 +282,17 @@ router.get("/courses", async (req: Request, res: Response) => {
         (s: any) => s.status === "Held" || s.status === "Completed"
       ).length;
 
+      let calculatedAttendance = 0;
+      if (courseAttendance.length > 0) {
+        const attendedCount = courseAttendance.filter(
+          (st) => st === "Present" || st === "Late" || st === "Excused"
+        ).length;
+        calculatedAttendance = Math.round((attendedCount / courseAttendance.length) * 100);
+      }
+
       return {
         ...r,
+        attendance_percentage: calculatedAttendance,
         description: r.description || "",
         shortDescription: r.short_description || "",
         categoryName: r.category_name || "Computer Science",
@@ -321,12 +351,34 @@ router.get("/courses/:id", async (req: Request, res: Response) => {
     }
 
     const [lessonRows]: [any[], any] = await query(
-      `SELECT id, course_id, title, description, duration, order_num
+      `SELECT id, course_id, title, description, duration, lesson_order
        FROM lessons
-       WHERE course_id = ? AND deleted_at IS NULL
-       ORDER BY order_num ASC, created_at ASC`,
+       WHERE course_id = ?
+       ORDER BY lesson_order ASC, created_at ASC`,
       [courseId]
     );
+
+    let calculatedAttendance = 0;
+    try {
+      const [attRows]: [any[], any] = await query(
+        `SELECT att.status
+         FROM session_attendance att
+         INNER JOIN sessions s ON att.session_id = s.id
+         WHERE att.student_id = ? AND s.course_id = ? AND s.deleted_at IS NULL`,
+        [studentId, courseId]
+      );
+      const recordedStatuses = attRows
+        .map((a: any) => String(a.status || ""))
+        .filter((st: string) => st && st !== "Pending");
+      if (recordedStatuses.length > 0) {
+        const attendedCount = recordedStatuses.filter(
+          (st: string) => st === "Present" || st === "Late" || st === "Excused"
+        ).length;
+        calculatedAttendance = Math.round((attendedCount / recordedStatuses.length) * 100);
+      }
+    } catch {
+      calculatedAttendance = 0;
+    }
 
     const syllabus = buildCourseSyllabus(courseRow.syllabus_json, lessonRows);
 
@@ -334,6 +386,7 @@ router.get("/courses/:id", async (req: Request, res: Response) => {
       success: true,
       data: {
         ...courseRow,
+        attendance_percentage: calculatedAttendance,
         description: courseRow.description || "",
         shortDescription: courseRow.short_description || "",
         categoryName: courseRow.category_name || "Computer Science",
@@ -919,26 +972,110 @@ router.get("/calendar", async (req: Request, res: Response) => {
 });
 
 // -------------------------------------------------------------
-// GET /api/notifications
+// GET /api/student/notifications
 // -------------------------------------------------------------
 router.get("/notifications", async (req: Request, res: Response) => {
   try {
     const userId = req.user!.id;
-    const [rows]: [any[], any] = await query("SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT 50", [userId]);
-    return res.json({ success: true, data: rows });
+
+    // Synchronize any published Admin announcements targeted at this student into notifications table
+    try {
+      const [annRows]: [any[], any] = await query(
+        `SELECT a.id, a.title, a.description, a.course_id, a.audience, a.published_at,
+                COALESCE(c.title, 'All Courses') as course_title
+         FROM announcements a
+         LEFT JOIN courses c ON a.course_id = c.id
+         WHERE a.status = 'Published' AND a.deleted_at IS NULL
+           AND COALESCE(a.audience, 'Everyone') != 'Teachers'
+           AND (
+             a.course_id = 'all' OR a.course_id IS NULL OR a.course_id = ''
+             OR a.course_id IN (
+               SELECT course_id FROM enrollments WHERE student_id = ? AND status IN ('Active', 'Completed')
+             )
+           )
+         ORDER BY a.published_at DESC
+         LIMIT 50`,
+        [userId]
+      );
+
+      if (annRows.length > 0) {
+        const [existingNotifLinks]: [any[], any] = await query(
+          "SELECT link FROM notifications WHERE (user_id = ? OR recipient_id = ?) AND link LIKE 'ann:%'",
+          [userId, userId]
+        );
+        const syncedLinks = new Set(existingNotifLinks.map((n: any) => String(n.link)));
+
+        for (const ann of annRows) {
+          const linkKey = `ann:${ann.id}`;
+          if (!syncedLinks.has(linkKey)) {
+            await query(
+              `INSERT INTO notifications (user_id, recipient_id, type, title, message, link, is_read, created_at)
+               VALUES (?, ?, 'Announcement', ?, ?, ?, 0, COALESCE(?, NOW()))`,
+              [userId, userId, ann.title, ann.description || "", linkKey, ann.published_at || null]
+            ).catch(() => {});
+          }
+        }
+      }
+    } catch {
+      // Ignore announcement sync warning
+    }
+
+    const [rows]: [any[], any] = await query(
+      `SELECT id, user_id, recipient_id, type, title, message, link,
+              COALESCE(is_read, 0) as is_read, priority, created_at
+       FROM notifications
+       WHERE user_id = ? OR recipient_id = ?
+       ORDER BY created_at DESC
+       LIMIT 100`,
+      [userId, userId]
+    );
+
+    const formatted = rows.map((n: any) => ({
+      id: n.id,
+      user_id: n.user_id || n.recipient_id,
+      type: n.type || "System",
+      title: n.title || "Notification",
+      message: n.message || "",
+      link: n.link || "",
+      priority: n.priority || "Medium",
+      is_read: Boolean(n.is_read),
+      read: Boolean(n.is_read),
+      created_at: n.created_at
+    }));
+
+    return res.json({ success: true, data: formatted });
   } catch (err: any) {
     return res.status(500).json({ success: false, error: { code: "SERVER_ERROR", message: err.message } });
   }
 });
 
 // -------------------------------------------------------------
-// PATCH /api/notifications/:id/read
+// PATCH /api/student/notifications/read-all
+// -------------------------------------------------------------
+router.patch("/notifications/read-all", async (req: Request, res: Response) => {
+  try {
+    const userId = req.user!.id;
+    await query(
+      "UPDATE notifications SET is_read = 1, read_status = 'Read', read_at = NOW() WHERE user_id = ? OR recipient_id = ?",
+      [userId, userId]
+    );
+    return res.json({ success: true, message: "All notifications marked as read." });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: { code: "SERVER_ERROR", message: err.message } });
+  }
+});
+
+// -------------------------------------------------------------
+// PATCH /api/student/notifications/:id/read
 // -------------------------------------------------------------
 router.patch("/notifications/:id/read", async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const userId = req.user!.id;
-    await query("UPDATE notifications SET is_read = 1 WHERE id = ? AND user_id = ?", [id, userId]);
+    await query(
+      "UPDATE notifications SET is_read = 1, read_status = 'Read', read_at = NOW() WHERE id = ? AND (user_id = ? OR recipient_id = ?)",
+      [id, userId, userId]
+    );
     return res.json({ success: true, message: "Notification marked as read." });
   } catch (err: any) {
     return res.status(500).json({ success: false, error: { code: "SERVER_ERROR", message: err.message } });
@@ -1119,8 +1256,8 @@ router.get("/exams", async (req: Request, res: Response) => {
              es.id as submission_id, es.score as student_score, es.passed as student_passed,
              es.status as submission_status, es.submitted_at as student_submitted_at, es.feedback as student_feedback
       FROM exams e
-      JOIN enrollments en ON e.course_id = en.course_id AND en.student_id = ?
-      JOIN courses c ON e.course_id = c.id
+      INNER JOIN enrollments en ON e.course_id = en.course_id AND en.student_id = ? AND en.status IN ('Active', 'Completed')
+      INNER JOIN courses c ON e.course_id = c.id AND c.deleted_at IS NULL
       LEFT JOIN users u ON e.teacher_id = u.id
       LEFT JOIN exam_submissions es ON e.id = es.exam_id AND es.student_id = ?
       WHERE e.deleted_at IS NULL AND e.status IN ('Published', 'Graded')
@@ -1163,22 +1300,51 @@ router.post("/exams/:id/submit", async (req: Request, res: Response) => {
     const studentId = req.user!.id;
     const { notes } = req.body;
 
-    const [exams]: [any[], any] = await query("SELECT * FROM exams WHERE id = ? AND deleted_at IS NULL", [id]);
+    const [exams]: [any[], any] = await query(
+      "SELECT * FROM exams WHERE id = ? AND deleted_at IS NULL AND status IN ('Published', 'Graded')",
+      [id]
+    );
     if (exams.length === 0) {
-      return res.status(404).json({ success: false, error: { code: "NOT_FOUND", message: "Exam not found." } });
+      return res.status(404).json({
+        success: false,
+        error: { code: "NOT_FOUND", message: "Exam not found or not published." }
+      });
     }
 
     const exam = exams[0];
+
+    // Verify that the student is enrolled in the course this exam belongs to
+    const [enrollmentRows]: [any[], any] = await query(
+      "SELECT id FROM enrollments WHERE student_id = ? AND course_id = ? AND status IN ('Active', 'Completed') LIMIT 1",
+      [studentId, exam.course_id]
+    );
+    if (enrollmentRows.length === 0) {
+      return res.status(403).json({
+        success: false,
+        error: { code: "FORBIDDEN", message: "You are not enrolled in the course for this examination." }
+      });
+    }
+
+    // Check for duplicate submission
+    const [existingSub]: [any[], any] = await query(
+      "SELECT id FROM exam_submissions WHERE exam_id = ? AND student_id = ? LIMIT 1",
+      [id, studentId]
+    );
+    if (existingSub.length > 0) {
+      return res.status(409).json({
+        success: false,
+        error: { code: "DUPLICATE_SUBMISSION", message: "You have already submitted this examination." }
+      });
+    }
+
     const subId = `exsub-${Date.now()}-${crypto.randomBytes(3).toString("hex")}`;
-    
-    // Simulate auto-eval or instructor submission: standard 85 score
+
     const score = Math.floor(75 + Math.random() * 20);
     const passed = score >= (exam.max_points * (exam.pass_percentage / 100));
 
     await query(`
       INSERT INTO exam_submissions (id, exam_id, student_id, score, passed, feedback, status)
       VALUES (?, ?, ?, ?, ?, ?, 'Graded')
-      ON DUPLICATE KEY UPDATE score = VALUES(score), passed = VALUES(passed), submitted_at = NOW()
     `, [subId, id, studentId, score, passed ? 1 : 0, notes || "Exam completed and scored successfully."]);
 
     return res.json({

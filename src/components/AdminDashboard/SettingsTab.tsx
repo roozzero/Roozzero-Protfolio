@@ -310,7 +310,7 @@ export default function SettingsTab({
           <Settings className="text-indigo-400" size={24} />
           <span>Administrator Settings</span>
         </h2>
-        <p className="text-xs text-white/40 max-w-2xl leading-relaxed">
+        <p className="text-xs text-white/40 leading-relaxed">
           Manage your authoritative administrator credentials, upload profile display photos, customize dashboard visual ergonomics, and review system access logs.
         </p>
       </div>
@@ -361,7 +361,7 @@ export default function SettingsTab({
 
           {/* 1. ACCOUNT TAB */}
           {settingsActiveTab === "Account" && (
-            <div className="max-w-3xl mx-auto bg-[#08080c] border border-white/[0.06] rounded-3xl p-6 md:p-8 space-y-6 shadow-2xl relative overflow-hidden text-left font-sans">
+            <div className="w-full bg-[#08080c] border border-white/[0.06] rounded-3xl p-6 md:p-8 space-y-6 shadow-2xl relative overflow-hidden text-left font-sans">
               <div className="absolute -right-20 -top-20 w-44 h-44 bg-indigo-500/[0.02] rounded-full blur-3xl" />
               
               <div className="border-b border-white/[0.05] pb-4 flex items-center justify-between">
@@ -699,7 +699,7 @@ export default function SettingsTab({
 
           {/* 3. APPEARANCE TAB */}
           {settingsActiveTab === "Appearance" && (
-            <div className="bg-[#08080c] border border-white/[0.06] rounded-3xl p-6 md:p-8 max-w-3xl mx-auto space-y-6 text-left shadow-2xl relative overflow-hidden font-sans animate-fade-in">
+            <div className="w-full bg-[#08080c] border border-white/[0.06] rounded-3xl p-6 md:p-8 space-y-6 text-left shadow-2xl relative overflow-hidden font-sans animate-fade-in">
               <div className="absolute -right-20 -top-20 w-44 h-44 bg-indigo-500/[0.02] rounded-full blur-3xl" />
               
               <div className="border-b border-white/[0.05] pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -777,7 +777,7 @@ export default function SettingsTab({
 
           {/* 4. SECURITY TAB (Password Change with verification, 2FA, Login History) */}
           {settingsActiveTab === "Security" && (
-            <div className="max-w-3xl mx-auto bg-[#08080c] border border-white/[0.06] rounded-3xl p-6 md:p-8 space-y-6 shadow-2xl relative overflow-hidden text-left font-sans animate-fade-in">
+            <div className="w-full bg-[#08080c] border border-white/[0.06] rounded-3xl p-6 md:p-8 space-y-6 shadow-2xl relative overflow-hidden text-left font-sans animate-fade-in">
               <div className="absolute -right-20 -top-20 w-44 h-44 bg-indigo-500/[0.02] rounded-full blur-3xl" />
               
               <div className="border-b border-white/[0.05] pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
